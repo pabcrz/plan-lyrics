@@ -1,0 +1,12 @@
+/odd/artifacts/
+/odd/tasks/
+*.cho
+*.chopro
+*.chordpro
+*.pdf
+
+.env
+.env.*
+!.env.example
+!.env.*.example
+.DS_Store
