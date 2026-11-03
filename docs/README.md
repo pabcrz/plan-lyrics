@@ -40,11 +40,19 @@ Como <tipo de persona>, quiero <resultado>, para <beneficio>.
 
 El estado `acordada` requiere validación de alcance. Usa criterios breves y observables; registra decisiones aún abiertas sin inventar respuestas. Marca `verificada` solo cuando se cumplan todos sus criterios de aceptación y enlaza evidencia real, no una afirmación sin comprobación.
 
-### Ejemplo ilustrativo, no aprobado
+### Primeras entregas propuestas
 
-**HU-001 — Programar un servicio:** Como persona que organiza un servicio, quiero indicar cuándo será, para coordinar su preparación.
+Las historias están en estado **propuesta**: los acuerdos del producto están registrados, pero sus criterios completos aún requieren validación. No hay implementación verificada.
 
-- Dado que estoy preparando un servicio, cuando registro una fecha, entonces puedo identificar cuándo está programado.
-- **Fuera de alcance del ejemplo:** no decide quién puede acceder o editar; la matriz de permisos sigue abierta en el plan de producto.
+| Entrega | Historia |
+| --- | --- |
+| 1 — programación y turnos | [HU-001 — Configurar participaciones](historias-de-usuario/HU-001-configurar-participaciones.md) |
+| 1 — programación y turnos | [HU-002 — Programar un servicio](historias-de-usuario/HU-002-programar-servicio.md) |
+| 1 — programación y turnos | [HU-003 — Crear servicios en lote](historias-de-usuario/HU-003-crear-servicios-en-lote.md) |
+| 1 — programación y turnos | [HU-004 — Ajustar participaciones](historias-de-usuario/HU-004-ajustar-turnos.md) |
+| 1 — programación y turnos | [HU-005 — Consultar el calendario](historias-de-usuario/HU-005-consultar-calendario.md) |
+| 2 — preparación musical | [HU-006 — Preparar el setlist](historias-de-usuario/HU-006-preparar-setlist.md) |
+
+Antes de implementar la primera entrega, cerrar las [reglas pendientes](producto.md#decisiones-de-producto-abiertas) de generación en lote y turnos. Publicación de enlaces y letras se detallarán en historias posteriores.
 
 Relaciona tareas técnicas con la historia o con el issue/documento ODD correspondiente cuando aplique. No dupliques backlog, tareas técnicas ni criterios en varios documentos: enlaza la fuente canónica.

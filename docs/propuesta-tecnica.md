@@ -24,7 +24,7 @@ No se seleccionan nuevos proveedores ni se afirma una configuración desplegada.
 
 La autenticación identifica a la persona; la autorización se valida en backend para cada recurso y acción. Membresía de iglesia, permiso editorial global, administración de iglesia y rol musical son conceptos separados. No confiar en identificadores u opciones de rol enviados por el cliente. Limitar enlaces públicos a los datos expresamente publicables y permitir su revocación.
 
-La biblioteca compartida y los overrides opcionales de iglesia/servicio deben preservar herencia y evitar clones obligatorios. Los servicios pertenecen a su contexto de iglesia; las asignaciones privadas no se exponen por el lector público. El esquema concreto, las entidades y las políticas de permiso se definen durante el diseño, con la matriz de capacidades aún abierta según el plan oficial.
+La biblioteca compartida y los overrides opcionales de iglesia/servicio deben preservar herencia y evitar clones obligatorios. Los servicios pertenecen a su contexto de iglesia; las asignaciones privadas no se exponen por el lector público. El esquema concreto, las entidades y las políticas de permiso se definen durante el diseño, respetando los [accesos combinables acordados](producto.md#accesos-acordados) y las capacidades aún pendientes en el plan oficial.
 
 ## Prueba técnica acotada antes de elegir hosting
 

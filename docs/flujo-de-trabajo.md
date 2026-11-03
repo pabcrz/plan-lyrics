@@ -13,6 +13,6 @@ Recorrido ligero: **alinear → explorar → planificar → implementar → veri
 
 El producto y los acuerdos locales viven en estos documentos; las instrucciones y habilidades de Gentle AI ayudan a ejecutar unidades acotadas, no sustituyen esas fuentes. El trabajo sustancial puede registrarse y retomarse con el contexto de tarea correspondiente; no hace falta imponer ese proceso a cada cambio menor.
 
-La matriz de permisos sigue abierta en el [plan de producto](producto.md): no inventes roles ni capacidades. La [propuesta técnica](propuesta-tecnica.md) incluye una prueba de compatibilidad de despliegue futura; no se ha ejecutado. No dupliques instrucciones generales del agente ni exijas revisión nativa para cambios triviales.
+Los accesos acordados y las capacidades aún pendientes se definen en el [plan de producto](producto.md#accesos-acordados): no inventes permisos ni confundas administración de iglesia con edición de biblioteca. La [propuesta técnica](propuesta-tecnica.md) incluye una prueba de compatibilidad de despliegue futura; no se ha ejecutado. No dupliques instrucciones generales del agente ni exijas revisión nativa para cambios triviales.
 
 Esta guía adapta la plantilla `work-flow` a Plan & Lyrics. Los acuerdos adoptados viven aquí: no requieren consultar otro repositorio ni se actualizan automáticamente desde su origen.
