@@ -11,6 +11,7 @@ Lectura recomendada: primero el producto; consulta las demás guías según tu t
 | [Entrega integral](propuestas/entrega-integral.md) | Secuencia que conecta diseño, backend y verificación. | Para avanzar por resultados completos, no por capas aisladas. |
 | [Guía ChordPro](guia-chordpro.md) | Convenciones de formato musical. | Al trabajar con ChordPro o sus vistas. |
 | [Historias de usuario](#historias-de-usuario) | Guía para proponer y validar historias. | Al expresar un resultado de usuario. |
+| [Issues iniciales](issues/README.md) | Borradores de unidades de trabajo y trazabilidad con documentos e historias. | Antes de publicar issues o iniciar una unidad de desarrollo. |
 | [Flujo de trabajo](flujo-de-trabajo.md) | Etapas y acuerdos de trabajo del proyecto. | Al planificar una tarea. |
 | [Criterios de desarrollo](criterios-de-desarrollo.md) | Criterios de diseño, seguridad y pruebas. | Al implementar comportamiento. |
 | [Contribuir](../CONTRIBUTING.md) | Ramas, commits y entrega. | Al preparar cambios para revisión. |
