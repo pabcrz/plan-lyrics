@@ -6,6 +6,9 @@ Lectura recomendada: primero el producto; consulta las demás guías según tu t
 |---|---|---|
 | [Producto](producto.md) | Única fuente de requisitos, prioridades y alcance. | Para entender o proponer comportamiento del producto. |
 | [Propuesta técnica](propuesta-tecnica.md) | Orientación técnica subordinada al producto. | Al explorar arquitectura o decisiones técnicas. |
+| [Diseño](propuestas/diseno.md) | Propuesta separada de pantallas, componentes y sistema visual. | Antes de diseñar o implementar interfaces. |
+| [Backend](propuestas/backend.md) | Propuesta de casos de uso, dominio y validación incremental. | Antes de construir la API y la persistencia. |
+| [Entrega integral](propuestas/entrega-integral.md) | Secuencia que conecta diseño, backend y verificación. | Para avanzar por resultados completos, no por capas aisladas. |
 | [Guía ChordPro](guia-chordpro.md) | Convenciones de formato musical. | Al trabajar con ChordPro o sus vistas. |
 | [Historias de usuario](#historias-de-usuario) | Guía para proponer y validar historias. | Al expresar un resultado de usuario. |
 | [Flujo de trabajo](flujo-de-trabajo.md) | Etapas y acuerdos de trabajo del proyecto. | Al planificar una tarea. |
