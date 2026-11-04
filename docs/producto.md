@@ -47,7 +47,7 @@ La administración de una iglesia y la edición de la biblioteca compartida son 
 
 | Acceso | Alcance acordado |
 | --- | --- |
-| Superadministrador | Administra la plataforma y puede gestionar la biblioteca musical compartida. |
+| Superadministrador | Existe uno solo: la persona propietaria del proyecto. Tiene acceso total a la plataforma, a todas las iglesias y a la biblioteca musical compartida, y puede modificar todos los roles. Ningún otro nivel equivale a este acceso global. |
 | Administrador de iglesia | Gestiona personas, servicios, asignaciones y configuración de su iglesia. No obtiene automáticamente permiso para editar la biblioteca compartida. |
 | Editor de biblioteca (editor general) | Crea y modifica canciones compartidas, sus letras y acordes. No administra iglesias ni usuarios salvo que tenga también el acceso correspondiente. |
 | Editor de servicios | Crea y edita servicios, fechas, dirección, participantes y setlists, y ajusta tonos dentro de su iglesia. No administra miembros, accesos ni configuración de iglesia, ni obtiene automáticamente edición de la biblioteca compartida. |
@@ -83,6 +83,7 @@ No ampliar la primera entrega con confirmaciones de asistencia, servicios recurr
 - Un lote mensual incluye solo las fechas del día elegido que resten del mes actual, o todas las del mes futuro elegido, y asigna directores en el orden ingresado.
 - Los turnos respetan la modalidad configurada por rotación: independiente por día o compartida entre servicios; las participaciones generadas pueden corregirse manualmente.
 - Una persona puede ordenar canciones y otros momentos y asignar participantes con su rol musical, sin que dicho rol conceda permisos de edición.
+- Existe un único superadministrador, correspondiente a la persona propietaria del proyecto, con acceso total a todas las iglesias y capacidad de modificar todos los roles.
 - Un administrador de iglesia sin acceso editorial global no puede modificar la biblioteca compartida.
 - Un editor de biblioteca sin acceso administrativo no puede administrar iglesias ni usuarios; una persona con ambos accesos puede ejercer cada uno en su ámbito.
 - Un editor de servicios puede preparar setlists y ajustar tonos de su iglesia sin modificar la biblioteca compartida; un integrante no puede editar.
