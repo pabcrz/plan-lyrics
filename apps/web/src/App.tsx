@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 async function checkApi() {
@@ -11,7 +12,7 @@ async function checkApi() {
   return body
 }
 
-export function App() {
+export function App({ authentication }: { authentication?: ReactNode }) {
   const api = useQuery({ queryKey: ['local-api-health'], queryFn: checkApi, retry: false })
 
   return (
@@ -21,7 +22,8 @@ export function App() {
       <p role="status">
         {api.isPending ? 'Comprobando API…' : api.isError ? 'API no disponible' : 'API disponible'}
       </p>
-      <p>Base de datos y autenticación: pendientes de configurar.</p>
+      <p>Base de datos: pendiente de configurar.</p>
+      {authentication ?? <p>Autenticación: pendiente de configurar.</p>}
     </main>
   )
 }

@@ -16,5 +16,6 @@ test('the bootstrap shows API connectivity without claiming database or authenti
 
   await screen.findByText('API disponible')
   expect(screen.getByRole('status')).toHaveProperty('textContent', 'API disponible')
-  expect(screen.getByText('Base de datos y autenticación: pendientes de configurar.')).toBeTruthy()
+  expect(screen.getByText('Base de datos: pendiente de configurar.')).toBeTruthy()
+  expect(screen.getByText('Autenticación: pendiente de configurar.')).toBeTruthy()
 })

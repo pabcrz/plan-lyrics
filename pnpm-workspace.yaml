@@ -6,3 +6,7 @@ allowBuilds:
   esbuild: true
   '@prisma/engines': true
   prisma: true
+
+minimumReleaseAgeExclude:
+  - '@clerk/react@6.18.5'
+  - '@clerk/shared@4.44.0'
