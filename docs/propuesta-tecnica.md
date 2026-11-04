@@ -23,7 +23,7 @@ Flujo: React → Hono → Prisma → PostgreSQL. Clerk verifica la identidad; nu
 | Autenticación | Clerk | Registro, sesión y recuperación; no determina roles musicales ni permisos del producto. |
 | Pruebas de lógica y API | Vitest; peticiones HTTP de prueba a la aplicación Hono | Verificar reglas, respuestas, persistencia y rechazos sin necesidad de desplegar para cada prueba. |
 | Pruebas de interfaz | Testing Library y Playwright | Componentes y recorridos reales conectados, según la unidad en curso. |
-| Repositorio | GitHub y npm workspaces | Un repositorio con web y API; sin Nx ni Turborepo inicialmente. |
+| Repositorio | GitHub y pnpm workspaces | Un repositorio con web y API; sin Nx ni Turborepo inicialmente. |
 
 Elegir versiones estables compatibles al preparar el proyecto, fijar una versión soportada de Node y versionar el lockfile. Este documento no afirma versiones instaladas ni compatibilidad comprobada de toda la combinación.
 
@@ -65,6 +65,10 @@ Respetar los [accesos acordados](producto.md#accesos-acordados). Un identificado
 Mantener migraciones del producto en Git y probar exportación y restauración en PostgreSQL independiente con datos de prueba. No prometer que una migración es solo cambiar una URL: conexiones, extensiones y configuración requieren validación. Backups y prueba de recuperación forman parte de la preparación para operación habitual.
 
 Hono debe poder ejecutarse como servidor Node mediante su adaptador además del despliegue candidato. No usar APIs exclusivas de Vercel para las reglas centrales. Ejecutar en Cloudflare Workers sería otra decisión de runtime, no una consecuencia automática de usar Hono.
+
+## Preparación local realizada
+
+La base pnpm con React/Vite y Hono, las herramientas seleccionadas y sus comprobaciones de arranque están descritas en [desarrollo local](desarrollo-local.md). No hay todavía integración de Clerk ni persistencia PostgreSQL; esa preparación no sustituye la prueba técnica completa ni valida proveedores.
 
 ## Prueba técnica acotada antes de elegir hosting
 

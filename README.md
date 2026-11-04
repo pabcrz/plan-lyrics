@@ -1,6 +1,8 @@
 # Plan & Lyrics
 
-Documentación del producto en etapa de planificación; no describe una aplicación ya implementada.
+Producto en planificación, con una base local React/Vite y Hono preparada y comprobada. El arranque técnico no equivale a funcionalidades del producto implementadas.
+
+- **Arranque y comprobaciones:** [Desarrollo local](docs/desarrollo-local.md).
 
 - **Producto (fuente oficial):** [Plan de producto](docs/producto.md) — requisitos, prioridades, alcance y decisiones abiertas.
 - **Propuesta técnica:** [Propuesta técnica](docs/propuesta-tecnica.md) — arquitectura y stack tentativos, subordinados al plan de producto.

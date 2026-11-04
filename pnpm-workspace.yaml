@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+
+# Native tools required by the selected build stack; do not allow arbitrary scripts.
+allowBuilds:
+  esbuild: true
+  '@prisma/engines': true
+  prisma: true
