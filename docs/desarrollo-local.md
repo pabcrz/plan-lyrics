@@ -37,7 +37,7 @@ La API compilada puede ejecutarse con `pnpm --filter @plan-lyrics/api start`. Vi
 
 - `apps/web`: React, Vite, TypeScript, React Router, TanStack Query y Tailwind; Testing Library y jsdom para componentes.
 - `apps/api`: Hono y adaptador Node, Zod, Prisma 7 y adaptador PostgreSQL/pg. Prisma CLI y tsx disponibles para desarrollo.
-- `@clerk/react` está instalado en la web: proveedor, acceso modal y menú de cuenta/cierre de sesión oficiales. Sin clave publicable no se inicializa Clerk ni se muestra una sesión ficticia. La validación real de sesión sigue pendiente de la configuración local.
+- `@clerk/react` está instalado en la web: proveedor, acceso modal y menú de cuenta/cierre de sesión oficiales. Sin clave publicable no se inicializa Clerk ni se muestra una sesión ficticia. El inicio y cierre de sesión reales se comprobaron en Orca con la instancia de desarrollo; esto no valida identidad ni permisos en la API.
 - Prisma está instalado, pero no hay esquema de negocio, cliente generado, conexión, migraciones ni base creada. Una respuesta de salud correcta solo acredita que la API responde, no persistencia ni permisos.
 - Los componentes shadcn/ui se incorporarán al implementar las pantallas acordadas, sobre Tailwind; no se genera ahora otra interfaz ni un catálogo de componentes.
 - El almacén de pnpm queda en `.pnpm-store/`, ignorado por Git. Dependencias, compilados y archivos `.env` tampoco se versionan; sí `pnpm-lock.yaml`.
@@ -57,7 +57,7 @@ Sin clave se muestra “Clerk pendiente”; durante la carga y ante fallo del SD
 
 Esto prepara autenticación **en la web**, no autorización. La API de salud continúa pública, sin datos de negocio; todavía no verifica tokens Clerk ni permite operaciones privadas. Iniciar sesión no crea una iglesia, no vincula personas por nombre y no concede permisos musicales ni administrativos. Antes de añadir datos privados habrá que verificar identidad y autorización en servidor.
 
-Las pruebas unitarias del acceso usan un doble de los componentes Clerk: comprueban nuestro cableado y los estados, no un inicio/cierre real de sesión ni la disponibilidad del proveedor. No se marca esa prueba real como aprobada hasta ejecutarla con una clave válida y la intervención de la persona usuaria.
+Las pruebas unitarias del acceso usan un doble de los componentes Clerk: comprueban nuestro cableado y los estados, no un inicio/cierre real de sesión ni la disponibilidad del proveedor. La prueba real se completó después, con configuración local e inicio de sesión por la persona usuaria: se observaron sesión y menú de cuenta activos, y al cerrar desde el menú oficial volvieron el botón de acceso y la ausencia de sesión. La API siguió disponible y no hubo desbordamiento horizontal a 390 px. No se leyeron claves, tokens ni datos personales para registrar esa evidencia.
 
 La instalación fijó `@clerk/react` 6.18.5; pnpm añadió excepciones de antigüedad **solo para esas versiones exactas** de `@clerk/react` 6.18.5 y `@clerk/shared` 4.44.0 en `minimumReleaseAgeExclude`. No se habilitan scripts de instalación adicionales ni excepciones para todas las versiones futuras.
 
@@ -76,4 +76,4 @@ Comprobado el 4 de noviembre de 2026, sin Clerk ni base conectada:
 
 La primera copia aislada falló por excluir por error archivos `dist` de dependencias; no fue un defecto reproducido del código fuente. La copia corregida conservó las dependencias completas. Solo en ese entorno temporal se desactivó `verifyDepsBeforeRun`, cuyo valor predeterminado en pnpm puede ejecutar una instalación antes de `run`/`exec`; la comprobación corregida no ejecutó instalaciones. Ese ajuste no modifica la configuración del proyecto.
 
-Siguen pendientes la comprobación de sesión real y la validación de identidad en API con Clerk, generación/conexión/migraciones de Prisma, compatibilidad funcional de PostgreSQL, exportación/restauración y despliegue. La preparación local no cierra INI-003.
+Siguen pendientes la validación de identidad en API con Clerk, generación/conexión/migraciones de Prisma, compatibilidad funcional de PostgreSQL, exportación/restauración y despliegue. La preparación local no cierra INI-003.

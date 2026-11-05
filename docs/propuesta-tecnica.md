@@ -68,7 +68,7 @@ Hono debe poder ejecutarse como servidor Node mediante su adaptador además del 
 
 ## Preparación local realizada
 
-La base pnpm con React/Vite y Hono, las herramientas seleccionadas y sus comprobaciones de arranque están descritas en [desarrollo local](desarrollo-local.md). El SDK de Clerk está preparado en la web, pendiente de comprobar sesión real con configuración local; aún no se verifica identidad en API ni hay persistencia PostgreSQL. Esa preparación no sustituye la prueba técnica completa ni valida proveedores.
+La base pnpm con React/Vite y Hono, las herramientas seleccionadas y sus comprobaciones de arranque están descritas en [desarrollo local](desarrollo-local.md). El SDK de Clerk está integrado en la web, con inicio y cierre de sesión reales comprobados en Orca mediante configuración local; aún no se verifica identidad en API ni hay persistencia PostgreSQL. Esa preparación no sustituye la prueba técnica completa ni valida proveedores.
 
 ## Prueba técnica acotada antes de elegir hosting
 
