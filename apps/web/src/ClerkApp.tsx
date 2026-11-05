@@ -3,6 +3,7 @@ import {
   Show, SignInButton, UserButton,
 } from '@clerk/react'
 import { App } from './App'
+import { SessionCheck } from './SessionCheck'
 
 export function ClerkApp({ publishableKey }: { publishableKey?: string }) {
   const key = publishableKey?.trim()
@@ -28,6 +29,7 @@ export function ClerkApp({ publishableKey }: { publishableKey?: string }) {
           <Show when="signed-in">
             <p>Sesión de Clerk iniciada; los permisos del producto todavía no están implementados.</p>
             <UserButton />
+            <SessionCheck />
           </Show>
         </ClerkLoaded>
       </>} />

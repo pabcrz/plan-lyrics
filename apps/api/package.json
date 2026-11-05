@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@clerk/backend": "3.26.6",
     "@hono/node-server": "2.1.6",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",

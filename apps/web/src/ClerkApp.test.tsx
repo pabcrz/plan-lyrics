@@ -10,6 +10,7 @@ const clerk = vi.hoisted(() => ({
 
 type Children = { children: ReactNode }
 vi.mock('@clerk/react', () => ({
+  useAuth: () => ({ getToken: vi.fn() }),
   ClerkProvider: ({ children, ...props }: Children) => {
     clerk.provider(props)
     return children
