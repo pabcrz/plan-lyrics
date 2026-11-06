@@ -12,13 +12,14 @@ Como editor de servicios, quiero crear varios servicios concretos de un día sem
 - Dadas cuatro fechas disponibles y tres directores ingresados, cuando solicito crear el lote, entonces se pide confirmación indicando que se crearán tres de cuatro servicios, en las primeras tres fechas consecutivas y con los directores en el orden ingresado.
 - Dada esa confirmación, cuando acepto, entonces se crean solo los tres servicios y sus participaciones; la cuarta fecha queda sin servicio creado ni participaciones generadas, para programarla después.
 - Dadas participaciones habituales y rotaciones configuradas, cuando genero el lote, entonces se cargan las habituales y los turnos respetan la modalidad de cada rotación: por día o compartida entre servicios.
+- Dada una rotación iniciada manualmente y un lote anterior, cuando genero otro lote o paso a otro mes, entonces la secuencia cíclica continúa y no se reinicia por el nuevo lote.
 - Dada una rotación independiente por día, cuando genero viernes, entonces no avanza la secuencia de domingos.
 - Dada una rotación compartida Luis → Pedro → Juan que comienza con Luis y servicios en orden viernes, domingo, viernes y domingo, cuando se calculan sus turnos, entonces corresponden Luis, Pedro, Juan y Luis, respectivamente.
 - Dado un lote creado, cuando preparo cada servicio, entonces puedo agregar su setlist manualmente.
 
 ## Exclusiones y decisiones abiertas
 
-Incluida en la primera entrega. El período es mensual y los directores se asignan en orden cronológico. Antes de implementarla, definir inclusión de hoy, zona horaria, meses pasados, fechas ya ocupadas, más nombres que fechas, ausencia de nombres e identificación de personas. Menos nombres que fechas sí está definido: lote parcial con confirmación, sin completar las fechas faltantes automáticamente. Los nombres separados por comas son una propuesta de entrada. Definir inicio y continuidad de turnos entre lotes y fechas creadas fuera de orden. No es una regla de recurrencia. Las reglas pendientes se mantienen en el plan oficial; estos criterios no autorizan inferirlas.
+Incluida en la primera entrega. El período es mensual y los directores se asignan en orden cronológico mediante pasos guiados y campos por fecha, según la alternativa 04 aceptada. Zona horaria: Ciudad de México. Antes de implementarla, definir inclusión de hoy, meses pasados, fechas ya ocupadas, más nombres que fechas, ausencia de nombres, homónimos y permisos de alta de personas. Menos nombres que fechas sí está definido: lote parcial con confirmación, sin completar las fechas faltantes automáticamente. El inicio manual y la continuidad cíclica entre lotes están acordados; falta concretar fechas creadas fuera de orden, cambio de orden sobre servicios ya generados y selección de franjas en domingos con dos servicios. No es una regla de recurrencia de servicios. Las reglas pendientes se mantienen en el plan oficial; estos criterios no autorizan inferirlas.
 
 ## Evidencia
 

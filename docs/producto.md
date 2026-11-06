@@ -20,16 +20,31 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 - Designar dirección y participantes, asignando a cada persona un rol musical para ese servicio. No incluir confirmaciones de asistencia ni estados de aceptación o rechazo de asignaciones.
 - Ordenar canciones y otros momentos del servicio; registrar tonalidad contextual y enlaces de referencia manuales a YouTube o Spotify. No se prevé integración automática con esos servicios.
 - Diseñar primero para móvil, con límites de acceso aplicados correctamente en servidor.
+- Presentar los calendarios con semanas de domingo a sábado.
 - Distinguir **permisos de acceso** de **roles musicales**. Los accesos acordados se describen a continuación; ser baterista, guitarrista u otro participante no concede permisos de edición.
+
+### Configuración general y fechas de servicio
+
+- Configurar por iglesia su nombre y sus días habituales de reunión desde su panel general. Los días varían por iglesia; ejemplos acordados: martes/miércoles/viernes/domingo, jueves/domingo y viernes/domingo. Esta configuración no crea servicios recurrentes automáticamente.
+- Usar la zona horaria de Ciudad de México (`America/Mexico_City`) para el calendario y la sugerencia de fechas. El 4 de noviembre citado durante el diseño es contexto del ejemplo, no una fecha fija del producto.
+- Sugerir por defecto la fecha de reunión más cercana según los días configurados de la iglesia activa. Permitir crear un servicio especial en cualquier día de la semana, aunque no sea habitual. La inclusión de hoy cuando coincide con un día de reunión sigue pendiente.
+- Actualmente las iglesias no celebran dos cultos el mismo día. Contemplar una opción de configuración general para domingos con servicio matutino y vespertino si una iglesia adopta esa costumbre; no imponer dos servicios por domingo ni crearlos automáticamente. Falta precisar cómo el lote selecciona una franja y cómo participan ambas en las rotaciones.
+- Distinguir los días habituales de una fecha con un servicio ya registrado. La resolución de una colisión con un servicio existente sigue pendiente; no se adopta una prohibición global de varios servicios en una fecha.
+
+### Personas y dirección del servicio
+
+- Mantener un directorio de personas de la iglesia reutilizable para dirección y participaciones. Figurar en ese directorio no requiere una cuenta de acceso a la aplicación.
+- Buscar y seleccionar personas existentes para evitar duplicados. Si una persona ya tiene una cuenta vinculada, reutilizar esa relación; no vincular cuentas automáticamente solo por coincidencia del nombre.
+- Al ingresar una persona nueva, ofrecer guardar el nombre para próximas ocasiones, con esa opción activada por defecto; permitir desactivarla para usar el nombre solo en ese servicio. Los permisos concretos para dar de alta personas desde este recorrido siguen pendientes y no amplían por sí solos las capacidades del editor de servicios.
 
 ### Creación mensual en lote
 
 - Dentro de la iglesia activa, seleccionar el mes y año y un día de la semana, por ejemplo viernes.
 - Si se elige el mes actual, considerar solo las fechas de ese día que resten del mes; si se elige un mes futuro, considerar todas las fechas de ese día dentro del mes elegido. Esas son las fechas disponibles, no una obligación de crear servicios para todas ellas. El tratamiento de la fecha de hoy y de meses pasados queda pendiente.
-- Ingresar manualmente los nombres de los directores en orden consecutivo; el primero corresponde a la primera fecha del lote, el segundo a la siguiente, y así sucesivamente. El formato de nombres separados por comas sigue siendo una propuesta, no una decisión de interfaz.
+- Asignar manualmente un director a cada fecha en orden cronológico. La referencia de interacción aceptada es la alternativa 04: pasos de período, directores por fecha y revisión; en móvil cada fecha aparece sobre su campo. Buscar personas existentes y tratar nombres nuevos según el directorio descrito arriba, sin exigir cuentas de acceso.
 - Permitir lotes parciales: si hay cuatro fechas disponibles y se ingresan tres directores, pedir confirmación indicando que se crearán tres de cuatro servicios, en las primeras tres fechas consecutivas y en el orden ingresado. Tras confirmar, crear solo esos tres servicios; no crear un servicio sin director para la cuarta fecha ni generar participaciones para ella. Las fechas restantes quedan sin programar para resolverlas después, por ejemplo ante incertidumbre de Navidad o fin de año.
 - Completar las participaciones mediante las asignaciones habituales y la modalidad de rotación configurada; agregar después el setlist manualmente.
-- No crear una recurrencia permanente. Definir cómo continúan los turnos entre lotes y meses antes de implementar el generador.
+- No crear una recurrencia permanente de servicios. La secuencia de personas sí continúa entre lotes y meses según la rotación configurada; no se reinicia al crear otro lote.
 
 ### Participaciones habituales y turnos
 
@@ -38,8 +53,12 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 - Al crear un servicio, individualmente o en lote, cargar las participaciones habituales y calcular a quién corresponde cada turno configurado.
 - Elegir la modalidad por rotación dentro de cada iglesia: **por día de la semana**, con secuencias independientes, o **entre todos los servicios**, con una secuencia compartida sin importar el día. No imponer una sola modalidad para todos los roles de la iglesia.
 - En modalidad por día, un domingo no avanza los turnos de viernes. En modalidad compartida, el orden Luis → Pedro → Juan produce Luis el viernes, Pedro el domingo, Juan el siguiente viernes y Luis el siguiente domingo. La preferencia inicial expresada por la persona usuaria es por día; no es una regla universal.
-- Contemplar personas que alternan entre roles, como batería y voces. Las reglas concretas para coordinar esos turnos siguen pendientes; no basta con calcular cada rol de forma aislada.
-- Permitir cambiar manualmente las asignaciones generadas ante ausencias o compromisos. El efecto de una sustitución sobre turnos futuros aún debe definirse.
+- Iniciar cada rotación manualmente desde un servicio o fecha de referencia, eligiendo las personas y su orden y, en modalidad por día, el día al que pertenecen. Repetir el orden de manera cíclica entre lotes y meses hasta interrumpirlo manualmente o cambiar el orden. El efecto sobre servicios ya generados de un cambio posterior de orden sigue pendiente.
+- Registrar como máximo un rol musical por persona dentro de un mismo servicio. Una persona puede alternar entre roles en otros servicios y participar en distintas iglesias; no es una restricción global de su identidad.
+- Cantar mientras se toca piano/teclado o guitarra no requiere una segunda asignación a voces. En esos casos basta la asignación al instrumento: el sistema no necesita configurar ni registrar aparte ese canto habitual.
+- Evitar que las participaciones habituales o las rotaciones asignen a la misma persona a dos roles del mismo servicio. Si coinciden dos propuestas, la resolución concreta sigue pendiente; no se inventa una prioridad entre roles.
+- Permitir cambiar manualmente las asignaciones generadas ante ausencias o compromisos. La acción predeterminada es **reemplazar solo en este servicio**: cambia esa asignación sin reordenar los turnos siguientes.
+- Ofrecer **intercambiar turnos** como alternativa explícita dentro del mismo rol, mostrando las dos fechas y personas afectadas antes de confirmar. Por ejemplo, Luis el viernes 6, Pedro el 13 y Juan el 20 puede quedar Pedro el 6, Luis el 13 y Juan el 20 tras confirmar el intercambio de Luis y Pedro. No ejecutar el intercambio como efecto oculto de un reemplazo.
 
 ### Accesos acordados
 
@@ -95,8 +114,9 @@ Son criterios futuros; no se ha implementado ni probado la infraestructura.
 
 ## Decisiones de producto abiertas
 
-- Precisar el lote mensual: inclusión de hoy, zona horaria de referencia, meses pasados, fechas con servicios existentes, más directores que fechas, ausencia de directores y resolución de nombres repetidos o desconocidos. El formato separado por comas sigue siendo una propuesta.
-- Definir orden, punto de inicio y continuidad entre lotes de cada rotación, coordinación entre roles, múltiples servicios del mismo día y tratamiento de servicios creados fuera de orden, cancelaciones y sustituciones manuales.
+- Precisar el lote mensual: inclusión de hoy, meses pasados, colisiones con servicios existentes, más directores que fechas, ausencia de directores y resolución de homónimos. Precisar permisos para guardar personas nuevas desde la asignación de dirección. La zona horaria, el recorrido por fecha y la separación entre personas y cuentas ya están acordados.
+- Concretar resolución de coincidencias entre asignaciones habituales o rotaciones que propongan a una persona en dos roles del mismo servicio, sin duplicar su asignación. La regla de un solo rol registrado y el canto junto al instrumento ya están acordados. Precisar elección de las franjas dominicales matutina/vespertina en lotes y rotaciones, servicios creados fuera de orden, cancelaciones y efecto de cambiar el orden sobre servicios ya generados. El inicio manual, la continuidad cíclica y la distinción entre reemplazo de una fecha e intercambio explícito ya están acordados.
+- Confirmar la propuesta de varios bloques de alabanza, cada uno con su setlist, dentro de un único servicio para ocasiones como bautizos. No confundir ese caso con dos cultos independientes ni adelantar la entrega de setlists.
 - Definir la eliminación de roles con asignaciones existentes y completar capacidades no especificadas. ¿Quién otorga el acceso de editor de biblioteca?
 - ¿Cómo se confirma el uso real de una canción y cómo afectan cancelaciones, zonas horarias y cadencias a la rotación?
 - ¿Qué reglas tendrá la publicación y revocación del enlace público?
