@@ -43,4 +43,14 @@ Esto **no concede permisos sobre una iglesia** ni sustituye membresías/capacida
 3. La API debe mostrar “Sesión verificada por la API. Permisos de iglesia aún pendientes.”. Si falta configuración, muestra un error explícito, no una identidad simulada.
 4. Al cerrar sesión desaparece el control autenticado. La petición sin Bearer vuelve a dar 401; esto no afirma que un token emitido antes del cierre se haya revocado instantáneamente.
 
-Las pruebas de API generan claves RSA y tokens ficticios en memoria y ejecutan el SDK real para aceptación, rechazo y vigencia. Las pruebas web usan un doble de `getToken` y respuestas HTTP: prueban el cableado, no el proveedor. El recorrido real solo se acredita cuando se configura la API y se comprueba con la sesión humana, sin extraer el token al chat.
+Las pruebas de API generan claves RSA y tokens ficticios en memoria y ejecutan el SDK real para aceptación, rechazo y vigencia. Las pruebas web usan un doble de `getToken` y respuestas HTTP: prueban el cableado, no el proveedor. El recorrido real se comprobó después con la configuración local y la sesión humana, sin extraer el token al chat.
+
+## Evidencia local verificada
+
+- El botón React obtuvo el token desde Clerk y mostró “Sesión verificada por la API. Permisos de iglesia aún pendientes.”; la respuesta observada en el navegador fue **200**.
+- En ese mismo navegador autenticado, una petición con cookies omitidas y sin Bearer recibió **401**, `{"error":"Unauthorized"}` y `Cache-Control: no-store`. La sesión del navegador por sí sola no autoriza la API.
+- Health continuó pública con **200** y `{"status":"ok","service":"plan-lyrics-api"}`. Sin desbordamiento horizontal a 390 px.
+- Tipos, **28 pruebas** y ambos builds aprobados antes de esta comprobación; verificación independiente aislada aprobada. Firma ajena, vencimiento, issuer/origen incorrectos y configuración ausente se comprobaron con fixtures, no manipulando credenciales reales.
+- La configuración ausente había producido **503**, sin fallback remoto. Tras configurar y reiniciar, la aceptación con la instancia real quedó comprobada.
+
+No se leyeron archivos dotenv, claves, tokens ni datos personales para registrar el resultado. Esta evidencia no acredita permisos de iglesias, persistencia, despliegue ni toda la validación de INI-003.
