@@ -1,0 +1,34 @@
+{
+  "title": "Programación mensual — wireframes iniciales",
+  "brief": "Comparar tres formas de programar servicios dentro de Betel: calendario, lote mensual con tres directores para cuatro fechas, confirmación y corrección de una participación. Datos ficticios, sin API ni algoritmo real de turnos; reglas pendientes señaladas. Vinculado a docs/issues/INI-002-disenar-recorrido-inicial.md. Iteración solicitada: pasos guiados con directores por fecha, móvil primero, referencia 4/11/2026 y semanas desde domingo. Las alternativas 01–03 se conservan como historial.",
+  "artboards": [
+    {
+      "file": "01-pasos-guiados.html",
+      "title": "Pasos guiados — recomendado para empezar",
+      "tradeoff": "Un paso a la vez favorece móvil y primera carga; exige más navegación para revisar todo el lote.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "02-tabla-por-fechas.html",
+      "title": "Edición por fechas — carga directa",
+      "tradeoff": "Fecha y director se editan juntos; más rápido para quien programa seguido, pero requiere explicar huecos y apilar filas en móvil.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "03-agenda-con-panel.html",
+      "title": "Agenda con panel — contexto visible",
+      "tradeoff": "La agenda acompaña el formulario; ocupa más ancho y se convierte en una sola columna en pantallas pequeñas.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "04-pasos-y-fechas-mobile.html",
+      "title": "Pasos + fechas — móvil primero",
+      "tradeoff": "Guía por pasos con una fila por fecha. Prioriza carga en celular; calendario secundario desplegable y más desplazamiento para meses largos. Referencia 4/11/2026, semana de domingo a sábado.",
+      "width": 390,
+      "height": 844
+    }
+  ]
+}

@@ -22,6 +22,10 @@ Puede empezar con pendientes señalados; requiere INI-001 para cerrar interaccio
 
 Recorrido revisado con la persona usuaria, archivos y versión de referencia enlazados, estados y decisiones visuales explícitos. Vincular HU-001 a HU-005 sin duplicar sus criterios.
 
+Primer borrador disponible en [mapa y recorrido](../../design/programacion-mensual/mapa-y-recorrido.md), con cuatro alternativas registradas en [el manifiesto del canvas](../../design/programacion-mensual/design.json). Son wireframes con datos ficticios, no una aplicación productiva. La alternativa 04 fue aceptada como referencia del recorrido; las reglas de INI-001 y los estados dependientes siguen pendientes: este issue no está cerrado.
+
+Iteración solicitada: [pasos guiados + filas por fecha, móvil primero](../../design/programacion-mensual/04-pasos-y-fechas-mobile.html). Conserva las alternativas previas; corrige la referencia del escenario a 4/11/2026 y presenta semanas desde domingo. La persona usuaria confirmó: “y si, acepto la 4”. La elección queda registrada; no autoriza componentes productivos ni resuelve las reglas pendientes.
+
 ## Límites
 
 No diseñar todo el producto, crear el editor musical ni implementar componentes productivos en este issue. La preparación de este borrador no autoriza implementación ni decisiones de producto pendientes.
