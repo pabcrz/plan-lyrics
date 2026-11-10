@@ -30,6 +30,7 @@ try {
   run('pnpm', ['--config.verifyDepsBeforeRun=false', '--filter', '@plan-lyrics/api', 'db:migrate'])
   run('pnpm', ['--config.verifyDepsBeforeRun=false', 'check'])
   run('pnpm', ['--config.verifyDepsBeforeRun=false', '--filter', '@plan-lyrics/api', 'test:integration'])
+  run('node', ['apps/api/test/built-smoke.mjs'])
   console.log('PASS: isolated PostgreSQL migration, application checks and integration tests')
 } catch (error) {
   // Only our command errors are printed; never driver errors or connection strings.
