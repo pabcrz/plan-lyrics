@@ -18,3 +18,5 @@ dist/
 coverage/
 playwright-report/
 test-results/
+.local/
+apps/api/src/generated/

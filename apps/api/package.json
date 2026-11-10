@@ -4,9 +4,13 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc --noEmit false",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate deploy",
+    "test:integration": "vitest run --config vitest.integration.ts",
+    "build": "pnpm db:generate && tsc --noEmit false",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm db:generate && tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {

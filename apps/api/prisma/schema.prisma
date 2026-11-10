@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+  moduleFormat = "esm"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ChurchRole {
+  ADMIN
+  EDITOR
+  MEMBER
+}
+
+model User {
+  id String @id @default(cuid())
+  clerkSubject String @unique
+  libraryEditor Boolean @default(false)
+  memberships Membership[]
+  person Person?
+  ownership PlatformOwner?
+}
+
+model PlatformOwner {
+  id Int @id @default(1)
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+model Person {
+  id String @id @default(cuid())
+  name String
+  userId String? @unique
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  churches Church[]
+}
+
+model Church {
+  id String @id @default(cuid())
+  name String
+  people Person[]
+  memberships Membership[]
+}
+
+model Membership {
+  userId String
+  churchId String
+  role ChurchRole
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  @@id([userId, churchId])
+}
