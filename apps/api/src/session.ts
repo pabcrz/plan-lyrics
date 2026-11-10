@@ -1,11 +1,28 @@
 import { verifyToken } from '@clerk/backend'
 import { createMiddleware } from 'hono/factory'
 
-export type SessionConfig = { jwtKey?: string; issuer?: string }
-const origin = 'http://127.0.0.1:5173'
+export type SessionConfig = { jwtKey?: string; issuer?: string; authorizedParty?: string }
+export type SessionEnvironment = { Variables: { clerkSubject: string } }
+const localOrigin = 'http://127.0.0.1:5173'
+
+// The authorized party must be one exact web origin; anything else fails closed.
+function authorizedOrigin(value = localOrigin) {
+  try {
+    return new URL(value).origin === value ? value : undefined
+  } catch {
+    return undefined
+  }
+}
+
+// Startup diagnostics only: a missing value silently means "local origin only".
+export function authorizedPartyWarning(value?: string) {
+  if (!value?.trim()) return `CLERK_AUTHORIZED_PARTY is not set: accepting only the local origin ${localOrigin}`
+  if (!authorizedOrigin(value.trim())) return 'CLERK_AUTHORIZED_PARTY is not an exact origin: authenticated routes respond 503'
+  return undefined
+}
 
 export function requireSession(config: SessionConfig) {
-  return createMiddleware(async (c, next) => {
+  return createMiddleware<SessionEnvironment>(async (c, next) => {
     c.header('Cache-Control', 'no-store')
     const reject = () => {
       c.header('WWW-Authenticate', 'Bearer')
@@ -13,7 +30,8 @@ export function requireSession(config: SessionConfig) {
     }
     const match = /^Bearer ([\w-]+\.[\w-]+\.[\w-]+)$/i.exec(c.req.header('Authorization') ?? '')
     if (!match) return reject()
-    if (!config.jwtKey?.trim() || !config.issuer?.trim()) {
+    const origin = authorizedOrigin(config.authorizedParty?.trim() || undefined)
+    if (!config.jwtKey?.trim() || !config.issuer?.trim() || !origin) {
       return c.json({ error: 'Authentication unavailable' }, 503)
     }
     try {
@@ -23,6 +41,7 @@ export function requireSession(config: SessionConfig) {
       // A verified JWT is not necessarily a session token; require session identity.
       if (claims.azp !== origin || typeof claims.sub !== 'string' || !claims.sub ||
           typeof claims.sid !== 'string' || !claims.sid) return reject()
+      c.set('clerkSubject', claims.sub)
     } catch {
       // Never return/log the token, verification key, claims or SDK error details.
       return reject()

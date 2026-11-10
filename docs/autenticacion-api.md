@@ -19,7 +19,9 @@ PEGAR_AQUI_LA_CLAVE_PUBLICA_PEM_DE_TU_INSTANCIA
 
 El ejemplo es un formato, no una clave utilizable. No pegues valores en el chat. El archivo está ignorado por Git; el agente no lo crea ni lo lee porque la política del entorno bloquea esas operaciones. La aplicación sí carga su configuración local al arrancar, usando la función integrada de Node. Las variables ya presentes en el entorno prevalecen sobre el archivo.
 
-Reiniciá `pnpm dev` después de configurarlo. El origen permitido por esta unidad local es **`http://127.0.0.1:5173`**; no cambiarlo a `localhost` sin acordar y actualizar la configuración/pruebas. El issuer es distinto del origen de nuestra web.
+Reiniciá `pnpm dev` después de configurarlo. El origen permitido por defecto es **`http://127.0.0.1:5173`**; no mezclarlo con `localhost`. El issuer es distinto del origen de nuestra web.
+
+Para otro entorno, `CLERK_AUTHORIZED_PARTY` fija el origen web aceptado en el claim `azp`, por ejemplo `CLERK_AUTHORIZED_PARTY=https://app.ejemplo.com`. Debe ser un origen exacto: esquema, host y puerto opcional, sin barra final, ruta ni comodines. Si la variable falta o está vacía, se usa el origen local por defecto y la API lo avisa al arrancar; fuera de desarrollo local, ese aviso indica que falta configurarla. Si el valor no es un origen válido, la API responde `503` con `{"error":"Authentication unavailable"}` en vez de aceptar cualquier origen.
 
 ## Contrato y límites
 
@@ -34,7 +36,14 @@ Las respuestas de esta ruta usan `Cache-Control: no-store`; los rechazos 401 tam
 
 Con `CLERK_JWT_KEY` la verificación es local, sin llamadas a Clerk. Si falta configuración no hay fallback remoto ni acceso abierto. Al rotar la clave pública de la instancia, actualizar la configuración y reiniciar la API. Un JWT ya emitido puede seguir siendo válido hasta que expire: esta comprobación no promete revocación inmediata ni consulta el estado del proveedor en cada petición.
 
-Esto **no concede permisos sobre una iglesia** ni sustituye membresías/capacidades en servidor. No incorpora PostgreSQL ni protege por anticipado rutas de negocio inexistentes. No se aceptan cookies como alternativa al Bearer en esta ruta.
+Esto **no concede permisos sobre una iglesia** ni sustituye membresías/capacidades en servidor. Los permisos sobre iglesias los decide `GET /api/churches/:churchId` con PostgreSQL (ver [persistencia local](persistencia-local.md)); esta ruta de sesión no protege por anticipado rutas de negocio inexistentes. No se aceptan cookies como alternativa al Bearer en esta ruta.
+
+La [política de alta de usuarios](producto.md#alta-de-usuarios) reserva creación e invitaciones al superadministrador y a los gestores de cuentas que este designe, sin registro público. Esta unidad verifica tokens; el registro público se cierra en Clerk, no en este código:
+
+1. En el Clerk Dashboard, en **User & authentication → Access mode**, elegí **Invite-only** y guardá (valor de API `restricted`). Hacelo en cada instancia, desarrollo y producción.
+2. Comprobá en una ventana privada que el inicio de sesión ya no ofrece registrarse y que el registro sin invitación muestra que hace falta una invitación.
+
+Aunque el registro siga abierto, una cuenta nueva solo queda autenticada: sin `User`, membresía ni propiedad en la base no accede a ninguna iglesia. Los futuros flujos de alta e invitación requieren implementación aparte.
 
 ## Prueba desde Orca
 

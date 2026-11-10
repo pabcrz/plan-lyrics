@@ -34,7 +34,9 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 ### Personas y dirección del servicio
 
 - Mantener un directorio de personas de la iglesia reutilizable para dirección y participaciones. Figurar en ese directorio no requiere una cuenta de acceso a la aplicación.
-- Buscar y seleccionar personas existentes para evitar duplicados. Si una persona ya tiene una cuenta vinculada, reutilizar esa relación; no vincular cuentas automáticamente solo por coincidencia del nombre.
+- Buscar y seleccionar personas existentes para evitar duplicados. Si una persona ya tiene una cuenta vinculada, reutilizar esa relación; no vincular cuentas automáticamente solo por coincidencia del nombre. Vincular o desvincular cuentas corresponde al superadministrador o a un gestor de cuentas (ver [alta de usuarios](#alta-de-usuarios)).
+- Cada persona existe una sola vez aunque participe en varias iglesias; no se duplica por iglesia. Su información personal es general: si un administrador de una de sus iglesias la cambia, el cambio se ve en todas. Decisión explícita: “que si los puedan cambiar, pero que sea general. Solo info personal”.
+- Lo que pertenece a cada iglesia (accesos, roles musicales, rotaciones, asignaciones habituales y participaciones) solo puede modificarse dentro de esa iglesia. Un administrador nunca cambia esos datos en otra iglesia a través de una persona compartida: “que su alcance no pase cosas que afecten otras iglesias.. como roles, etc”.
 - Al ingresar una persona nueva, ofrecer guardar el nombre para próximas ocasiones, con esa opción activada por defecto; permitir desactivarla para usar el nombre solo en ese servicio. Los permisos concretos para dar de alta personas desde este recorrido siguen pendientes y no amplían por sí solos las capacidades del editor de servicios.
 
 ### Creación mensual en lote
@@ -71,6 +73,18 @@ La administración de una iglesia y la edición de la biblioteca compartida son 
 | Editor de biblioteca (editor general) | Crea y modifica canciones compartidas, sus letras y acordes. No administra iglesias ni usuarios salvo que tenga también el acceso correspondiente. |
 | Editor de servicios | Crea y edita servicios, fechas, dirección, participantes y setlists, y ajusta tonos dentro de su iglesia. No administra miembros, accesos ni configuración de iglesia, ni obtiene automáticamente edición de la biblioteca compartida. |
 | Integrante | Consulta la información interna que le corresponda, sin editar. |
+| Gestor de cuentas | Capacidad global que solo el superadministrador otorga y retira a personas concretas. Crea cuentas, envía invitaciones y vincula o desvincula la cuenta de una persona. No concede por sí sola acceso a iglesias, roles por iglesia ni edición de la biblioteca, y no equivale al superadministrador. |
+
+#### Alta de usuarios
+
+- Solo el superadministrador y quienes tengan la capacidad de gestor de cuentas pueden crear cuentas de usuario e invitar a otras personas. La decisión inicial “solo yo invito y creo” se amplió para delegar esa tarea: “quiza haya alguien que me ayuden con esa parte”; el gestor “tambien crea e invita”.
+- Solo el superadministrador otorga o retira la capacidad de gestor de cuentas.
+- Vincular o desvincular la cuenta de una persona es tarea del superadministrador o de un gestor de cuentas, no del administrador de iglesia, porque esa cuenta la representa en todas sus iglesias.
+- No ofrecer registro público ni permitir que un administrador de iglesia u otro acceso sin esa capacidad cree cuentas o envíe invitaciones.
+- La aplicación gestiona usuarios y permisos; Clerk se mantiene como proveedor de autenticación. Iniciar sesión no concede membresías ni permisos por sí solo.
+- Dar de alta una persona sin cuenta en el directorio es distinto de crear un usuario: esta decisión no elimina la gestión de personas del administrador de iglesia ni resuelve los permisos pendientes del editor de servicios.
+
+Esta política está acordada, no implementada: todavía falta aplicar y comprobar la restricción de altas en el proveedor y en los futuros flujos de servidor. No implica que el registro público ya esté deshabilitado en la configuración actual de Clerk.
 
 El acceso público mediante enlace no requiere cuenta y se limita al setlist y las letras publicables. Estos accesos no crean bibliotecas separadas por iglesia ni adelantan letras o acordes a la primera etapa. Queda pendiente definir quién otorga el acceso de editor de biblioteca y completar las capacidades no especificadas.
 
@@ -103,6 +117,8 @@ No ampliar la primera entrega con confirmaciones de asistencia, servicios recurr
 - Los turnos respetan la modalidad configurada por rotación: independiente por día o compartida entre servicios; las participaciones generadas pueden corregirse manualmente.
 - Una persona puede ordenar canciones y otros momentos y asignar participantes con su rol musical, sin que dicho rol conceda permisos de edición.
 - Existe un único superadministrador, correspondiente a la persona propietaria del proyecto, con acceso total a todas las iglesias y capacidad de modificar todos los roles.
+- Solo el superadministrador o un gestor de cuentas puede crear usuarios, invitarlos y vincular o desvincular la cuenta de una persona; no hay registro público. Un administrador de iglesia, editor o integrante sin esa capacidad no puede realizar esas altas.
+- Un gestor de cuentas sin otros accesos no puede ver ni modificar iglesias, roles por iglesia ni la biblioteca; solo el superadministrador le otorga o retira esa capacidad.
 - Un administrador de iglesia sin acceso editorial global no puede modificar la biblioteca compartida.
 - Un editor de biblioteca sin acceso administrativo no puede administrar iglesias ni usuarios; una persona con ambos accesos puede ejercer cada uno en su ámbito.
 - Un editor de servicios puede preparar setlists y ajustar tonos de su iglesia sin modificar la biblioteca compartida; un integrante no puede editar.

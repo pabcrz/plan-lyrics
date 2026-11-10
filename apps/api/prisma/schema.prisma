@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+  moduleFormat = "esm"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ChurchRole {
+  ADMIN
+  EDITOR
+  MEMBER
+}
+
+model User {
+  id String @id @default(cuid())
+  clerkSubject String @unique
+  libraryEditor Boolean @default(false)
+  // Global capability granted only by the platform owner; never grants church access.
+  accountManager Boolean @default(false)
+  memberships Membership[]
+  person Person?
+  ownership PlatformOwner?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PlatformOwner {
+  id Int @id @default(1)
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Person {
+  id String @id @default(cuid())
+  name String
+  userId String? @unique
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  churches ChurchPerson[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Church {
+  id String @id @default(cuid())
+  name String
+  people ChurchPerson[]
+  memberships Membership[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Membership {
+  userId String
+  churchId String
+  role ChurchRole
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([userId, churchId])
+}
+
+// One shared Person per human; church-specific data belongs to this link, never to Person.
+model ChurchPerson {
+  churchId String
+  personId String
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([churchId, personId])
+  @@index([personId])
+}

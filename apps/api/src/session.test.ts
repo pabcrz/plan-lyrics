@@ -1,6 +1,7 @@
 import { createSign, generateKeyPairSync } from 'node:crypto'
 import { expect, test } from 'vitest'
 import { createApp } from './app.js'
+import { authorizedPartyWarning } from './session.js'
 
 // Generated only in memory; no real Clerk keys or tokens are used or stored.
 const keys = generateKeyPairSync('rsa', { modulusLength: 2048 })
@@ -62,4 +63,31 @@ test('missing verifier configuration fails closed without falling back to networ
   const health = await unconfigured.request('/api/health')
   expect(health.status).toBe(200)
   expect(await health.json()).toEqual({ status: 'ok', service: 'plan-lyrics-api' })
+})
+
+test('accepts only the configured authorized party when one is set', async () => {
+  const deployed = 'https://app.fixture.test'
+  const custom = createApp({ jwtKey: publicKey, issuer, authorizedParty: deployed })
+  const accepted = await request(`Bearer ${token({ azp: deployed })}`, custom)
+  expect(accepted.status).toBe(200)
+  expect(await accepted.json()).toEqual({ authenticated: true })
+  await unauthorized(await request(`Bearer ${token()}`, custom))
+})
+
+test.each(['*', 'https://app.fixture.test/', 'https://app.fixture.test/path', 'not a url'])(
+  'fails closed when the authorized party is not an exact origin: %s', async authorizedParty => {
+    const invalid = createApp({ jwtKey: publicKey, issuer, authorizedParty })
+    const response = await request(`Bearer ${token({ azp: authorizedParty })}`, invalid)
+    expect(response.status).toBe(503)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(await response.json()).toEqual({ error: 'Authentication unavailable' })
+  })
+
+test.each([
+  [undefined, 'CLERK_AUTHORIZED_PARTY is not set: accepting only the local origin http://127.0.0.1:5173'],
+  ['  ', 'CLERK_AUTHORIZED_PARTY is not set: accepting only the local origin http://127.0.0.1:5173'],
+  ['https://app.fixture.test/', 'CLERK_AUTHORIZED_PARTY is not an exact origin: authenticated routes respond 503'],
+  ['https://app.fixture.test', undefined],
+])('warns at startup about the authorized party configuration: %j', (value, warning) => {
+  expect(authorizedPartyWarning(value)).toBe(warning)
 })
