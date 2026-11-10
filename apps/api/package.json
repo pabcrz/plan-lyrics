@@ -7,6 +7,7 @@
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
+    "db:drift": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
     "test:integration": "vitest run --config vitest.integration.ts",
     "build": "pnpm db:generate && tsc --noEmit false",
     "start": "node dist/index.js",

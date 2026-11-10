@@ -28,6 +28,8 @@ try {
   started = true
   run('createdb', ['-h', '127.0.0.1', '-p', String(port), '-U', 'planlyrics_fixture', 'plan_lyrics_access_fixture'])
   run('pnpm', ['--config.verifyDepsBeforeRun=false', '--filter', '@plan-lyrics/api', 'db:migrate'])
+  // Exit code 2 means the applied migrations do not match schema.prisma.
+  run('pnpm', ['--config.verifyDepsBeforeRun=false', '--filter', '@plan-lyrics/api', 'db:drift'])
   run('pnpm', ['--config.verifyDepsBeforeRun=false', 'check'])
   run('pnpm', ['--config.verifyDepsBeforeRun=false', '--filter', '@plan-lyrics/api', 'test:integration'])
   run('node', ['apps/api/test/built-smoke.mjs'])

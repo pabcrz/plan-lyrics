@@ -8,6 +8,7 @@ export async function seedFixtures(db: PrismaClient) {
     { id: 'editor', clerkSubject: 'fixture-editor' },
     { id: 'library', clerkSubject: 'fixture-library', libraryEditor: true },
     { id: 'combined', clerkSubject: 'fixture-combined', libraryEditor: true },
+    { id: 'accounts', clerkSubject: 'fixture-accounts', accountManager: true },
   ], skipDuplicates: true })
   await db.church.createMany({ data: [
     { id: 'church-a', name: 'Fixture Church A' },
@@ -18,6 +19,6 @@ export async function seedFixtures(db: PrismaClient) {
   }
   await db.platformOwner.upsert({ where: { id: 1 }, update: {}, create: { userId: 'owner' } })
   await db.person.upsert({ where: { id: 'person-no-account' }, update: {}, create: {
-    id: 'person-no-account', name: 'Fixture Participant', churches: { connect: [{ id: 'church-a' }, { id: 'church-b' }] },
+    id: 'person-no-account', name: 'Fixture Participant', churches: { create: [{ churchId: 'church-a' }, { churchId: 'church-b' }] },
   } })
 }
