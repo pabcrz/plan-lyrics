@@ -14,6 +14,13 @@ function authorizedOrigin(value = localOrigin) {
   }
 }
 
+// Startup diagnostics only: a missing value silently means "local origin only".
+export function authorizedPartyWarning(value?: string) {
+  if (!value?.trim()) return `CLERK_AUTHORIZED_PARTY is not set: accepting only the local origin ${localOrigin}`
+  if (!authorizedOrigin(value.trim())) return 'CLERK_AUTHORIZED_PARTY is not an exact origin: authenticated routes respond 503'
+  return undefined
+}
+
 export function requireSession(config: SessionConfig) {
   return createMiddleware<SessionEnvironment>(async (c, next) => {
     c.header('Cache-Control', 'no-store')

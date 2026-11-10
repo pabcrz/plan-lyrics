@@ -21,7 +21,7 @@ El ejemplo es un formato, no una clave utilizable. No pegues valores en el chat.
 
 Reiniciá `pnpm dev` después de configurarlo. El origen permitido por defecto es **`http://127.0.0.1:5173`**; no mezclarlo con `localhost`. El issuer es distinto del origen de nuestra web.
 
-Para otro entorno, `CLERK_AUTHORIZED_PARTY` fija el origen web aceptado en el claim `azp`, por ejemplo `CLERK_AUTHORIZED_PARTY=https://app.ejemplo.com`. Debe ser un origen exacto: esquema, host y puerto opcional, sin barra final, ruta ni comodines. Si la variable falta o está vacía, se usa el origen local por defecto. Si el valor no es un origen válido, la API responde `503` con `{"error":"Authentication unavailable"}` en vez de aceptar cualquier origen.
+Para otro entorno, `CLERK_AUTHORIZED_PARTY` fija el origen web aceptado en el claim `azp`, por ejemplo `CLERK_AUTHORIZED_PARTY=https://app.ejemplo.com`. Debe ser un origen exacto: esquema, host y puerto opcional, sin barra final, ruta ni comodines. Si la variable falta o está vacía, se usa el origen local por defecto y la API lo avisa al arrancar; fuera de desarrollo local, ese aviso indica que falta configurarla. Si el valor no es un origen válido, la API responde `503` con `{"error":"Authentication unavailable"}` en vez de aceptar cualquier origen.
 
 ## Contrato y límites
 

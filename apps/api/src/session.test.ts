@@ -1,6 +1,7 @@
 import { createSign, generateKeyPairSync } from 'node:crypto'
 import { expect, test } from 'vitest'
 import { createApp } from './app.js'
+import { authorizedPartyWarning } from './session.js'
 
 // Generated only in memory; no real Clerk keys or tokens are used or stored.
 const keys = generateKeyPairSync('rsa', { modulusLength: 2048 })
@@ -81,3 +82,12 @@ test.each(['*', 'https://app.fixture.test/', 'https://app.fixture.test/path', 'n
     expect(response.headers.get('cache-control')).toBe('no-store')
     expect(await response.json()).toEqual({ error: 'Authentication unavailable' })
   })
+
+test.each([
+  [undefined, 'CLERK_AUTHORIZED_PARTY is not set: accepting only the local origin http://127.0.0.1:5173'],
+  ['  ', 'CLERK_AUTHORIZED_PARTY is not set: accepting only the local origin http://127.0.0.1:5173'],
+  ['https://app.fixture.test/', 'CLERK_AUTHORIZED_PARTY is not an exact origin: authenticated routes respond 503'],
+  ['https://app.fixture.test', undefined],
+])('warns at startup about the authorized party configuration: %j', (value, warning) => {
+  expect(authorizedPartyWarning(value)).toBe(warning)
+})
