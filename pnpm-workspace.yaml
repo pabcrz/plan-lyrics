@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+
+# Native tools required by the selected build stack; do not allow arbitrary scripts.
+allowBuilds:
+  esbuild: true
+  '@prisma/engines': true
+  prisma: true
+
+minimumReleaseAgeExclude:
+  - '@clerk/react@6.18.5'
+  - '@clerk/shared@4.44.0'
