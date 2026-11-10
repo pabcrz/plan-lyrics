@@ -63,3 +63,21 @@ test('missing verifier configuration fails closed without falling back to networ
   expect(health.status).toBe(200)
   expect(await health.json()).toEqual({ status: 'ok', service: 'plan-lyrics-api' })
 })
+
+test('accepts only the configured authorized party when one is set', async () => {
+  const deployed = 'https://app.fixture.test'
+  const custom = createApp({ jwtKey: publicKey, issuer, authorizedParty: deployed })
+  const accepted = await request(`Bearer ${token({ azp: deployed })}`, custom)
+  expect(accepted.status).toBe(200)
+  expect(await accepted.json()).toEqual({ authenticated: true })
+  await unauthorized(await request(`Bearer ${token()}`, custom))
+})
+
+test.each(['*', 'https://app.fixture.test/', 'https://app.fixture.test/path', 'not a url'])(
+  'fails closed when the authorized party is not an exact origin: %s', async authorizedParty => {
+    const invalid = createApp({ jwtKey: publicKey, issuer, authorizedParty })
+    const response = await request(`Bearer ${token({ azp: authorizedParty })}`, invalid)
+    expect(response.status).toBe(503)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(await response.json()).toEqual({ error: 'Authentication unavailable' })
+  })

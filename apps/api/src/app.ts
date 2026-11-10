@@ -12,8 +12,9 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient) {
     try {
       const church = await readChurch(database, c.get('clerkSubject'), c.req.param('churchId'))
       return church ? c.json(church) : c.json({ error: 'Not found' }, 404)
-    } catch {
-      // No connection strings, identities or database error details in logs/responses.
+    } catch (error) {
+      // Log only a short driver/Prisma code: never messages, connection strings or identities.
+      console.error(JSON.stringify({ event: 'church_access_failed', code: safeErrorCode(error) }))
       return c.json({ error: 'Access unavailable' }, 503)
     }
   })
@@ -21,3 +22,8 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient) {
 }
 
 export const app = createApp()
+
+function safeErrorCode(error: unknown) {
+  const code = (error as { code?: unknown } | null)?.code
+  return typeof code === 'string' && /^[A-Z0-9_]{1,32}$/.test(code) ? code : 'unknown'
+}

@@ -1,9 +1,18 @@
 import { verifyToken } from '@clerk/backend'
 import { createMiddleware } from 'hono/factory'
 
-export type SessionConfig = { jwtKey?: string; issuer?: string }
+export type SessionConfig = { jwtKey?: string; issuer?: string; authorizedParty?: string }
 export type SessionEnvironment = { Variables: { clerkSubject: string } }
-const origin = 'http://127.0.0.1:5173'
+const localOrigin = 'http://127.0.0.1:5173'
+
+// The authorized party must be one exact web origin; anything else fails closed.
+function authorizedOrigin(value = localOrigin) {
+  try {
+    return new URL(value).origin === value ? value : undefined
+  } catch {
+    return undefined
+  }
+}
 
 export function requireSession(config: SessionConfig) {
   return createMiddleware<SessionEnvironment>(async (c, next) => {
@@ -14,7 +23,8 @@ export function requireSession(config: SessionConfig) {
     }
     const match = /^Bearer ([\w-]+\.[\w-]+\.[\w-]+)$/i.exec(c.req.header('Authorization') ?? '')
     if (!match) return reject()
-    if (!config.jwtKey?.trim() || !config.issuer?.trim()) {
+    const origin = authorizedOrigin(config.authorizedParty?.trim() || undefined)
+    if (!config.jwtKey?.trim() || !config.issuer?.trim() || !origin) {
       return c.json({ error: 'Authentication unavailable' }, 503)
     }
     try {
