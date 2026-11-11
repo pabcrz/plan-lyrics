@@ -38,12 +38,12 @@ Con `CLERK_JWT_KEY` la verificación es local, sin llamadas a Clerk. Si falta co
 
 Esto **no concede permisos sobre una iglesia** ni sustituye membresías/capacidades en servidor. Los permisos sobre iglesias los decide `GET /api/churches/:churchId` con PostgreSQL (ver [persistencia local](persistencia-local.md)); esta ruta de sesión no protege por anticipado rutas de negocio inexistentes. No se aceptan cookies como alternativa al Bearer en esta ruta.
 
-La [política de alta de usuarios](producto.md#alta-de-usuarios) reserva creación e invitaciones al superadministrador y a los gestores de cuentas que este designe, sin registro público. Esta unidad verifica tokens; el registro público se cierra en Clerk, no en este código:
+La [política de alta de usuarios](producto.md#alta-de-usuarios) reserva creación e invitaciones al superadministrador y a los gestores de cuentas que este designe, sin registro público. Las rutas `POST /api/users` y `PUT /api/users/:userId/account-manager` gestionan registros internos y capacidades (ver [persistencia local](persistencia-local.md#alta-interna-y-gestores-de-cuentas)); **no envían invitaciones de Clerk** ni crean cuentas en el proveedor. El cierre del registro público sigue siendo un paso manual en el dashboard de Clerk, todavía no verificado, no una operación de estas rutas:
 
 1. En el Clerk Dashboard, en **User & authentication → Access mode**, elegí **Invite-only** y guardá (valor de API `restricted`). Hacelo en cada instancia, desarrollo y producción.
 2. Comprobá en una ventana privada que el inicio de sesión ya no ofrece registrarse y que el registro sin invitación muestra que hace falta una invitación.
 
-Aunque el registro siga abierto, una cuenta nueva solo queda autenticada: sin `User`, membresía ni propiedad en la base no accede a ninguna iglesia. Los futuros flujos de alta e invitación requieren implementación aparte.
+Aunque el registro siga abierto, una cuenta nueva solo queda autenticada: sin `User`, membresía ni propiedad en la base no accede a ninguna iglesia. El envío de invitaciones y los demás flujos con el proveedor requieren implementación aparte.
 
 ## Prueba desde Orca
 

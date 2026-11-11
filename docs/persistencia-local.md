@@ -1,10 +1,10 @@
 # Persistencia y acceso local
 
-Esta unidad usa PostgreSQL de desarrollo con datos ficticios; no crea recursos cloud ni usuarios reales. La [política de altas](producto.md#alta-de-usuarios) permanece separada: solo el propietario y los gestores de cuentas que designe crean cuentas e invitan. Esta unidad solo modela esa capacidad como campo (`accountManager`); todavía no hay flujos que la otorguen ni la usen. El registro público se cierra en Clerk con el modo **Invite-only** (ver [autenticación](autenticacion-api.md#contrato-y-límites)); esta prueba no lo configura.
+Esta unidad usa PostgreSQL de desarrollo con datos ficticios; no crea recursos cloud ni usuarios reales. La [política de altas](producto.md#alta-de-usuarios) permanece separada: solo el propietario y los gestores de cuentas que designe crean cuentas e invitan. La API permite crear usuarios internos y otorgar o retirar esa capacidad (`accountManager`), sin llamadas a Clerk. El registro público se cierra en Clerk con el modo **Invite-only** (ver [autenticación](autenticacion-api.md#contrato-y-límites)); esta prueba no lo configura.
 
 ## Modelo mínimo
 
-- `User`: ID interno y sujeto Clerk único; capacidades globales independientes de iglesia: editor de biblioteca (`libraryEditor`) y gestor de cuentas (`accountManager`). Ninguna da acceso a iglesias; solo el propietario las otorga, aunque esta unidad no implementa esa gestión.
+- `User`: ID interno y sujeto Clerk único; capacidades globales independientes de iglesia: editor de biblioteca (`libraryEditor`) y gestor de cuentas (`accountManager`). Ninguna da acceso a iglesias; esta unidad implementa solo la gestión de `accountManager` por el propietario.
 - `Person`: puede existir sin usuario; vínculo de cuenta explícito, nunca por nombre. Existe una sola vez aunque figure en varias iglesias: `ChurchPerson` es el vínculo persona–iglesia y el lugar para los datos propios de cada iglesia, nunca `Person`. Borrar una iglesia elimina solo sus vínculos, no la persona. La ruta de esta prueba no expone el directorio.
 - `Church` y `Membership`: pertenencia de un usuario con acceso local ADMIN, EDITOR o MEMBER. No son roles musicales.
 - `PlatformOwner`: referencia al único propietario; SQL restringe su fila a ID 1. No se asigna por primer login ni por claims de permisos. La base puede estar inicialmente sin propietario: falla cerrada hasta un alta explícita.
@@ -12,7 +12,20 @@ Esta unidad usa PostgreSQL de desarrollo con datos ficticios; no crea recursos c
 
 Si la consulta de acceso falla, la API responde `503` con `{"error":"Access unavailable"}` y registra en stderr una sola línea JSON, por ejemplo `{"event":"church_access_failed","code":"P2010"}`, con el código Prisma/driver o `unknown`. Nunca registra mensajes del driver, cadenas de conexión, sujetos ni IDs. Sin `DATABASE_URL`, la API avisa al arrancar que esas rutas responden `503`.
 
-No hay CRUD de usuarios, invitaciones, servicios, setlists ni generación de turnos en esta unidad. Las identidades `fixture-*` no corresponden a cuentas reales ni habilitan automáticamente la sesión humana.
+No hay envío de invitaciones, CRUD general de usuarios, servicios, setlists ni generación de turnos en esta unidad. Las identidades `fixture-*` no corresponden a cuentas reales ni habilitan automáticamente la sesión humana.
+
+## Alta interna y gestores de cuentas
+
+Ambas rutas requieren Bearer de sesión y consultan las capacidades actuales en PostgreSQL en cada petición, no los claims de permisos del token. Retirar `accountManager` tiene efecto para la siguiente petición incluso con un token ya emitido. Todas las respuestas usan `Cache-Control: no-store`.
+
+| Ruta y cuerpo JSON | Quién puede llamarla | Resultado |
+| --- | --- | --- |
+| `POST /api/users`, `{"clerkSubject":"user_ejemplo"}` | Propietario (`PlatformOwner`, ID 1) o gestor de cuentas | `201`, `{"id":"<id interno>"}`. Crea solo `User`, sin membresías, con `libraryEditor=false` y `accountManager=false`. |
+| `PUT /api/users/:userId/account-manager`, `{"enabled":true}` o `false` | Solo el propietario | `200`, `{"id":"<id interno>","accountManager":true}` (o `false`). No modifica la fila del propietario. |
+
+El sujeto se recorta antes de validar: entre 1 y 128 caracteres, solo letras ASCII, dígitos, `_` y `-`. Ambos cuerpos rechazan campos adicionales; `enabled` debe ser booleano. JSON inválido o cuerpo inválido: `400`, `{"error":"Invalid request"}`. Un sujeto duplicado, también ante altas concurrentes: `409`, `{"error":"Conflict"}`, sin cambios adicionales.
+
+Sin capacidad, usuario destino inexistente o intento de modificar al propietario: `404`, `{"error":"Not found"}`. Sin token válido: `401`, `{"error":"Unauthorized"}`. Sin base o ante fallo de persistencia: `503`, `{"error":"Access unavailable"}`; los fallos de autenticación conservan el contrato de [sesión](autenticacion-api.md#contrato-y-límites). Los logs de fallos de estas operaciones contienen solo el evento y un código seguro, nunca sujetos ni tokens. Crear un usuario o ser gestor no concede lectura de iglesias.
 
 ## Comprobación reproducible
 
