@@ -4,7 +4,9 @@ Estas convenciones ayudan a mantener cambios revisables; no inventan aprobacione
 
 ## Cambios y commits
 
-- Usa una rama por intención, basada en `main`; confirma antes que ese sea el punto de partida apropiado para tu trabajo.
+- Seguimos git flow: `develop` es la rama primaria y predeterminada, donde se sincroniza el trabajo y de donde parte toda implementación nueva. Actualízala antes de empezar.
+- Usa una rama `feat/*`, `fix/*`, `docs/*` o `chore/*` por intención, creada desde `develop` actualizado, y entrégala con un PR hacia `develop`. `main` conserva la base documental y no recibe trabajo directo.
+- Trabaja cada tarea en su propio `git worktree`, para que tareas paralelas no se pisen cambios. Crea el worktree al abrir la rama, por ejemplo `git worktree add -b feat/mi-tarea .local/worktrees/mi-tarea develop` (la carpeta `.local/` está ignorada por Git), y retíralo con `git worktree remove` cuando la rama se fusione. Un worktree fuera de la carpeta del proyecto requiere autorización explícita.
 - Antes y después de editar, revisa `git status` y `git diff`; conserva cambios preexistentes.
 - Mantén commits pequeños y coherentes, centrados en resultados e incluyendo las pruebas o documentación pertinentes. Usa asuntos convencionales en español, por ejemplo: `docs: organiza la guía del producto`.
 - Una autorización explícita para commits pequeños de una tarea puede cubrir varios commits coherentes de esa misma tarea; no se requiere pedir aprobación nueva por cada uno. No infieras autorización para otras acciones.
