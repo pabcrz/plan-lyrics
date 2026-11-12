@@ -13,6 +13,7 @@ Mockups HTML autocontenidos, sin build, con datos ficticios. Se abren directamen
 | Pantalla | [pantallas/calendario.html](design/pantallas/calendario.html) | Calendario multimes y detalle del servicio. |
 | Pantalla | [pantallas/lote-mensual.html](design/pantallas/lote-mensual.html) | Creación mensual en lote: período, directores, revisión y resultado. |
 | Pantalla | [pantallas/servicio-nuevo.html](design/pantallas/servicio-nuevo.html) | Servicio individual: fecha, título, hora, estado, dirección y participaciones. |
+| Pantalla | [pantallas/ajustes-iglesia.html](design/pantallas/ajustes-iglesia.html) | Ajustes de la iglesia: nombre, días de servicio, horas habituales y domingo con dos servicios. |
 
 El recorrido de wireframes previo vive en [`design/programacion-mensual`](../design/programacion-mensual/mapa-y-recorrido.md); la alternativa 04 fue la referencia que originó estas pantallas.
 
@@ -93,9 +94,20 @@ Formulario de una sola vista, sin selector de iglesia: el servicio pertenece a l
 
 Al crear, enlaza con el calendario igual que el lote.
 
+### Ajustes de la iglesia
+
+Primera sección de configuración general. Lo definido aquí alimenta los formularios de servicio.
+
+- **Nombre** de la iglesia activa.
+- **Días de servicio:** siete botones (Dom a Sáb) de selección múltiple. Cada día elegido muestra una tarjeta con el título habitual y la hora de inicio.
+- **Hora:** el mismo selector de rueda del servicio individual, cada 15 minutos.
+- **Dos servicios los domingos:** interruptor dentro de la tarjeta del domingo. Activado, el domingo tiene franja de mañana (hasta antes de las 12:00 p.m.) y de tarde (desde las 12:00 p.m.), cada una con su título y hora. Solo el domingo ofrece esta opción.
+- **Guardar:** el botón se habilita al cambiar algo; «Descartar cambios» vuelve a lo guardado. Se exige un nombre, al menos un día y un título en cada servicio.
+- **Supuesto de diseño:** guardar no modifica los servicios ya creados; solo cambia lo que se precarga a partir de ahora.
+
 ## Pendientes
 
-- Configuración de participaciones, ajustes de la iglesia (días de servicio, horas habituales y domingo con dos servicios) y directorio de personas.
+- Configuración de participaciones (asignaciones habituales y rotaciones), el resto de los ajustes de la iglesia y directorio de personas. Falta un punto de entrada a los ajustes desde la navegación.
 - Unificar tokens en `apps/web` (Tailwind 4) cuando se implemente.
 - Probar teclado en pantalla, modo claro de las tarjetas por día y contraste en todos los temas.
 - Casos de producto abiertos que afectan estas pantallas: hoy y meses pasados, fechas ocupadas dentro del lote y franja del domingo en el lote, más directores que fechas, lote sin directores y homónimos.

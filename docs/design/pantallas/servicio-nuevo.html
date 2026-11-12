@@ -820,7 +820,7 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     wh = { h: hh % 12 || 12, m: snapMin(+src.slice(3)), pm: hh >= 12 };
     var pers = two ? [st.slot === 0 ? 0 : 1] : [0, 1];
     var hours = [], top = two && st.slot === 0 ? 11 : 12;
-    for (var i = 1; i <= top; i++) hours.push(i);
+    for (var i = 1; i <= top; i++) hours.push(i); if (top === 12) hours.unshift(hours.pop()); /* 12 va antes que la 1 */
     if (pers.indexOf(wh.pm ? 1 : 0) < 0) wh.pm = pers[0] === 1;
     if (hours.indexOf(wh.h) < 0) wh.h = hours[0];
     wopts = { h: hours, m: MINS, p: pers };
