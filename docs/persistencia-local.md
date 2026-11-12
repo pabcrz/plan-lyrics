@@ -27,6 +27,31 @@ El sujeto se recorta antes de validar: entre 1 y 128 caracteres, solo letras ASC
 
 Sin capacidad, usuario destino inexistente o intento de modificar al propietario: `404`, `{"error":"Not found"}`. Sin token válido: `401`, `{"error":"Unauthorized"}`. Sin base o ante fallo de persistencia: `503`, `{"error":"Access unavailable"}`; los fallos de autenticación conservan el contrato de [sesión](autenticacion-api.md#contrato-y-límites). Los logs de fallos de estas operaciones contienen solo el evento y un código seguro, nunca sujetos ni tokens. Crear un usuario o ser gestor no concede lectura de iglesias.
 
+## Propietario inicial (operación local explícita)
+
+`pnpm --filter @plan-lyrics/api db:bootstrap-owner --help` muestra la ayuda sin conectarse a una base. El comando recibe `DATABASE_URL` del entorno y un único sujeto Clerk por stdin; no carga dotenv, no recibe el sujeto como argumento ni lo escribe en logs. Primero aplicá las migraciones a la base elegida y generá el cliente (`db:generate`). La persona operadora debe comprobar por separado que el sujeto corresponde a su cuenta de Clerk: este comando no consulta al proveedor ni verifica la identidad.
+
+Con `DATABASE_URL` ya configurada de forma segura en tu terminal, podés evitar guardar el sujeto en el historial usando Bash:
+
+```bash
+IFS= read -r -s -p 'Sujeto Clerk del propietario: ' owner_subject; printf '\n'
+printf '%s' "$owner_subject" | pnpm --filter @plan-lyrics/api db:bootstrap-owner
+unset owner_subject
+```
+
+Se recorta el sujeto y se aplican las mismas reglas ASCII de alta interna, con un límite total de stdin de 256 bytes. Solo inicializa una base sin propietario: reutiliza el usuario coincidente sin modificarlo o crea uno sin membresías ni capacidades adicionales y lo vincula al propietario único. Si ya existe cualquier propietario, incluso el mismo, rechaza la operación sin cambios. Una transacción y un bloqueo de tabla serializan inicializaciones concurrentes; la restricción SQL mantiene el propietario único. No es un mecanismo de transferencia o recuperación del propietario.
+
+Salidas del comando (sin contar los mensajes del lanzador pnpm):
+
+| Código | stdout | stderr |
+| --- | --- | --- |
+| 0 | `Initial owner created.` (o ayuda con `--help`) | vacío |
+| 1 | vacío | `Owner initialization unavailable.` |
+| 2 | vacío | `Invalid input or configuration. Use --help.` |
+| 3 | vacío | `Owner already exists. No changes made.` |
+
+Cada mensaje termina en salto de línea. No envía invitaciones ni cierra el registro de Clerk. Las pruebas usan únicamente una base ficticia aislada; esta entrega no ejecuta el alta en una base real. Conservá acceso administrativo a la base y ejecutá el comando solo tras verificar explícitamente su destino.
+
 ## Comprobación reproducible
 
 Herramientas requeridas en PATH: Node/pnpm fijados y PostgreSQL (`initdb`, `pg_ctl`, `createdb`). Desde la raíz:

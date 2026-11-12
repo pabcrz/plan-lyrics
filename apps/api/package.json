@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "db:generate": "prisma generate",
+    "db:bootstrap-owner": "tsx src/bootstrap-owner-cli.ts",
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
     "db:drift": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
