@@ -468,11 +468,40 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
 /* ============================================================
    Pantalla: servicio individual (formulario único)
    ============================================================ */
-.dsel-wrap { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.dsel-wrap { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
+.dsel-wrap .other { grid-column: 1 / -1; justify-content: center; }
 .dsel { position: relative; min-height: var(--touch-lg); padding: 0 var(--s-4); border-radius: var(--r-md); border: 1px solid var(--line-strong); background: var(--surface); font: 600 .9375rem var(--font-body); font-variant-numeric: tabular-nums; cursor: pointer; color: var(--text); display: inline-flex; align-items: center; gap: 8px; }
 .dsel:hover { background: var(--surface-2); }
 .dsel[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.dsel .mk { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid currentColor; flex: none; }
+.dsel { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; padding: 0 var(--s-3); min-width: 0; line-height: 1.2; }
+.dsel small { font: 500 .6875rem var(--font-body); color: var(--text-3); }
+.dsel[aria-pressed="true"] small { color: inherit; opacity: .85; }
+.dsel.full, .dsel.full:hover { background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, transparent 6px 12px), var(--surface-2); border-style: dashed; color: var(--text-3); cursor: not-allowed; }
+.dsel.full b { text-decoration: line-through; text-decoration-thickness: 1px; font-weight: 600; }
+.dsel.full small { color: var(--text-2); font-weight: 600; }
+.dsel.other { flex-direction: row; align-items: center; gap: 8px; padding: 0 var(--s-4); min-width: 0; }
+.slots { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.slot { min-height: 56px; padding: 0 var(--s-3); border-radius: var(--r-md); border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); text-align: left; cursor: pointer; font: 600 .9375rem var(--font-body); display: grid; align-content: center; }
+.slot small { font: 500 .75rem var(--font-body); color: var(--text-3); }
+.slot[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.slot[aria-pressed="true"] small { color: inherit; opacity: .85; }
+.slot:disabled { border-style: dashed; background: var(--surface-2); color: var(--text-3); cursor: not-allowed; }
+.slot:disabled b { text-decoration: line-through; text-decoration-thickness: 1px; }
+.slot:disabled small { color: var(--text-2); }
+.timebtn { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: var(--touch-lg); padding: 0 var(--s-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text); font: 500 1rem var(--font-body); font-variant-numeric: tabular-nums; cursor: pointer; text-align: left; }
+.timebtn .ico { width: 18px; height: 18px; color: var(--text-3); }
+.timebtn[aria-invalid="true"] { border-color: var(--st-cancel-fg); }
+.timebtn .none { color: var(--text-3); }
+.wheels { position: relative; display: grid; grid-template-columns: 1fr 16px 1fr 1fr; align-items: center; margin: var(--s-2) 0 var(--s-4); }
+.wheels::before { content: ""; position: absolute; left: 0; right: 0; top: 88px; height: 44px; border-block: 2px solid var(--accent); pointer-events: none; opacity: .55; }
+.wsep { text-align: center; font: 600 1.25rem var(--font-body); color: var(--text-3); }
+.wcol { height: 220px; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(transparent, #000 32%, #000 68%, transparent); mask-image: linear-gradient(transparent, #000 32%, #000 68%, transparent); outline-offset: -2px; border-radius: var(--r-md); }
+.wcol::-webkit-scrollbar { display: none; }
+.wcol .pad { height: 88px; }
+.wi { height: 44px; display: flex; align-items: center; justify-content: center; scroll-snap-align: center; font: 500 1.375rem var(--font-body); font-variant-numeric: tabular-nums; color: var(--text-3); cursor: pointer; user-select: none; }
+.wi[aria-selected="true"] { color: var(--text); font-weight: 600; }
+.wcol.one { overflow: hidden; }
+.tnone { width: 100%; margin-top: var(--s-2); }
 .dsel.other { border-style: dashed; color: var(--accent); }
 .dsel.other[aria-pressed="true"] { color: var(--on-accent); border-style: solid; }
 .dsel .ico { width: 16px; height: 16px; }
@@ -543,12 +572,16 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
       <div class="fgroup">
         <span class="lbl" id="lD">Fecha</span>
         <div class="dsel-wrap" role="group" aria-labelledby="lD" id="dates"></div>
-        <p class="help" id="dLegend" style="display:flex;align-items:center;gap:6px"><i style="width:7px;height:7px;border-radius:50%;border:1.5px solid currentColor;display:inline-block"></i>Ya tiene un servicio.</p>
+        <p class="help">Las fechas tachadas ya tienen su máximo de servicios.</p>
         <div class="field" id="otherWrap" hidden>
           <label for="dOther" class="sr">Otra fecha</label>
           <input class="input num" id="dOther" type="date" min="2026-11-05">
           <p class="help">Desde mañana. Hoy y las fechas pasadas siguen pendientes de definir.</p>
         </div>
+      </div>
+      <div class="fgroup" id="slotWrap" hidden>
+        <span class="lbl" id="lSlot">Servicio del domingo</span>
+        <div class="slots" role="group" aria-labelledby="lSlot" id="slots"></div>
       </div>
       <div class="dnote" id="dNote" aria-live="polite"></div>
 
@@ -561,14 +594,9 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
       </div>
 
       <div class="fgroup">
-        <div class="row2b">
-          <div class="field">
-            <label for="fH">Hora de inicio <span style="font-weight:400;color:var(--text-3)">· opcional</span></label>
-            <p class="help" style="margin-top:-2px">Déjala vacía si no hay hora fija.</p>
-          </div>
-          <div class="field"><input class="input num" id="fH" type="time" aria-label="Hora de inicio"></div>
-        </div>
-        <button class="linkb" type="button" id="clearH" hidden>Quitar hora</button>
+        <span class="lbl" id="lH">Hora de inicio <span style="font-weight:400;color:var(--text-3)">· opcional</span></span>
+        <button class="timebtn" type="button" id="timeBtn" aria-haspopup="dialog" aria-labelledby="lH timeVal"><span id="timeVal"></span><svg class="ico"><use href="#i-down"/></svg></button>
+        <p class="help" id="hHelp"></p>
       </div>
 
       <div class="fgroup">
@@ -581,8 +609,9 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
       </div>
 
       <div class="fgroup">
-        <span class="lbl" id="lDir">Dirección <span style="font-weight:400;color:var(--text-3)">· opcional</span></span>
+        <span class="lbl" id="lDir">Dirección</span>
         <div id="dirBox"></div>
+        <p class="err" id="eD" hidden><svg class="ico"><use href="#i-alert"/></svg>Elige quién dirige este servicio.</p>
       </div>
 
       <div class="fgroup">
@@ -613,6 +642,18 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
       <button class="btn quiet block" type="button" id="again">Crear otro servicio</button>
     </div>
   </section>
+
+  <!-- ===== Hoja: elegir hora ===== -->
+  <div class="scrim" id="sheetH" hidden>
+    <div class="sheet fade" role="dialog" aria-modal="true" aria-labelledby="hT">
+      <div class="grab"></div>
+      <h2 id="hT">Hora de inicio</h2>
+      <p class="sub" id="hSub"></p>
+      <div class="wheels" id="wheels"></div>
+      <button class="btn primary block" type="button" id="tDone">Listo</button>
+      <button class="btn quiet block tnone" type="button" id="tNone">Sin hora fija</button>
+    </div>
+  </div>
 
   <!-- ===== Hoja: elegir director ===== -->
   <div class="scrim" id="sheetP" hidden>
@@ -661,9 +702,22 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
   var DOWF = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   var MON = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   var MONF = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-  var HAB = [0, 2, 5]; /* días habituales de la iglesia: domingo, martes, viernes */
-  var DEF = { 0: { name: 'Servicio dominical', time: '10:00' }, 2: { name: 'Servicio de oración', time: '19:30' }, 5: { name: 'Servicio de oración', time: '19:30' } };
-  var BUSY = {}; [1, 3, 6, 8, 13, 15, 20].forEach(function (d) { BUSY[Date.UTC(2026, 10, d)] = 1; });
+  /* Configuración ficticia de la iglesia: días habituales con su hora. El domingo tiene dos servicios (opción habilitada). */
+  var SVC = {
+    0: [{ slot: 'Mañana', name: 'Servicio dominical', time: '10:00' }, { slot: 'Tarde', name: 'Servicio vespertino', time: '18:00' }],
+    2: [{ name: 'Servicio de oración', time: '19:30' }],
+    5: [{ name: 'Servicio de oración', time: '19:30' }]
+  };
+  var HAB = [0, 2, 5];
+  /* Franjas ya ocupadas por fecha (índice del servicio de esa fecha) */
+  var TAKEN = {};
+  [[1, [0]], [3, [0]], [6, [0]], [8, [0]], [13, [0]], [15, [0, 1]], [20, [0]]].forEach(function (x) { TAKEN[Date.UTC(2026, 10, x[0])] = x[1]; });
+  function cap(t) { var c = SVC[new Date(t).getUTCDay()]; return c ? c.length : 1; }
+  function freeSlots(t) { var tk = TAKEN[t] || [], out = []; for (var i = 0; i < cap(t); i++) if (tk.indexOf(i) < 0) out.push(i); return out; }
+  function isFull(t) { return freeSlots(t).length === 0; }
+  function defFor(t, slot) { var c = SVC[new Date(t).getUTCDay()]; return c ? c[slot] || c[0] : { name: 'Servicio especial', time: '' }; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmt12(t) { if (!t) return ''; var h = +t.slice(0, 2); return (h % 12 || 12) + ':' + t.slice(3) + ' ' + (h >= 12 ? 'p.m.' : 'a.m.'); }
   var PEOPLE = [
     { n: 'Ana Torres', s: 'Guitarra' }, { n: 'Diego Vera', s: 'Voces' }, { n: 'Juan Pérez', s: 'Batería' },
     { n: 'Luis Ramírez', s: 'Piano' }, { n: 'Marta Salas', s: 'Voces' }, { n: 'Pedro Gómez', s: 'Batería' },
@@ -687,37 +741,63 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
 
   /* Próximas fechas habituales (desde mañana) */
   var NEXT = [];
-  for (var i = 1; NEXT.length < 5 && i < 60; i++) { var t = TODAY + i * DAY; if (HAB.indexOf(wdOf(t)) > -1) NEXT.push(t); }
+  for (var i = 1; NEXT.length < 6 && i < 60; i++) { var t = TODAY + i * DAY; if (HAB.indexOf(wdOf(t)) > -1) NEXT.push(t); }
 
-  var st = { t: NEXT[0], other: false, title: '', time: '', state: 'draft', dir: null, tT: false, tH: false };
+  function firstOpen() { return NEXT.filter(function (t) { return !isFull(t); })[0] || NEXT[0]; }
+  var st = { t: firstOpen(), slot: freeSlots(firstOpen())[0] || 0, other: false, title: '', time: '', state: 'draft', dir: null, tT: false, tH: false };
+  function twoSun(t) { return new Date(t).getUTCDay() === 0 && cap(t) > 1; }
+  function timeOk(t, slot, tm) { if (!tm || !twoSun(t)) return true; return slot === 0 ? tm < '12:00' : tm >= '12:00'; }
 
   /* ---- Fecha ---- */
   function applyDefaults() {
-    var d = DEF[wdOf(st.t)] || { name: 'Servicio especial', time: '' };
+    var d = defFor(st.t, st.slot);
     if (!st.tT) { st.title = d.name; $('#fT').value = st.title; $('#eT').hidden = true; $('#fT').removeAttribute('aria-invalid'); }
-    if (!st.tH) { st.time = d.time; $('#fH').value = st.time; }
-    syncClear();
+    if (!st.tH || !timeOk(st.t, st.slot, st.time)) { st.time = d.time; st.tH = false; }
+    syncTime();
   }
-  function syncClear() { $('#clearH').hidden = !st.time; }
+  function syncTime() {
+    var d = st.t ? defFor(st.t, st.slot) : { time: '' };
+    $('#timeVal').innerHTML = st.time ? '<span class="num">' + fmt12(st.time) + '</span>' : '<span class="none">Sin hora fija</span>';
+    $('#hHelp').textContent = !st.t ? '' : st.time && st.time === d.time ? 'Hora habitual de la iglesia para este servicio.'
+      : d.time ? 'Distinta de la habitual (' + fmt12(d.time) + ').' : st.time ? '' : 'Este día no tiene hora habitual; puedes dejarla sin definir.';
+  }
   function renderDates() {
     $('#dates').innerHTML = NEXT.map(function (t) {
-      var sel = !st.other && st.t === t;
-      return '<button type="button" class="dsel" data-t="' + t + '" aria-pressed="' + sel + '">' + fmt(t) + (BUSY[t] ? '<i class="mk" title="Ya tiene un servicio"></i>' : '') + '</button>';
+      var sel = !st.other && st.t === t, full = isFull(t), fr = freeSlots(t), sub;
+      if (full) sub = cap(t) > 1 ? 'Completo' : 'Ocupado';
+      else if (fr.length < cap(t)) sub = 'Libre: ' + defFor(t, fr[0]).slot.toLowerCase();
+      else sub = SVC[wdOf(t)].map(function (x) { return fmt12(x.time); }).join(' · ');
+      return '<button type="button" class="dsel' + (full ? ' full' : '') + '" data-t="' + t + '"' + (full ? ' disabled' : '') + ' aria-pressed="' + sel + '"><b>' + fmt(t) + '</b><small>' + sub + '</small></button>';
     }).join('') + '<button type="button" class="dsel other" data-other aria-pressed="' + st.other + '">' + ico('i-plus') + 'Otra fecha</button>';
     $('#otherWrap').hidden = !st.other;
     var n = $('#dNote'), h = '';
     if (st.t) {
-      if (BUSY[st.t]) h += '<div class="notice warn">' + ico('i-info') + '<div><b>Ya hay un servicio el ' + fmt(st.t) + '</b>Aquí se permite crear otro. Qué hacer con una fecha que ya tiene servicio sigue pendiente de definir en el producto.</div></div>';
+      if (isFull(st.t)) h += '<div class="notice warn">' + ico('i-lock') + '<div><b>' + fmtF(st.t) + ' ya está completo</b>' + (cap(st.t) > 1 ? 'El domingo ya tiene sus dos servicios.' : 'Cada fecha admite un solo servicio, salvo los domingos con dos servicios.') + ' Elige otra fecha.</div></div>';
       else if (HAB.indexOf(wdOf(st.t)) < 0) h += '<div class="notice">' + ico('i-info') + '<div><b>Servicio especial</b>' + DOWF[wdOf(st.t)] + ' no es un día habitual de Betel. Los días habituales no cambian.</div></div>';
     }
     n.innerHTML = h;
-    renderParts(); syncCta();
+    renderSlots(); renderParts(); syncCta();
   }
+  function renderSlots() {
+    var show = !!st.t && twoSun(st.t);
+    $('#slotWrap').hidden = !show;
+    if (!show) return;
+    var tk = TAKEN[st.t] || [];
+    $('#slots').innerHTML = SVC[0].map(function (x, i) {
+      var taken = tk.indexOf(i) > -1;
+      return '<button type="button" class="slot" data-i="' + i + '"' + (taken ? ' disabled' : '') + ' aria-pressed="' + (!taken && st.slot === i) + '"><b>' + x.slot + '</b><small>' + (taken ? 'Ya creado' : 'Desde las ' + fmt12(x.time)) + '</small></button>';
+    }).join('');
+  }
+  $('#slots').addEventListener('click', function (e) {
+    var b = e.target.closest('.slot'); if (!b || b.disabled) return;
+    st.slot = +b.dataset.i; st.tH = false; applyDefaults(); renderDates();
+  });
   $('#dates').addEventListener('click', function (e) {
     var b = e.target.closest('.dsel'); if (!b) return;
+    if (b.disabled) return;
     if (b.hasAttribute('data-other')) { st.other = true; var v = $('#dOther').value; st.t = v ? dateVal(v) : null; }
     else { st.other = false; st.t = +b.dataset.t; }
-    if (st.t) applyDefaults();
+    if (st.t) { st.slot = freeSlots(st.t)[0] || 0; applyDefaults(); }
     renderDates();
     if (st.other) $('#dOther').focus();
   });
@@ -725,14 +805,58 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
   $('#dOther').addEventListener('change', function () {
     var v = this.value; st.t = v ? dateVal(v) : null;
     if (st.t && st.t <= TODAY) st.t = null; /* hoy y pasado: pendiente de definir */
-    if (st.t) applyDefaults();
+    if (st.t) { st.slot = freeSlots(st.t)[0] || 0; applyDefaults(); }
     renderDates();
   });
 
   /* ---- Título, hora, estado ---- */
   $('#fT').addEventListener('input', function () { st.title = this.value; st.tT = true; if (this.value.trim()) { $('#eT').hidden = true; this.removeAttribute('aria-invalid'); } });
-  $('#fH').addEventListener('input', function () { st.time = this.value; st.tH = true; syncClear(); });
-  $('#clearH').addEventListener('click', function () { st.time = ''; st.tH = true; $('#fH').value = ''; syncClear(); $('#fH').focus(); });
+  /* ---- Hora: hoja con franjas ---- */
+  var ITEM = 44, MINS = [0, 15, 30, 45], wh = { h: 7, m: 0, pm: true }, wopts = {};
+  function snapMin(m) { return MINS.reduce(function (a, x) { return Math.abs(x - m) < Math.abs(a - m) ? x : a; }, 0); }
+  function renderTimes() {
+    var d = st.t ? defFor(st.t, st.slot) : { time: '' }, two = twoSun(st.t);
+    var src = st.time || d.time || '09:00', hh = +src.slice(0, 2);
+    wh = { h: hh % 12 || 12, m: snapMin(+src.slice(3)), pm: hh >= 12 };
+    var pers = two ? [st.slot === 0 ? 0 : 1] : [0, 1];
+    var hours = [], top = two && st.slot === 0 ? 11 : 12;
+    for (var i = 1; i <= top; i++) hours.push(i);
+    if (pers.indexOf(wh.pm ? 1 : 0) < 0) wh.pm = pers[0] === 1;
+    if (hours.indexOf(wh.h) < 0) wh.h = hours[0];
+    wopts = { h: hours, m: MINS, p: pers };
+    $('#hSub').textContent = two ? (st.slot === 0 ? 'Servicio de la mañana: empieza antes de las 12:00 p.m.' : 'Servicio de la tarde: empieza desde las 12:00 p.m.') : (d.time ? 'Hora habitual: ' + fmt12(d.time) + '.' : 'Desliza para elegir la hora.');
+    function col(k, items, label, text) {
+      return '<div class="wcol' + (items.length < 2 ? ' one' : '') + '" role="listbox" tabindex="0" aria-label="' + label + '" data-k="' + k + '"><div class="pad"></div>' +
+        items.map(function (v, i) { return '<div class="wi" role="option" data-i="' + i + '" aria-selected="false">' + text(v) + '</div>'; }).join('') + '<div class="pad"></div></div>';
+    }
+    $('#wheels').innerHTML = col('h', hours, 'Hora', String) + '<span class="wsep">:</span>' + col('m', MINS, 'Minutos', pad) + col('p', pers, 'a.m. o p.m.', function (v) { return v ? 'p.m.' : 'a.m.'; });
+  }
+  function wIndex(k) { return k === 'h' ? wopts.h.indexOf(wh.h) : k === 'm' ? wopts.m.indexOf(wh.m) : wopts.p.indexOf(wh.pm ? 1 : 0); }
+  function wPaint(el, i) { $$('.wi', el).forEach(function (x, j) { x.setAttribute('aria-selected', String(j === i)); }); }
+  function wTake(el, i) {
+    var k = el.dataset.k; wPaint(el, i);
+    if (k === 'h') wh.h = wopts.h[i]; else if (k === 'm') wh.m = wopts.m[i]; else wh.pm = !!wopts.p[i];
+  }
+  function wSet(el, i, smooth) { i = Math.max(0, Math.min(i, $$('.wi', el).length - 1)); el.scrollTo({ top: i * ITEM, behavior: smooth ? 'smooth' : 'auto' }); wTake(el, i); }
+  function wInit() { $$('#wheels .wcol').forEach(function (el) { var i = wIndex(el.dataset.k); wPaint(el, i); el.scrollTop = i * ITEM; }); }
+  var wTimer;
+  $('#wheels').addEventListener('scroll', function (e) {
+    var el = e.target; if (!el.classList || !el.classList.contains('wcol')) return;
+    clearTimeout(wTimer); wTimer = setTimeout(function () { wTake(el, Math.round(el.scrollTop / ITEM)); }, 60);
+  }, true);
+  $('#wheels').addEventListener('click', function (e) {
+    var it = e.target.closest('.wi'); if (!it) return; wSet(it.closest('.wcol'), +it.dataset.i, true);
+  });
+  $('#wheels').addEventListener('keydown', function (e) {
+    var el = e.target.closest('.wcol'); if (!el || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault(); wSet(el, wIndex(el.dataset.k) + (e.key === 'ArrowDown' ? 1 : -1), true);
+  });
+  $('#timeBtn').addEventListener('click', function () { renderTimes(); openSheet('#sheetH'); wInit(); });
+  $('#tDone').addEventListener('click', function () {
+    $$('#wheels .wcol').forEach(function (el) { wTake(el, Math.round(el.scrollTop / ITEM)); }); /* toma lo que quedó bajo la guía, aunque el scroll no haya terminado */
+    st.time = pad((wh.h % 12) + (wh.pm ? 12 : 0)) + ':' + pad(wh.m); st.tH = true; syncTime(); closeSheet($('#sheetH'));
+  });
+  $('#tNone').addEventListener('click', function () { st.time = ''; st.tH = true; syncTime(); closeSheet($('#sheetH')); });
   $('#stSeg').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
     st.state = b.dataset.s;
@@ -742,7 +866,7 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
   function syncCta() {
     var c = $('#doCreate');
     c.textContent = st.state === 'pub' ? 'Crear y publicar' : 'Crear borrador';
-    c.disabled = !st.t;
+    c.disabled = !st.t || isFull(st.t);
   }
 
   /* ---- Participaciones ---- */
@@ -792,28 +916,33 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     if (b.dataset.person) st.dir = { n: b.dataset.person };
     else if (b.dataset.new) st.dir = { n: b.dataset.new, isNew: true, save: $('#pSave input').checked };
     else return;
-    closeSheet($('#sheetP')); renderDir();
+    closeSheet($('#sheetP')); $('#eD').hidden = true; renderDir();
   });
 
   /* ---- Crear ---- */
   $('#doCreate').addEventListener('click', function () {
-    if (!st.t) return;
-    if (!st.title.trim()) { var f = $('#fT'); $('#eT').hidden = false; f.setAttribute('aria-invalid', 'true'); f.focus(); return; }
+    if (!st.t || isFull(st.t)) return;
+    var noT = !st.title.trim(), noD = !st.dir;
+    $('#eD').hidden = !noD;
+    if (noT) { $('#eT').hidden = false; $('#fT').setAttribute('aria-invalid', 'true'); }
+    if (noT) { $('#fT').focus(); return; }
+    if (noD) { $('#dirPick').focus(); return; }
     var title = st.title.trim();
     $('#okS').textContent = (st.state === 'pub' ? 'Quedó publicado' : 'Quedó como borrador') + ', con sus participaciones cargadas.' + (st.dir && st.dir.isNew ? (st.dir.save ? ' ' + st.dir.n + ' se guardó en el directorio.' : ' ' + st.dir.n + ' se usó solo en este servicio.') : '');
     var chip = st.state === 'pub' ? '<span class="chip pub">' + ico('i-dot') + 'Publicado</span>' : '<span class="chip draft">' + ico('i-dash') + 'Borrador</span>';
     $('#okList').innerHTML =
       '<div class="li static"><span class="k">Título</span><span class="v">' + esc(title) + '</span></div>' +
       '<div class="li static"><span class="k">Fecha</span><span class="v">' + fmtF(st.t) + '</span></div>' +
-      '<div class="li static"><span class="k">Hora</span><span class="v num">' + (st.time || 'Sin hora') + '</span></div>' +
-      '<div class="li static"><span class="k">Dirección</span><span class="v">' + (st.dir ? esc(st.dir.n) : 'Por definir') + '</span></div>' +
+      '<div class="li static"><span class="k">Hora</span><span class="v num">' + (fmt12(st.time) || 'Sin hora') + '</span></div>' +
+      '<div class="li static"><span class="k">Dirección</span><span class="v">' + esc(st.dir.n) + '</span></div>' +
       '<div class="li static"><span class="k">Estado</span>' + chip + '</div>';
     $('#toCal').href = 'calendario.html#lote=' + encodeURIComponent(JSON.stringify([{ u: st.t, t: title, h: st.time, dir: st.dir ? st.dir.n : '', s: st.state }]));
     show('v-ok');
   });
   $('#again').addEventListener('click', function () {
-    st = { t: NEXT[0], other: false, title: '', time: '', state: 'draft', dir: null, tT: false, tH: false };
-    $('#dOther').value = ''; $$('#stSeg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x.dataset.s === 'draft')); });
+    var f0 = firstOpen();
+    st = { t: f0, slot: freeSlots(f0)[0] || 0, other: false, title: '', time: '', state: 'draft', dir: null, tT: false, tH: false };
+    $('#eD').hidden = true; $('#dOther').value = ''; $$('#stSeg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x.dataset.s === 'draft')); });
     applyDefaults(); renderDates(); renderDir(); show('v-f');
   });
   $('#cancelBtn').addEventListener('click', function () { location.href = 'calendario.html'; });

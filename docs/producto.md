@@ -15,7 +15,7 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 ### Etapa 1 — servicios y organización
 
 - Trabajar dentro de la iglesia activa, determinada por el contexto de acceso de la persona. La jerarquía es iglesia → servicio (fecha, director y participaciones) → setlist → canciones (BPM, orden, letra y demás datos según su etapa). Crear un servicio no pide seleccionar ni registrar una iglesia: pertenece automáticamente a la iglesia activa.
-- Crear servicios con título, fecha, hora de inicio opcional y estado (borrador, publicado, completado o cancelado); organizarlos en una vista tipo calendario.
+- Crear servicios con título, fecha, director, hora de inicio opcional y estado (borrador, publicado, completado o cancelado); organizarlos en una vista tipo calendario. El director es obligatorio al crear un servicio, individual o en lote; las demás participaciones se completan con las habituales y la rotación.
 - Incluir en la primera entrega creación de servicios en lote y generación automática de turnos. Cada servicio se puede completar después con su setlist manualmente; crear un lote no establece recurrencia automática.
 - Designar dirección y participantes, asignando a cada persona un rol musical para ese servicio. No incluir confirmaciones de asistencia ni estados de aceptación o rechazo de asignaciones.
 - Ordenar canciones y otros momentos del servicio; registrar tonalidad contextual y enlaces de referencia manuales a YouTube o Spotify. No se prevé integración automática con esos servicios.
@@ -25,11 +25,11 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 
 ### Configuración general y fechas de servicio
 
-- Configurar por iglesia su nombre y sus días habituales de reunión desde su panel general. Los días varían por iglesia; ejemplos acordados: martes/miércoles/viernes/domingo, jueves/domingo y viernes/domingo. Esta configuración no crea servicios recurrentes automáticamente.
+- Configurar por iglesia su nombre, sus días habituales de reunión y la hora de inicio de cada uno desde su panel general. Los días varían por iglesia; ejemplos acordados: martes/miércoles/viernes/domingo, jueves/domingo y viernes/domingo. Esta configuración no crea servicios recurrentes automáticamente: sirve para que el formulario de servicio y el lote lleguen con la hora ya cargada. La hora sigue siendo editable en cada servicio y los servicios especiales de días no habituales se crean con su propia fecha y hora, sin pasar por esa configuración.
 - Usar la zona horaria de Ciudad de México (`America/Mexico_City`) para el calendario y la sugerencia de fechas. El 4 de noviembre citado durante el diseño es contexto del ejemplo, no una fecha fija del producto.
 - Sugerir por defecto la fecha de reunión más cercana según los días configurados de la iglesia activa. Permitir crear un servicio especial en cualquier día de la semana, aunque no sea habitual. La inclusión de hoy cuando coincide con un día de reunión sigue pendiente.
-- Actualmente las iglesias no celebran dos cultos el mismo día. Contemplar una opción de configuración general para domingos con servicio matutino y vespertino si una iglesia adopta esa costumbre; no imponer dos servicios por domingo ni crearlos automáticamente. Falta precisar cómo el lote selecciona una franja y cómo participan ambas en las rotaciones.
-- Distinguir los días habituales de una fecha con un servicio ya registrado. La resolución de una colisión con un servicio existente sigue pendiente; no se adopta una prohibición global de varios servicios en una fecha.
+- Una fecha admite un solo servicio, con una excepción: el domingo, si la iglesia activa lo habilita en su configuración general, admite dos, uno matutino (antes del mediodía) y uno vespertino, cada uno con su hora habitual. Es una opción por iglesia: no se impone ni se crean ambos automáticamente. Ningún otro día admite dos servicios. Falta precisar cómo el lote selecciona una franja y cómo participan ambas en las rotaciones.
+- Distinguir los días habituales de una fecha con un servicio ya registrado. Una fecha que ya alcanzó su máximo de servicios (uno, o dos en un domingo con la opción habilitada) no se puede elegir para crear otro servicio; si el domingo tiene dos franjas, solo se ofrece la que sigue libre. Cómo resuelve el lote las fechas ocupadas sigue pendiente.
 
 ### Personas y dirección del servicio
 

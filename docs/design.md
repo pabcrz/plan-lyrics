@@ -83,17 +83,19 @@ Cuatro vistas: período, directores, revisión y resultado. Aplica las reglas de
 
 Formulario de una sola vista, sin selector de iglesia: el servicio pertenece a la iglesia activa.
 
-- **Fecha:** las próximas fechas habituales como opciones, más «Otra fecha» para un servicio especial. Las fechas con servicio llevan una marca y avisan sin bloquear; la resolución de colisiones sigue pendiente en el producto.
-- **Título y hora:** se precargan según el día elegido y se pueden editar. La hora es opcional y se puede quitar.
+- **Fecha:** las próximas fechas habituales como opciones, con la hora habitual debajo, más «Otra fecha» para un servicio especial. Una fecha que ya alcanzó su máximo de servicios se muestra tachada, con borde punteado y la etiqueta «Ocupado» o «Completo», y no se puede elegir. Si se llega a ella por «Otra fecha», un aviso lo explica y el botón de crear queda deshabilitado.
+- **Domingo con dos servicios:** si la iglesia lo habilita, aparece un selector Mañana / Tarde con la hora de cada uno; la franja ya creada queda deshabilitada. Ningún otro día admite dos servicios.
+- **Título y hora:** llegan precargados desde la configuración de la iglesia (días habituales y su hora) y se pueden editar. Un día no habitual se trata como servicio especial: sin hora precargada.
+- **Selector de hora:** un campo que abre una hoja inferior con una rueda deslizable de tres columnas (hora, minutos cada 15 y a.m./p.m.) en lugar del reloj nativo del dispositivo. Incluye «Listo» y «Sin hora fija». En un domingo con dos servicios, la rueda se limita a la franja: a.m. para la mañana y p.m. para la tarde.
 - **Estado:** borrador o publicado al crear; completado y cancelado se cambian después.
-- **Dirección:** opcional, con el mismo selector de personas del lote.
+- **Dirección:** obligatoria. Usa el mismo selector de personas del lote; sin director no se crea el servicio y el error aparece junto al campo.
 - **Participaciones:** vista previa de las habituales y los turnos que se cargarán según el día.
 
 Al crear, enlaza con el calendario igual que el lote.
 
 ## Pendientes
 
-- Configuración de participaciones, ajustes de la iglesia y directorio de personas.
+- Configuración de participaciones, ajustes de la iglesia (días de servicio, horas habituales y domingo con dos servicios) y directorio de personas.
 - Unificar tokens en `apps/web` (Tailwind 4) cuando se implemente.
 - Probar teclado en pantalla, modo claro de las tarjetas por día y contraste en todos los temas.
-- Casos de producto abiertos que afectan estas pantallas: hoy y meses pasados, colisiones con servicios existentes, más directores que fechas, lote sin directores y homónimos.
+- Casos de producto abiertos que afectan estas pantallas: hoy y meses pasados, fechas ocupadas dentro del lote y franja del domingo en el lote, más directores que fechas, lote sin directores y homónimos.
