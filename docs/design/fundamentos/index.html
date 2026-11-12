@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="es" data-accent="salvia" data-mode="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan & Lyrics — Fundamentos visuales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TOKENS — propuesta v0 (no oficial hasta aprobarse)
+   Un solo tono (--h) y una sola intensidad (--c) gobiernan el acento
+   Y el tinte de los neutros. Cambiar de tema = cambiar dos números.
+   ============================================================ */
+:root {
+  /* Temas de acento */
+  --h: 178; --c: .085;                                    /* salvia (predeterminado) */
+
+  /* Tipografía */
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Spline Sans Mono", ui-monospace, monospace;
+
+  /* Espaciado (base 4) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 72px;
+
+  /* Forma */
+  --r-sm: 6px; --r-md: 10px; --r-lg: 16px; --r-full: 999px;
+
+  /* Táctil */
+  --touch: 44px; --touch-lg: 48px;
+
+  /* Movimiento */
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --t-fast: 140ms; --t-base: 240ms;
+
+  /* Rampa del acento (independiente del modo) */
+  --a-50:  oklch(.97 calc(var(--c)*.15) var(--h));
+  --a-100: oklch(.93 calc(var(--c)*.30) var(--h));
+  --a-200: oklch(.87 calc(var(--c)*.55) var(--h));
+  --a-300: oklch(.79 calc(var(--c)*.80) var(--h));
+  --a-400: oklch(.70 calc(var(--c)*1.00) var(--h));
+  --a-500: oklch(.60 var(--c) var(--h));
+  --a-600: oklch(.50 var(--c) var(--h));
+  --a-700: oklch(.42 var(--c) var(--h));
+  --a-800: oklch(.33 calc(var(--c)*.80) var(--h));
+  --a-900: oklch(.24 calc(var(--c)*.50) var(--h));
+}
+:root[data-accent="indigo"] { --h: 272; --c: .15; }
+:root[data-accent="ocre"]   { --h: 62;  --c: .105; }
+
+/* Semánticos — modo claro */
+:root, :root[data-mode="light"] {
+  color-scheme: light;
+  --bg:        oklch(.975 .008 var(--h));
+  --surface:   oklch(.995 .004 var(--h));
+  --surface-2: oklch(.952 .010 var(--h));
+  --line:      oklch(.905 .012 var(--h));
+  --line-strong: oklch(.80 .016 var(--h));
+  --text:      oklch(.22 .03 var(--h));
+  --text-2:    oklch(.42 .025 var(--h));
+  --text-3:    oklch(.51 .02 var(--h));
+
+  --accent:        var(--a-600);
+  --accent-hover:  var(--a-700);
+  --on-accent:     oklch(.99 .005 var(--h));
+  --accent-soft:   var(--a-100);
+  --accent-soft-text: var(--a-800);
+  --focus:         var(--a-500);
+
+  /* Estados de servicio: fondo suave + texto + borde */
+  --st-draft-bg: var(--surface-2);   --st-draft-fg: oklch(.42 .02 var(--h));  --st-draft-bd: var(--line-strong);
+  --st-pub-bg:   oklch(.945 .045 152); --st-pub-fg: oklch(.36 .09 152);       --st-pub-bd: oklch(.80 .08 152);
+  --st-done-bg:  oklch(.945 .03 250);  --st-done-fg: oklch(.38 .09 250);      --st-done-bd: oklch(.80 .06 250);
+  --st-cancel-bg: oklch(.95 .03 25);   --st-cancel-fg: oklch(.42 .14 25);     --st-cancel-bd: oklch(.82 .08 25);
+
+  --shadow-1: 0 1px 2px oklch(.25 .03 var(--h) / .07), 0 1px 1px oklch(.25 .03 var(--h) / .05);
+  --shadow-2: 0 6px 18px -4px oklch(.25 .03 var(--h) / .14), 0 2px 4px oklch(.25 .03 var(--h) / .06);
+  --shadow-3: 0 18px 40px -8px oklch(.25 .03 var(--h) / .22), 0 4px 10px oklch(.25 .03 var(--h) / .08);
+}
+/* Semánticos — modo oscuro */
+:root[data-mode="dark"] {
+  color-scheme: dark;
+  --bg:        oklch(.185 .02 var(--h));
+  --surface:   oklch(.225 .022 var(--h));
+  --surface-2: oklch(.27 .024 var(--h));
+  --line:      oklch(.32 .024 var(--h));
+  --line-strong: oklch(.43 .026 var(--h));
+  --text:      oklch(.96 .008 var(--h));
+  --text-2:    oklch(.80 .014 var(--h));
+  --text-3:    oklch(.69 .016 var(--h));
+
+  --accent:        oklch(.76 calc(var(--c)*1.05) var(--h));
+  --accent-hover:  oklch(.82 calc(var(--c)*.95) var(--h));
+  --on-accent:     oklch(.2 .03 var(--h));
+  --accent-soft:   oklch(.31 calc(var(--c)*.55) var(--h));
+  --accent-soft-text: var(--a-200);
+  --focus:         oklch(.76 calc(var(--c)*1.05) var(--h));
+
+  --st-draft-bg: var(--surface-2);   --st-draft-fg: oklch(.80 .014 var(--h)); --st-draft-bd: var(--line-strong);
+  --st-pub-bg:   oklch(.30 .05 152);   --st-pub-fg: oklch(.86 .11 152);       --st-pub-bd: oklch(.46 .08 152);
+  --st-done-bg:  oklch(.30 .04 250);   --st-done-fg: oklch(.86 .08 250);      --st-done-bd: oklch(.46 .06 250);
+  --st-cancel-bg: oklch(.30 .05 25);   --st-cancel-fg: oklch(.86 .09 25);     --st-cancel-bd: oklch(.46 .09 25);
+
+  --shadow-1: 0 1px 2px oklch(0 0 0 / .35);
+  --shadow-2: 0 8px 20px -4px oklch(0 0 0 / .45);
+  --shadow-3: 0 20px 44px -8px oklch(0 0 0 / .55);
+}
+
+/* ============================================================
+   Base de la hoja de referencia
+   ============================================================ */
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 400 16px/1.55 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--t-base) var(--ease-out), color var(--t-base) var(--ease-out);
+}
+::selection { background: var(--accent-soft); color: var(--accent-soft-text); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--r-sm); }
+* { scrollbar-color: var(--line-strong) transparent; scrollbar-width: thin; }
+.num { font-variant-numeric: tabular-nums; }
+a { color: var(--accent); text-underline-offset: .2em; }
+
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+h1 { font-size: clamp(2.1rem, 6vw + .5rem, 3.4rem); line-height: 1.02; letter-spacing: -.025em; }
+h2 { font-size: 1.75rem; line-height: 1.12; margin-top: var(--s-8); margin-bottom: var(--s-3); }
+h3 { font-size: 1.125rem; line-height: 1.25; margin: var(--s-5) 0 var(--s-2); font-weight: 500; }
+p { margin: 0 0 var(--s-3); max-width: 68ch; color: var(--text-2); text-wrap: pretty; }
+code, .mono { font-family: var(--font-mono); font-size: .85em; }
+code { background: var(--surface-2); padding: 1px 6px; border-radius: var(--r-sm); color: var(--text); }
+
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 var(--s-4) var(--s-8); }
+
+/* Barra de control (sticky) */
+.controls {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in oklch, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.controls .in { max-width: 1040px; margin: 0 auto; padding: var(--s-2) var(--s-4); display: flex; flex-wrap: wrap; gap: var(--s-3) var(--s-5); align-items: center; }
+.group { display: flex; align-items: center; gap: var(--s-2); }
+.group > span { font-size: .8125rem; color: var(--text-3); font-weight: 500; }
+.seg { display: inline-flex; background: var(--surface-2); border-radius: var(--r-full); padding: 3px; gap: 2px; }
+.seg button {
+  min-height: 36px; padding: 0 14px; border: 0; background: transparent; color: var(--text-2);
+  font: 500 .875rem var(--font-body); border-radius: var(--r-full); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
+.seg .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--sw); }
+
+@media (max-width: 640px) {
+  .controls .in { gap: var(--s-2); padding: var(--s-2) var(--s-3); flex-wrap: nowrap; justify-content: space-between; }
+  .group > span { display: none; }
+  .seg button { padding: 0 10px; gap: 6px; font-size: .8125rem; }
+  .seg .dot { width: 10px; height: 10px; }
+}
+
+/* Cabecera con pentagrama */
+header.hero { padding: var(--s-7) 0 var(--s-6); position: relative; }
+.staff {
+  --gap: 9px;
+  height: calc(var(--gap) * 4 + 1px);
+  background: repeating-linear-gradient(to bottom, var(--line-strong) 0 1px, transparent 1px var(--gap));
+  margin-top: var(--s-5); max-width: 520px; position: relative;
+  mask-image: linear-gradient(to right, #000 55%, transparent);
+}
+.staff i { position: absolute; width: 14px; height: 10px; border-radius: 50%; background: var(--accent); transform: rotate(-20deg); }
+.staff i:nth-child(1){ left: 8%;  top: calc(var(--gap)*3 - 5px); }
+.staff i:nth-child(2){ left: 22%; top: calc(var(--gap)*2 - 5px); }
+.staff i:nth-child(3){ left: 36%; top: calc(var(--gap)*1 - 5px); }
+.staff i:nth-child(4){ left: 50%; top: calc(var(--gap)*2.5 - 5px); }
+
+/* Muestras */
+.ramp { display: grid; grid-template-columns: repeat(10, 1fr); border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line); }
+.ramp div { height: 64px; display: flex; align-items: flex-end; padding: 6px; font: 400 .6875rem var(--font-mono); color: var(--text); }
+.ramp div:nth-child(-n+6){ color: oklch(.2 .03 var(--h)); } .ramp div:nth-child(n+7){ color: oklch(.98 0 0); }
+@media (max-width: 640px) { .ramp { grid-template-columns: repeat(5, 1fr); } }
+
+.tokens { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 var(--s-5); margin-top: var(--s-3); }
+.tok { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) 0; border-bottom: 1px solid var(--line); }
+.tok .sw { width: 36px; height: 36px; border-radius: var(--r-sm); border: 1px solid var(--line); flex: none; }
+.tok b { display: block; font: 500 .8125rem var(--font-mono); color: var(--text); }
+.tok small { color: var(--text-3); font-size: .8125rem; }
+
+.status-row { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-top: var(--s-3); }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 12px 0 8px;
+  border-radius: var(--r-full); font: 500 .8125rem var(--font-body); border: 1px solid var(--bd); background: var(--bg-c); color: var(--fg);
+}
+.chip svg { width: 14px; height: 14px; }
+.chip.draft { --bg-c: var(--st-draft-bg); --fg: var(--st-draft-fg); --bd: var(--st-draft-bd); border-style: dashed; }
+.chip.pub   { --bg-c: var(--st-pub-bg);   --fg: var(--st-pub-fg);   --bd: var(--st-pub-bd); }
+.chip.done  { --bg-c: var(--st-done-bg);  --fg: var(--st-done-fg);  --bd: var(--st-done-bd); }
+.chip.cancel{ --bg-c: var(--st-cancel-bg);--fg: var(--st-cancel-fg);--bd: var(--st-cancel-bd); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+/* Tipografía */
+.type-row { display: grid; grid-template-columns: 150px 1fr; gap: var(--s-4); align-items: baseline; padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
+.type-row > small { color: var(--text-3); font: 400 .75rem var(--font-mono); }
+@media (max-width: 640px) { .type-row { grid-template-columns: 1fr; gap: 2px; } }
+.t-display { font: 700 2.25rem/1.05 var(--font-display); letter-spacing: -.02em; }
+.t-title   { font: 700 1.5rem/1.15 var(--font-display); letter-spacing: -.01em; }
+.t-sub     { font: 500 1.125rem/1.3 var(--font-display); }
+.t-body    { font: 400 1rem/1.55 var(--font-body); }
+.t-label   { font: 600 .875rem/1.3 var(--font-body); }
+.t-cap     { font: 400 .8125rem/1.4 var(--font-body); color: var(--text-2); }
+.t-chord   { font: 500 1rem/1.3 var(--font-mono); color: var(--accent); }
+
+/* Espaciado, forma, elevación */
+.space-row { display: flex; align-items: flex-end; gap: var(--s-4); flex-wrap: wrap; }
+.space-row div { text-align: center; font: 400 .75rem var(--font-mono); color: var(--text-3); }
+.space-row i { display: block; background: var(--accent-soft); border: 1px solid var(--a-400); margin: 0 auto 6px; border-radius: 2px; }
+.shapes { display: flex; gap: var(--s-4); flex-wrap: wrap; }
+.shapes div, .elev div { width: 110px; height: 72px; background: var(--surface); border: 1px solid var(--line-strong); display: grid; place-items: center; font: 400 .75rem var(--font-mono); color: var(--text-2); }
+.elev { display: flex; gap: var(--s-5); flex-wrap: wrap; padding: var(--s-4) 0; }
+.elev div { border: 1px solid var(--line); border-radius: var(--r-md); }
+
+/* Iconos */
+.icons { display: flex; flex-wrap: wrap; gap: var(--s-4); }
+.icons figure { margin: 0; width: 84px; text-align: center; font: 400 .75rem var(--font-mono); color: var(--text-3); }
+.icons svg { width: 28px; height: 28px; display: block; margin: 0 auto 6px; color: var(--text); stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+/* En contexto: pantalla móvil */
+.demo { display: grid; grid-template-columns: minmax(0, 390px) 1fr; gap: var(--s-6); align-items: start; }
+@media (max-width: 860px) { .demo { grid-template-columns: 1fr; } }
+.phone { background: var(--bg); border: 1px solid var(--line-strong); border-radius: 28px; padding: var(--s-4); box-shadow: var(--shadow-3); max-width: 390px; width: 100%; }
+.phone .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s-4); }
+.phone .top b { font: 700 1.125rem var(--font-display); }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; margin-bottom: var(--s-4); }
+.week span { font-size: .75rem; color: var(--text-3); }
+.week button {
+  min-height: var(--touch); border: 0; border-radius: var(--r-md); background: transparent; color: var(--text);
+  font: 500 .9375rem var(--font-body); cursor: pointer; position: relative; font-variant-numeric: tabular-nums;
+  transition: background var(--t-fast) var(--ease-out);
+}
+.week button:hover { background: var(--surface-2); }
+.week button.has::after { content: ""; position: absolute; left: 50%; bottom: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); transform: translateX(-50%); }
+.week button.sel { background: var(--accent); color: var(--on-accent); }
+.week button.sel::after { background: var(--on-accent); }
+.service { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: hidden; }
+.service .head { padding: var(--s-4); background: linear-gradient(var(--surface), var(--surface)) padding-box; position: relative; }
+.service .head .staff { position: absolute; right: 0; top: 14px; width: 140px; margin: 0; --gap: 6px; opacity: .8; }
+.service .head .staff i { display: none; }
+.service h3 { margin: var(--s-2) 0 2px; font-size: 1.25rem; font-weight: 700; }
+.service .meta { color: var(--text-2); font-size: .875rem; }
+.service ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.service li { display: flex; justify-content: space-between; align-items: center; min-height: var(--touch); padding: 0 var(--s-4); border-bottom: 1px solid var(--line); font-size: .9375rem; }
+.service li:last-child { border-bottom: 0; }
+.service li span:first-child { color: var(--text-2); }
+.btn {
+  min-height: var(--touch-lg); padding: 0 var(--s-5); border-radius: var(--r-md); border: 1px solid transparent;
+  font: 600 .9375rem var(--font-body); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+}
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.secondary { background: var(--surface); color: var(--text); border-color: var(--line-strong); }
+.btn.secondary:hover { background: var(--surface-2); }
+.btn.quiet { background: transparent; color: var(--accent); min-height: var(--touch); padding: 0 var(--s-3); }
+.btn.quiet:hover { background: var(--accent-soft); }
+.btn.danger { background: var(--st-cancel-bg); color: var(--st-cancel-fg); border-color: var(--st-cancel-bd); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.service .actions { display: flex; gap: var(--s-2); padding: var(--s-4); border-top: 1px solid var(--line); }
+.service .actions .btn:first-child { flex: 1; }
+.tone { font: 500 .8125rem var(--font-mono); background: var(--accent-soft); color: var(--accent-soft-text); padding: 2px 8px; border-radius: var(--r-sm); }
+.btns { display: flex; gap: var(--s-3); flex-wrap: wrap; margin-top: var(--s-3); }
+.field { display: grid; gap: 6px; max-width: 320px; margin-top: var(--s-4); }
+.field label { font: 600 .875rem var(--font-body); }
+.field input { min-height: var(--touch-lg); padding: 0 var(--s-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text); font: 400 1rem var(--font-body); }
+.field input::placeholder { color: var(--text-3); }
+.field input:focus-visible { outline-offset: 0; border-color: var(--focus); }
+.field small { color: var(--text-3); font-size: .8125rem; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <div class="in">
+    <div class="group" role="group" aria-label="Acento">
+      <span>Acento</span>
+      <div class="seg">
+        <button type="button" data-accent="salvia" aria-pressed="true" style="--sw:oklch(.5 .085 178)"><i class="dot"></i>Salvia</button>
+        <button type="button" data-accent="indigo" aria-pressed="false" style="--sw:oklch(.5 .15 272)"><i class="dot"></i>Índigo</button>
+        <button type="button" data-accent="ocre" aria-pressed="false" style="--sw:oklch(.5 .105 62)"><i class="dot"></i>Ocre</button>
+      </div>
+    </div>
+    <div class="group" role="group" aria-label="Modo">
+      <span>Modo</span>
+      <div class="seg">
+        <button type="button" data-mode="light" aria-pressed="true">Claro</button>
+        <button type="button" data-mode="dark" aria-pressed="false">Oscuro</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+<header class="hero">
+  <h1>Plan &amp; Lyrics<br>Fundamentos visuales</h1>
+  <p style="margin-top:var(--s-4)">Propuesta v0 para discutir. Tranquila y de trabajo (salvia) con un carácter musical (el pentagrama como trazo de identidad). Un solo tono gobierna acento y neutros, así que cambiar de color es cambiar un valor; Índigo y Ocre ya funcionan como prueba.</p>
+  <div class="staff" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+</header>
+
+<h2>Color</h2>
+<p>Definido en OKLCH. Los neutros llevan un tinte mínimo del tono del acento, de modo que cada tema se siente coherente y no pegado. Cambia el acento arriba y mira cómo se mueve todo.</p>
+
+<h3>Rampa del acento</h3>
+<div class="ramp" aria-label="Rampa del acento">
+  <div style="background:var(--a-50)">50</div><div style="background:var(--a-100)">100</div><div style="background:var(--a-200)">200</div><div style="background:var(--a-300)">300</div><div style="background:var(--a-400)">400</div>
+  <div style="background:var(--a-500)">500</div><div style="background:var(--a-600)">600</div><div style="background:var(--a-700)">700</div><div style="background:var(--a-800)">800</div><div style="background:var(--a-900)">900</div>
+</div>
+
+<h3>Tokens semánticos</h3>
+<p>Las pantallas usan solo estos nombres, nunca la rampa directa. Así el modo oscuro y los temas no requieren tocar componentes.</p>
+<div class="tokens">
+  <div class="tok"><i class="sw" style="background:var(--bg)"></i><div><b>--bg</b><small>Fondo de pantalla</small></div></div>
+  <div class="tok"><i class="sw" style="background:var(--surface)"></i><div><b>--surface</b><small>Tarjetas, campos, hojas</small></div></div>
+  <div class="tok"><i class="sw" style="background:var(--surface-2)"></i><div><b>--surface-2</b><small>Hover, filas, fondos suaves</small></div></div>
+  <div class="tok"><i class="sw" style="background:var(--line)"></i><div><b>--line</b><small>Separadores</small></div></div>
+  <div class="tok"><i class="sw" style="background:var(--line-strong)"></i><div><b>--line-strong</b><small>Bordes de controles</small></div></div>
+  <div class="tok"><i class="sw" style="background:var(--text)"></i><div><b>--text</b><small>Texto principal</small></div></div>
+  <div class="tok"><i class="sw" style="background:var(--text-2)"></i><div><b>--text-2</b><small>Texto secundario</small></div></div>
+  <div class="tok"><i class="sw" style="background:var(--text-3)"></i><div><b>--text-3</b><small>Ayudas, placeholders (≥ 4.5:1)</small></div></div>
+  <div class="tok"><i class="sw" style="background:var(--accent)"></i><div><b>--accent</b><small>Acción principal, selección</small></div></div>
+  <div class="tok"><i class="sw" style="background:var(--accent-soft)"></i><div><b>--accent-soft</b><small>Fondos de énfasis suave</small></div></div>
+</div>
+
+<h3>Estados de servicio</h3>
+<p>Fijos, no cambian con el tema. Nunca dependen solo del color: cada estado lleva forma de icono y tratamiento propio (borrador punteado, cancelado tachado).</p>
+<div class="status-row">
+  <span class="chip draft"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><circle cx="12" cy="12" r="8"/></svg>Borrador</span>
+  <span class="chip pub"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>Publicado</span>
+  <span class="chip done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Completado</span>
+  <span class="chip cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>Cancelado</span>
+</div>
+
+<h2>Tipografía</h2>
+<p>Tres voces con trabajo claro: <strong>Bricolage Grotesque</strong> para títulos (cálida, con carácter, sin parecer decorativa), <strong>Figtree</strong> para todo el texto de interfaz, y <strong>Spline Sans Mono</strong> solo para datos: tonalidad, acordes, BPM y compás. Fechas y horas usan cifras tabulares.</p>
+<div>
+  <div class="type-row"><small>Display · 36 / 700</small><span class="t-display">Viernes 6 de noviembre</span></div>
+  <div class="type-row"><small>Título · 24 / 700</small><span class="t-title">Servicio de oración</span></div>
+  <div class="type-row"><small>Subtítulo · 18 / 500</small><span class="t-sub">Participaciones del servicio</span></div>
+  <div class="type-row"><small>Cuerpo · 16 / 400</small><span class="t-body">Cada servicio pertenece a la iglesia activa; no hace falta elegirla de nuevo.</span></div>
+  <div class="type-row"><small>Etiqueta · 14 / 600</small><span class="t-label">Director del servicio</span></div>
+  <div class="type-row"><small>Apoyo · 13 / 400</small><span class="t-cap">Se creará en la primera fecha disponible del mes.</span></div>
+  <div class="type-row"><small>Dato · mono 16 / 500</small><span class="t-chord">G &nbsp; D/F♯ &nbsp; Em7 &nbsp; Cmaj7 &nbsp; · &nbsp; 72 BPM &nbsp; · &nbsp; 4/4</span></div>
+</div>
+
+<h2>Espaciado, forma y elevación</h2>
+<h3>Espaciado · base 4</h3>
+<div class="space-row">
+  <div><i style="width:4px;height:4px"></i>4</div><div><i style="width:8px;height:8px"></i>8</div><div><i style="width:12px;height:12px"></i>12</div>
+  <div><i style="width:16px;height:16px"></i>16</div><div><i style="width:24px;height:24px"></i>24</div><div><i style="width:32px;height:32px"></i>32</div>
+  <div><i style="width:48px;height:48px"></i>48</div><div><i style="width:72px;height:72px"></i>72</div>
+</div>
+<h3>Radios</h3>
+<div class="shapes">
+  <div style="border-radius:var(--r-sm)">6 · chips internos</div><div style="border-radius:var(--r-md)">10 · controles</div><div style="border-radius:var(--r-lg)">16 · tarjetas</div><div style="border-radius:var(--r-full)">999 · píldoras</div>
+</div>
+<h3>Elevación</h3>
+<p>Tres niveles con desplazamiento y desenfoque suaves. La mayor parte de la interfaz descansa en bordes; la sombra se reserva para lo que flota.</p>
+<div class="elev">
+  <div style="box-shadow:var(--shadow-1)">1 · tarjeta</div><div style="box-shadow:var(--shadow-2)">2 · menú</div><div style="box-shadow:var(--shadow-3)">3 · diálogo</div>
+</div>
+
+<h2>Iconos y táctil</h2>
+<p>Trazo de 1.75 px, extremos redondeados, cuadrícula de 24. Se dibujan en una sola familia (propuesta: Lucide, con estos como referencia). Los controles táctiles miden <code>44px</code> como mínimo y <code>48px</code> para acciones principales.</p>
+<div class="icons">
+  <figure><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>calendario</figure>
+  <figure><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>canción</figure>
+  <figure><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>persona</figure>
+  <figure><svg viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>lista</figure>
+  <figure><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>agregar</figure>
+  <figure><svg viewBox="0 0 24 24"><path d="M7 4 4 7l3 3M4 7h13a3 3 0 0 1 3 3M17 20l3-3-3-3M20 17H7a3 3 0 0 1-3-3"/></svg>intercambiar</figure>
+</div>
+
+<h2>Movimiento</h2>
+<p>Discreto: <code>140ms</code> en respuestas de control, <code>240ms</code> en cambios de superficie, siempre con salida exponencial (<code>cubic-bezier(.16,1,.3,1)</code>). Se anula con <em>reducir movimiento</em>. Prueba el cambio de tema arriba.</p>
+
+<h2>En contexto</h2>
+<p>Los mismos tokens aplicados a una pantalla móvil. Ejemplo de composición, no un diseño aprobado.</p>
+<div class="demo">
+  <div class="phone">
+    <div class="top"><b>Betel · Noviembre</b><button class="btn quiet" type="button">Hoy</button></div>
+    <div class="week" role="group" aria-label="Semana">
+      <span>D</span><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span>
+      <button type="button">1</button><button type="button">2</button><button type="button" class="has">3</button><button type="button">4</button><button type="button">5</button><button type="button" class="has sel" aria-pressed="true">6</button><button type="button">7</button>
+    </div>
+    <article class="service">
+      <div class="head">
+        <div class="staff" aria-hidden="true"></div>
+        <span class="chip pub"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>Publicado</span>
+        <h3>Servicio de oración</h3>
+        <div class="meta num">Viernes 6 · 19:30 · <span class="tone">G</span> tono inicial</div>
+      </div>
+      <ul>
+        <li><span>Dirección</span><b>Luis Ramírez</b></li>
+        <li><span>Batería</span><b>Pedro Gómez</b></li>
+        <li><span>Guitarra</span><b>Ana Torres</b></li>
+        <li><span>Voces</span><b>Marta, Diego</b></li>
+      </ul>
+      <div class="actions">
+        <button class="btn primary" type="button"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>Preparar setlist</button>
+        <button class="btn secondary" type="button" aria-label="Más acciones"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+      </div>
+    </article>
+  </div>
+
+  <div>
+    <h3 style="margin-top:0">Botones</h3>
+    <div class="btns">
+      <button class="btn primary" type="button">Principal</button>
+      <button class="btn secondary" type="button">Secundario</button>
+      <button class="btn quiet" type="button">Discreto</button>
+      <button class="btn danger" type="button">Cancelar servicio</button>
+      <button class="btn primary" type="button" disabled>Deshabilitado</button>
+    </div>
+    <h3>Campo</h3>
+    <div class="field">
+      <label for="dir">Director del servicio</label>
+      <input id="dir" placeholder="Buscar persona…">
+      <small>Busca entre las personas de tu iglesia.</small>
+    </div>
+  </div>
+</div>
+
+<h2>Decisiones abiertas</h2>
+<p>Familias tipográficas definitivas (se cargan desde Google Fonts solo para esta hoja; en la app se autoalojarían). Fijar si Ocre e Índigo se ofrecen al usuario o solo se conservan como arquitectura. Confirmar la rampa de estados con revisión de contraste real antes de tokenizar.</p>
+
+</main>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  function get(k){ try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function set(k, v){ try { localStorage.setItem(k, v); } catch (e) {} }
+  function apply(attr, val) {
+    root.setAttribute('data-' + attr, val);
+    document.querySelectorAll('[data-' + attr + ']').forEach(function (b) {
+      if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', String(b.getAttribute('data-' + attr) === val));
+    });
+  }
+  var accent = get('pl-accent') || 'salvia';
+  var mode = get('pl-mode') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  apply('accent', accent); apply('mode', mode);
+  document.querySelectorAll('.seg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var attr = b.hasAttribute('data-accent') ? 'accent' : 'mode';
+      var val = b.getAttribute('data-' + attr);
+      apply(attr, val); set('pl-' + attr, val);
+    });
+  });
+})();
+</script>
+</body>
+</html>
