@@ -12,6 +12,7 @@ Mockups HTML autocontenidos, sin build, con datos ficticios. Se abren directamen
 | Componentes | [componentes/index.html](design/componentes/index.html) | Componentes móviles comunes, construidos solo con los fundamentos. |
 | Pantalla | [pantallas/calendario.html](design/pantallas/calendario.html) | Calendario multimes y detalle del servicio. |
 | Pantalla | [pantallas/lote-mensual.html](design/pantallas/lote-mensual.html) | Creación mensual en lote: período, directores, revisión y resultado. |
+| Pantalla | [pantallas/servicio-nuevo.html](design/pantallas/servicio-nuevo.html) | Servicio individual: fecha, título, hora, estado, dirección y participaciones. |
 
 El recorrido de wireframes previo vive en [`design/programacion-mensual`](../design/programacion-mensual/mapa-y-recorrido.md); la alternativa 04 fue la referencia que originó estas pantallas.
 
@@ -78,9 +79,21 @@ Cuadrícula mensual con marca por estado, agenda del mes y detalle del servicio 
 
 Cuatro vistas: período, directores, revisión y resultado. Aplica las reglas de [Creación mensual en lote](producto.md): uno a tres días de la semana, directores asignados en orden cronológico y lote parcial permitido. Al terminar, enlaza con el calendario.
 
+### Servicio individual
+
+Formulario de una sola vista, sin selector de iglesia: el servicio pertenece a la iglesia activa.
+
+- **Fecha:** las próximas fechas habituales como opciones, más «Otra fecha» para un servicio especial. Las fechas con servicio llevan una marca y avisan sin bloquear; la resolución de colisiones sigue pendiente en el producto.
+- **Título y hora:** se precargan según el día elegido y se pueden editar. La hora es opcional y se puede quitar.
+- **Estado:** borrador o publicado al crear; completado y cancelado se cambian después.
+- **Dirección:** opcional, con el mismo selector de personas del lote.
+- **Participaciones:** vista previa de las habituales y los turnos que se cargarán según el día.
+
+Al crear, enlaza con el calendario igual que el lote.
+
 ## Pendientes
 
-- Servicio individual, configuración de participaciones, ajustes de la iglesia y directorio de personas.
+- Configuración de participaciones, ajustes de la iglesia y directorio de personas.
 - Unificar tokens en `apps/web` (Tailwind 4) cuando se implemente.
 - Probar teclado en pantalla, modo claro de las tarjetas por día y contraste en todos los temas.
 - Casos de producto abiertos que afectan estas pantallas: hoy y meses pasados, colisiones con servicios existentes, más directores que fechas, lote sin directores y homónimos.

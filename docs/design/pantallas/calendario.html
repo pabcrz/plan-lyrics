@@ -274,7 +274,7 @@ code { font: 400 .85em var(--font-mono); background: var(--surface-2); padding: 
 .sheet { width: 100%; background: var(--surface); border-radius: 20px 20px 0 0; padding: var(--s-2) var(--s-4) var(--s-5); box-shadow: var(--shadow-3); }
 .sheet .grab { width: 36px; height: 4px; border-radius: 4px; background: var(--line-strong); margin: var(--s-1) auto var(--s-3); }
 .sheet h2 { margin-bottom: var(--s-3); }
-.choice { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 64px; padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); text-align: left; cursor: pointer; margin-bottom: var(--s-2); }
+.choice { text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 64px; padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); text-align: left; cursor: pointer; margin-bottom: var(--s-2); }
 .choice:hover { background: var(--surface-2); }
 .choice .tile-i { width: 40px; height: 40px; border-radius: var(--r-md); background: var(--accent-soft); color: var(--accent-soft-text); display: grid; place-items: center; flex: none; }
 .choice b { display: block; font-weight: 600; }
@@ -532,8 +532,8 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     <div class="sheet fade" role="dialog" aria-modal="true" aria-labelledby="nwT">
       <div class="grab"></div>
       <h2 id="nwT">Nuevo</h2>
-      <button class="choice" type="button"><span class="tile-i"><svg class="ico"><use href="#i-cal"/></svg></span><span><b>Servicio individual</b><small>Una fecha, en Betel.</small></span></button>
-      <button class="choice" type="button"><span class="tile-i"><svg class="ico"><use href="#i-swap"/></svg></span><span><b>Lote mensual</b><small>Varias fechas de un mismo día de la semana.</small></span></button>
+      <a class="choice" href="servicio-nuevo.html"><span class="tile-i"><svg class="ico"><use href="#i-cal"/></svg></span><span><b>Servicio individual</b><small>Una fecha, en Betel.</small></span></a>
+      <a class="choice" href="lote-mensual.html"><span class="tile-i"><svg class="ico"><use href="#i-swap"/></svg></span><span><b>Lote mensual</b><small>Varias fechas de hasta 3 días de la semana.</small></span></a>
       <button class="btn quiet block" type="button" data-close>Cancelar</button>
     </div>
   </div>
@@ -587,7 +587,7 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     { d: 15, t: 'Servicio dominical',  h: '10:00', st: 'cancel', dir: 'Ana Torres' },
     { d: 20, t: 'Servicio de oración', h: '19:30', st: 'pub',    dir: 'Juan Pérez' }
   ].map(function (x) { x.y = 2026; x.m = 10; x.u = Date.UTC(2026, 10, x.d); return x; });
-  var V = { y: 2026, m: 10 }, cur = 6, showPast = false, newCount = 0;
+  var V = { y: 2026, m: 10 }, cur = 6, showPast = false, newCount = 0, newState = 'draft';
   function dowT(y, m, d) { return new Date(Date.UTC(y, m, d)).getUTCDay(); }
   function inView(x) { return x.y === V.y && x.m === V.m; }
   function monthList() { return S.filter(inView).sort(function (a, b) { return a.d - b.d; }); }
@@ -617,7 +617,7 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
       var dwn = DOW[dowT(s.y, s.m, s.d)];
       return '<button type="button" class="item' + (s.u < TODAY_T ? ' past' : '') + (s.d === cur ? ' cur' : '') + '" data-d="' + s.d + '">' +
         '<div class="dt"><b class="num">' + s.d + '</b><small>' + dwn + '</small></div>' +
-        '<div><strong>' + s.t + '</strong><span class="who">' + (s.dir ? s.dir + ' · ' : '<em class="nodir">Sin director</em> · ') + '<span class="num">' + s.h + '</span></span></div>' +
+        '<div><strong>' + s.t + '</strong><span class="who">' + (s.dir ? s.dir : '<em class="nodir">Sin director</em>') + (s.h ? ' · <span class="num">' + s.h + '</span>' : '') + '</span></div>' +
         chip(s.st) + '</button>';
     }).join('') : '<p class="hint" style="padding:var(--s-4) 0">Sin servicios este mes.</p>';
     var tp = $('#togglePast'); tp.hidden = past === 0;
@@ -625,7 +625,7 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     $('#aTitle').textContent = showPast ? 'Todo el mes' : 'Próximos servicios';
     $('#hintFree').hidden = !(V.y === 2026 && V.m === 10);
     var nn = $('#newNote'); nn.hidden = !newCount;
-    nn.innerHTML = newCount ? ico('i-check') + '<div><b>' + newCount + (newCount === 1 ? ' servicio nuevo' : ' servicios nuevos') + '</b>Quedaron como borrador, con sus participaciones cargadas.</div>' : '';
+    nn.innerHTML = newCount ? ico('i-check') + '<div><b>' + newCount + (newCount === 1 ? ' servicio nuevo' : ' servicios nuevos') + '</b>' + (newState === 'pub' ? 'Quedó publicado, con sus participaciones cargadas.' : 'Quedaron como borrador, con sus participaciones cargadas.') + '</div>' : '';
   }
   function select(d) { cur = d; renderGrid(); renderAgenda(); var el = $('.agenda .item.cur'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
   function shift(n) {
@@ -639,7 +639,7 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     var s = svc(cur) || S[2], ro = body.classList.contains('ro'), w = dowT(s.y, s.m, s.d);
     $('#dChip').className = 'chip ' + ST[s.st].cls; $('#dChip').innerHTML = ico(ST[s.st].icon) + ST[s.st].label;
     $('#dTitle').textContent = s.t;
-    $('#dDate').textContent = DOWL[w].charAt(0).toUpperCase() + DOWL[w].slice(1) + ' ' + s.d + ' de ' + MONF[s.m] + ' · ' + s.h;
+    $('#dDate').textContent = DOWL[w].charAt(0).toUpperCase() + DOWL[w].slice(1) + ' ' + s.d + ' de ' + MONF[s.m] + (s.h ? ' · ' + s.h : '');
     var rows = [
       ['Dirección', s.dir || ''],
       ['Batería', 'Pedro Gómez'], ['Guitarra', 'Ana Torres'], ['Piano', 'Ricardo Soto'], ['Voces', 'Marta, Diego']
@@ -692,8 +692,8 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     var hm = /lote=([^&]+)/.exec(location.hash);
     if (hm) {
       var made = JSON.parse(decodeURIComponent(hm[1]));
-      made.forEach(function (x) { var dt = new Date(x.u); S.push({ y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: dt.getUTCDate(), u: x.u, t: x.t, h: x.h, st: 'draft', dir: x.dir }); });
-      if (made.length) { var f = new Date(made[0].u); V.y = f.getUTCFullYear(); V.m = f.getUTCMonth(); cur = f.getUTCDate(); newCount = made.length; }
+      made.forEach(function (x) { var dt = new Date(x.u); S.push({ y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: dt.getUTCDate(), u: x.u, t: x.t, h: x.h, st: x.s || 'draft', dir: x.dir }); });
+      if (made.length) { var f = new Date(made[0].u); V.y = f.getUTCFullYear(); V.m = f.getUTCMonth(); cur = f.getUTCDate(); newCount = made.length; newState = made[0].s || 'draft'; }
     }
   } catch (e) {}
 
