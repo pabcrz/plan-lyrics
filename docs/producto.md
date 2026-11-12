@@ -41,10 +41,10 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 
 ### Creación mensual en lote
 
-- Dentro de la iglesia activa, seleccionar el mes y año y un día de la semana, por ejemplo viernes.
-- Si se elige el mes actual, considerar solo las fechas de ese día que resten del mes; si se elige un mes futuro, considerar todas las fechas de ese día dentro del mes elegido. Esas son las fechas disponibles, no una obligación de crear servicios para todas ellas. El tratamiento de la fecha de hoy y de meses pasados queda pendiente.
-- Asignar manualmente un director a cada fecha en orden cronológico. La referencia de interacción aceptada es la alternativa 04: pasos de período, directores por fecha y revisión; en móvil cada fecha aparece sobre su campo. Buscar personas existentes y tratar nombres nuevos según el directorio descrito arriba, sin exigir cuentas de acceso.
-- Permitir lotes parciales: si hay cuatro fechas disponibles y se ingresan tres directores, pedir confirmación indicando que se crearán tres de cuatro servicios, en las primeras tres fechas consecutivas y en el orden ingresado. Tras confirmar, crear solo esos tres servicios; no crear un servicio sin director para la cuarta fecha ni generar participaciones para ella. Las fechas restantes quedan sin programar para resolverlas después, por ejemplo ante incertidumbre de Navidad o fin de año.
+- Dentro de la iglesia activa, seleccionar el mes y año y de uno a tres días de la semana, por ejemplo viernes, o jueves y domingo. Decisión explícita: se permite elegir más de un día en el mismo lote, con un máximo de tres. Cada día elegido define su propio nombre de servicio y su hora.
+- Si se elige el mes actual, considerar solo las fechas de esos días que resten del mes; si se elige un mes futuro, considerar todas las fechas de esos días dentro del mes elegido. Con varios días, las fechas se ordenan en una sola secuencia cronológica. Esas son las fechas disponibles, no una obligación de crear servicios para todas ellas. El tratamiento de la fecha de hoy y de meses pasados queda pendiente.
+- Asignar manualmente un director a cada fecha en orden cronológico, aunque se mezclen días de la semana. La referencia de interacción aceptada es la alternativa 04: pasos de período, directores por fecha y revisión; en móvil cada fecha aparece sobre su campo. Buscar personas existentes y tratar nombres nuevos según el directorio descrito arriba, sin exigir cuentas de acceso.
+- Permitir lotes parciales: si hay cuatro fechas disponibles y se ingresan tres directores, pedir confirmación indicando que se crearán tres de cuatro servicios, en las primeras tres fechas consecutivas de esa secuencia (aunque correspondan a distintos días de la semana) y en el orden ingresado. Tras confirmar, crear solo esos tres servicios; no crear un servicio sin director para la cuarta fecha ni generar participaciones para ella. Las fechas restantes quedan sin programar para resolverlas después, por ejemplo ante incertidumbre de Navidad o fin de año.
 - Completar las participaciones mediante las asignaciones habituales y la modalidad de rotación configurada; agregar después el setlist manualmente.
 - No crear una recurrencia permanente de servicios. La secuencia de personas sí continúa entre lotes y meses según la rotación configurada; no se reinicia al crear otro lote.
 
@@ -113,7 +113,7 @@ No ampliar la primera entrega con confirmaciones de asistencia, servicios recurr
 
 - Un editor de servicios puede crear un servicio fechado dentro de la iglesia activa sin volver a indicar la iglesia; un integrante no puede crearlo.
 - Se pueden crear servicios en lote con participaciones generadas y completar sus setlists manualmente después.
-- Un lote mensual incluye solo las fechas del día elegido que resten del mes actual, o todas las del mes futuro elegido, y asigna directores en el orden ingresado.
+- Un lote mensual incluye solo las fechas de los días elegidos (hasta tres) que resten del mes actual, o todas las del mes futuro elegido, y asigna directores en el orden ingresado.
 - Los turnos respetan la modalidad configurada por rotación: independiente por día o compartida entre servicios; las participaciones generadas pueden corregirse manualmente.
 - Una persona puede ordenar canciones y otros momentos y asignar participantes con su rol musical, sin que dicho rol conceda permisos de edición.
 - Existe un único superadministrador, correspondiente a la persona propietaria del proyecto, con acceso total a todas las iglesias y capacidad de modificar todos los roles.
