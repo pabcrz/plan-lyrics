@@ -8,9 +8,11 @@ const url = process.env.TEST_DATABASE_URL
 if (!url || !/^postgresql:\/\/planlyrics_fixture@127\.0\.0\.1:\d+\/plan_lyrics_access_fixture$/.test(url)) throw new Error('Use pnpm test:db')
 const db = connectDatabase(url)
 const fixture = sessionFixture()
-const api = createApp(fixture.config, db)
+// Fixed clock: Thursday 12 Nov 2026, 12:00 in Mexico City. Dates below are valid unless a test says otherwise.
+let clock = new Date('2026-11-12T18:00:00Z')
+const api = createApp(fixture.config, db, () => clock)
 beforeAll(() => seedFixtures(db))
-beforeEach(() => db.service.deleteMany())
+beforeEach(() => { clock = new Date('2026-11-12T18:00:00Z'); return db.service.deleteMany() })
 afterAll(() => db.$disconnect())
 
 function call(subject: string | undefined, path: string, body?: unknown) {
@@ -103,8 +105,8 @@ test('rejects missing credentials before touching the database', async () => {
 test('lists a month only, with the director, in date order', async () => {
   await create('editor', { ...friday, date: '2026-12-04' })
   await create('editor', { ...friday, date: '2026-11-27' })
-  await create('editor', { ...friday, date: '2026-11-06' })
-  expect((await (await call('member', '/api/services?month=2026-11')).json()).map((s: { date: string }) => s.date)).toEqual(['2026-11-06', '2026-11-27'])
+  await create('editor', { ...friday, date: '2026-11-12' })
+  expect((await (await call('member', '/api/services?month=2026-11')).json()).map((s: { date: string }) => s.date)).toEqual(['2026-11-12', '2026-11-27'])
   expect((await call('member', '/api/services?month=2026-13')).status).toBe(400)
   expect((await call('member', '/api/services')).status).toBe(400)
 })
@@ -122,4 +124,18 @@ test('reads the active church context and its directory only for that church', a
   expect((await (await call('b-editor', '/api/active-church')).json()).sundayDouble).toBe(true)
   const people = await (await call('editor', '/api/people')).json()
   expect(people.map((p: { id: string }) => p.id).sort()).toEqual(['person-a', 'person-no-account'])
+})
+
+test('today is valid all day and past dates are rejected, with the boundary at Mexico City midnight', async () => {
+  // 23:59:59 on 13 Nov in Mexico City is already 14 Nov in UTC: the 13th is still today.
+  clock = new Date('2026-11-14T05:59:59Z')
+  expect((await create('editor', friday)).status).toBe(201)
+  const yesterday = await create('editor', { ...friday, date: '2026-11-12' })
+  expect(yesterday.status).toBe(400)
+  expect(await yesterday.json()).toEqual({ error: 'Date in the past' })
+  // One second later it is 00:00:00 on the 14th: the 13th is now in the past.
+  clock = new Date('2026-11-14T06:00:00Z')
+  expect((await create('editor', { ...friday, date: '2026-11-13', title: 'Otro' })).status).toBe(400)
+  expect((await create('editor', { ...friday, date: '2026-11-14', title: 'Hoy' })).status).toBe(201)
+  expect(await db.service.count()).toBe(2)
 })

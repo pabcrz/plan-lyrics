@@ -60,6 +60,7 @@ function Form({ church }: { church: Church }) {
   const { services, loading, error } = useServices(months)
   const people = usePeople(true)
   const slots = date ? freeSlots(church, date, services) : []
+  const past = Boolean(date) && date < today
   const full = Boolean(date) && !loading && slots.length === 0
   const doubleDay = church.sundayDouble && Boolean(date) && weekdayOf(date) === 0
   const matches = (people.data ?? []).filter((person) => person.name.toLowerCase().includes(query.trim().toLowerCase()))
@@ -83,7 +84,7 @@ function Form({ church }: { church: Church }) {
     event.preventDefault()
     setAttempted(true)
     setFailure('')
-    if (!date || full || !slot || !title.trim() || !director) return
+    if (!date || past || full || !slot || !title.trim() || !director) return
     setSending(true)
     try {
       await create({
@@ -128,7 +129,8 @@ function Form({ church }: { church: Church }) {
             </button>
           </div>
           {choice === 'other' && (
-            <TextField label="Día del servicio" type="date" value={other} onChange={(event) => pickDate(event.target.value, 'other')} />
+            <TextField label="Día del servicio" type="date" min={today} value={other} onChange={(event) => pickDate(event.target.value, 'other')}
+              error={other && other < today ? 'No se pueden crear servicios en fechas pasadas.' : undefined} />
           )}
           {attempted && !date && <p role="alert" className="m-0 text-[0.8125rem] font-medium text-cancel-fg">Elige una fecha.</p>}
           {date && <p className="m-0 text-[0.8125rem] text-text-2">{formatLongDay(date)}</p>}
@@ -163,7 +165,7 @@ function Form({ church }: { church: Church }) {
           error={people.isError ? 'No se pudo cargar el directorio.' : attempted && !director ? 'Elige quién dirige el servicio.' : undefined} />
 
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
-        <Button type="submit" variant="primary" block loading={sending} disabled={full}>Crear servicio</Button>
+        <Button type="submit" variant="primary" block loading={sending} disabled={full || past}>Crear servicio</Button>
       </form>
 
       <Sheet open={Boolean(wheel)} onClose={() => setWheel(null)} title="Hora de inicio">

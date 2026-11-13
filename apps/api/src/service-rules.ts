@@ -35,3 +35,8 @@ export function planSlot(input: { date: string; sundayDouble: boolean; slot?: 'M
 export function dateCapacity(date: string, sundayDouble: boolean) {
   return sundayDouble && weekdayOf(date) === 0 ? 2 : 1
 }
+
+/** Día de calendario actual en Ciudad de México; hoy es válido durante todo el día. */
+export function todayInZone(now: Date, zone = 'America/Mexico_City') {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+}

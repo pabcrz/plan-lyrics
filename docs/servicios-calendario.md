@@ -21,6 +21,7 @@ La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la 
 - Cuerpo estricto: un campo `churchId` se rechaza (`400`).
 - Una fecha admite un servicio; un domingo admite dos (mañana < 12:00 y tarde) solo si `Church.sundayDouble`. En domingo doble la franja es obligatoria y la hora debe caer en ella. Fuera de ahí no se acepta franja.
 - Fecha llena o franja repetida: `409 {"error":"Date full"}`. El conteo se serializa por iglesia (`FOR UPDATE`) y el índice único `(iglesia, fecha, franja)` actúa de respaldo.
+- Hoy (en `America/Mexico_City`) es válido todo el día; una fecha anterior se rechaza: `400 {"error":"Date in the past"}`. El límite es la medianoche local, no la de UTC.
 - Integrante: `403` al crear. Sin sesión: `401`.
 
 ## Pendiente de decisión de producto
@@ -30,6 +31,6 @@ Selector de iglesia activa con varias membresías; acceso del superadministrador
 ## Interfaz web (apps/web)
 
 - `/` (sesión iniciada): calendario del mes (`?mes=YYYY-MM`), semanas de domingo a sábado, marca por estado con icono y texto, agenda del mes, detalle del servicio con su dirección en una hoja inferior. Zona horaria `America/Mexico_City` para «hoy».
-- `/servicios/nuevo`: fechas habituales (las próximas cuatro, **empezando mañana**: incluir hoy sigue pendiente en producto) con la hora habitual debajo, fechas completas deshabilitadas, «Otra fecha» para un servicio especial, selector Mañana/Tarde en domingo doble, hora editable con la rueda y director obligatorio. La API vuelve a validar todo.
+- `/servicios/nuevo`: fechas habituales (las próximas cuatro, empezando mañana; hoy se elige con «Otra fecha», que no admite fechas pasadas) con la hora habitual debajo, fechas completas deshabilitadas, «Otra fecha» para un servicio especial, selector Mañana/Tarde en domingo doble, hora editable con la rueda y director obligatorio. La API vuelve a validar todo.
 - El botón «Nuevo» y el formulario solo se ofrecen a quien puede editar (`canEdit`); el servidor decide de todos modos.
 - `SessionCheck` ya no se muestra (la sesión se ejerce al cargar el calendario); su archivo y pruebas siguen en el repositorio.

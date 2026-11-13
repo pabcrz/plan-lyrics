@@ -6,7 +6,7 @@ import { safeErrorCode } from './errors.js'
 import { serviceRoutes } from './services.js'
 import { accountManagerBody, createUser, newUserBody, setAccountManager, userCapability } from './users.js'
 
-export function createApp(config: SessionConfig = {}, database?: PrismaClient) {
+export function createApp(config: SessionConfig = {}, database?: PrismaClient, now?: () => Date) {
   const app = new Hono<SessionEnvironment>()
   app.get('/api/health', (c) => c.json({ status: 'ok', service: 'plan-lyrics-api' }))
   app.get('/api/session', requireSession(config), (c) => c.json({ authenticated: true }))
@@ -49,7 +49,7 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient) {
       return c.json({ error: 'Access unavailable' }, 503)
     }
   })
-  app.route('/', serviceRoutes(config, database))
+  app.route('/', serviceRoutes(config, database, now))
   return app
 }
 

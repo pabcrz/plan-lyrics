@@ -112,3 +112,18 @@ test('members who can only read see a notice instead of the form', async () => {
   expect(await screen.findByText('Solo lectura')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Crear servicio' })).toBeNull()
 })
+
+test('a past date is refused in «Otra fecha» and cannot be submitted; today is allowed', async () => {
+  const calls = stubApi({})
+  form()
+  fireEvent.click(await date(/Otra fecha/))
+  const day = screen.getByLabelText('Día del servicio') as HTMLInputElement
+  expect(day.min).toBe('2026-11-12')
+  fireEvent.change(day, { target: { value: '2026-11-11' } })
+  expect(await screen.findByText('No se pueden crear servicios en fechas pasadas.')).toBeTruthy()
+  expect((screen.getByRole('button', { name: 'Crear servicio' }) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.change(day, { target: { value: '2026-11-12' } })
+  expect(screen.queryByText('No se pueden crear servicios en fechas pasadas.')).toBeNull()
+  expect((screen.getByRole('button', { name: 'Crear servicio' }) as HTMLButtonElement).disabled).toBe(false)
+  expect(calls.filter((call) => call.init?.method === 'POST')).toHaveLength(0)
+})

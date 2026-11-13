@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { newServiceBody, planSlot, weekdayOf } from './service-rules.js'
+import { newServiceBody, planSlot, todayInZone, weekdayOf } from './service-rules.js'
 
 const base = { title: 'Servicio', date: '2026-11-15', status: 'DRAFT', directorId: 'p1' }
 
@@ -44,4 +44,10 @@ describe('planSlot', () => {
     expect(planSlot({ date: '2026-11-15', sundayDouble: true, slot: 'AFTERNOON', time: '18:00' })).toEqual({ slot: 'AFTERNOON' })
     expect(planSlot({ date: '2026-11-15', sundayDouble: true, slot: 'AFTERNOON' })).toEqual({ slot: 'AFTERNOON' })
   })
+})
+
+test('today is the Mexico City day: the boundary is local midnight, not UTC midnight', () => {
+  expect(todayInZone(new Date('2026-11-14T05:59:59Z'))).toBe('2026-11-13') // 23:59:59 local
+  expect(todayInZone(new Date('2026-11-14T06:00:00Z'))).toBe('2026-11-14') // 00:00:00 local
+  expect(todayInZone(new Date('2026-11-13T00:30:00Z'))).toBe('2026-11-12') // UTC already the 13th
 })

@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { safeErrorCode } from './errors.js'
-import { dateCapacity, monthQuery, newServiceBody, planSlot } from './service-rules.js'
+import { dateCapacity, monthQuery, newServiceBody, planSlot, todayInZone } from './service-rules.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 
 export const timeZone = 'America/Mexico_City'
@@ -33,7 +33,7 @@ const present = (row: Row) => ({
   time: row.time, status: row.status, director: row.director.person,
 })
 
-export function serviceRoutes(config: SessionConfig, db?: PrismaClient) {
+export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () => Date = () => new Date()) {
   const routes = new Hono<SessionEnvironment>()
   routes.use('/api/active-church', requireSession(config))
   routes.use('/api/people', requireSession(config))
@@ -84,6 +84,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient) {
     const body = newServiceBody.safeParse(await c.req.json().catch(() => undefined))
     if (!body.success) return c.json({ error: 'Invalid request' }, 400)
     const { directorId, date, ...fields } = body.data
+    if (date < todayInZone(now())) return c.json({ error: 'Date in the past' }, 400)
     const plan = planSlot({ date, sundayDouble: church.sundayDouble, slot: fields.slot, time: fields.time })
     if ('error' in plan) return c.json({ error: plan.error }, 400)
     const dateValue = new Date(`${date}T00:00:00Z`)
