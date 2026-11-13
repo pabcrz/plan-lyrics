@@ -8,6 +8,7 @@ Lectura recomendada: primero el producto; consulta las demás guías según tu t
 | [Propuesta técnica](propuesta-tecnica.md) | Orientación técnica subordinada al producto. | Al explorar arquitectura o decisiones técnicas. |
 | [Diseño](propuestas/diseno.md) | Propuesta separada de pantallas, componentes y sistema visual. | Antes de diseñar o implementar interfaces. |
 | [Diseño visual](design.md) | Fundamentos, componentes y pantallas HTML de referencia (propuesta v0). | Antes de implementar o ampliar interfaces. |
+| [Servicios y calendario (API)](servicios-calendario.md) | Rutas, reglas y decisiones pendientes de la primera rebanada de servicios. | Al tocar servicios, calendario o iglesia activa. |
 | [Backend](propuestas/backend.md) | Propuesta de casos de uso, dominio y validación incremental. | Antes de construir la API y la persistencia. |
 | [Entrega integral](propuestas/entrega-integral.md) | Secuencia que conecta diseño, backend y verificación. | Para avanzar por resultados completos, no por capas aisladas. |
 | [Guía ChordPro](guia-chordpro.md) | Convenciones de formato musical. | Al trabajar con ChordPro o sus vistas. |

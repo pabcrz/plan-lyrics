@@ -9,6 +9,20 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ServiceStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+  CANCELLED
+}
+
+// SINGLE is the only slot of ordinary dates; MORNING/AFTERNOON exist only on a double Sunday.
+enum ServiceSlot {
+  SINGLE
+  MORNING
+  AFTERNOON
+}
+
 enum ChurchRole {
   ADMIN
   EDITOR
@@ -49,8 +63,12 @@ model Person {
 model Church {
   id String @id @default(cuid())
   name String
+  // Opt-in per church: Sunday may then hold a morning (before 12:00) and an afternoon service.
+  sundayDouble Boolean @default(false)
   people ChurchPerson[]
   memberships Membership[]
+  services Service[]
+  serviceDays ServiceDay[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -72,8 +90,41 @@ model ChurchPerson {
   personId String
   church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
   person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  directedServices Service[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@id([churchId, personId])
   @@index([personId])
+}
+
+// Habitual day of a church (0 = Sunday). Only prefills the form; never creates services.
+model ServiceDay {
+  churchId String
+  weekday Int
+  slot ServiceSlot @default(SINGLE)
+  time String
+  title String
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([churchId, weekday, slot])
+}
+
+model Service {
+  id String @id @default(cuid())
+  churchId String
+  title String
+  date DateTime @db.Date
+  slot ServiceSlot @default(SINGLE)
+  // Local start time "HH:mm" in America/Mexico_City; optional.
+  time String?
+  status ServiceStatus @default(DRAFT)
+  directorId String
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  // The director must belong to the same church: composite key, not just a Person id.
+  director ChurchPerson @relation(fields: [churchId, directorId], references: [churchId, personId], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([churchId, date, slot])
+  @@index([churchId, date])
 }
