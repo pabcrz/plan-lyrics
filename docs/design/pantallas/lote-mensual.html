@@ -464,6 +464,22 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
 .sheet .newopt { display: grid; gap: 0; }
 .opt .tagu { margin-left: auto; color: var(--text-3); font-size: .75rem; }
 .empty-q { padding: var(--s-4); color: var(--text-3); font-size: .9375rem; }
+/* Lote: lista de directores, opciones y filas bloqueadas */
+.row3 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.lrow { display: flex; align-items: center; gap: var(--s-2); min-height: 60px; padding: 0 var(--s-1) 0 var(--s-3); border-bottom: 1px solid var(--line); }
+.lrow:last-child { border-bottom: 0; }
+.lrow .ord { width: 16px; flex: none; text-align: center; color: var(--text-3); font: 500 .75rem var(--font-mono); }
+.lrow .avatar { width: 32px; height: 32px; font-size: .75rem; flex: none; }
+.lrow .nm { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 600; font-size: .9375rem; }
+.lrow .btn.icon { width: 40px; min-height: 40px; color: var(--text-3); flex: none; }
+.lrow .sp { width: 40px; flex: none; }
+.rlist .check { border-bottom: 1px solid var(--line); }
+.rlist .check:last-child { border-bottom: 0; }
+.list .li.lk { flex-wrap: wrap; row-gap: 2px; padding-top: var(--s-2); padding-bottom: var(--s-2); background: var(--surface-2); }
+.list .li.lk .v { color: var(--text-3); font-weight: 500; }
+.list .li .sub2 { flex-basis: 100%; color: var(--text-3); font-size: .8125rem; }
+.list .li.muted .v, .list .li.muted .k { color: var(--text-3); font-weight: 500; }
+.lbl-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
 </style>
 </head>
 <body>
@@ -511,7 +527,7 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     </div>
     <div class="prog" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
     <div class="scroll">
-      <div class="fh"><h1>Período</h1><p>Elegí el mes y hasta 3 días de la semana. Después asignás un director a cada fecha.</p></div>
+      <div class="fh"><h1>Período</h1><p>Elegí el mes y hasta 3 días de la semana. Después armás la lista de directores.</p></div>
 
       <div class="fgroup">
         <span class="lbl" id="lM">Mes</span>
@@ -542,8 +558,25 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     </div>
     <div class="prog" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></div>
     <div class="scroll">
-      <div class="fh"><h1>Directores</h1><p id="dSub">Uno por fecha, en orden. Podés dejar las últimas sin programar.</p></div>
-      <div class="drs" id="drs"></div>
+      <div class="fh"><h1>Directores</h1><p id="dSub"></p></div>
+
+      <div class="fgroup">
+        <span class="lbl" id="lD">Lista, en orden</span>
+        <div class="rlist" id="dlist" role="group" aria-labelledby="lD"></div>
+        <button class="pick" type="button" id="addDir"><span>Agregar director</span><svg class="ico"><use href="#i-plus"/></svg></button>
+      </div>
+
+      <div class="fgroup">
+        <div class="rlist">
+          <label class="check"><input type="checkbox" id="rep" checked><span>Repetir la lista hasta cubrir todas las fechas<small id="repS"></small></span></label>
+          <label class="check"><input type="checkbox" id="cont" checked><span>Continuar desde el lote anterior<small id="contS"></small></span></label>
+        </div>
+      </div>
+
+      <div class="fgroup">
+        <span class="lbl">Así quedan las fechas</span>
+        <div class="list" id="prev" aria-live="polite"></div>
+      </div>
     </div>
     <div class="foot">
       <button class="btn primary block" type="button" id="toRev" disabled>Revisar</button>
@@ -559,10 +592,11 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     </div>
     <div class="prog" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></div>
     <div class="scroll">
-      <div class="fh"><h1>Revisión</h1><p id="rSub"></p></div>
-      <div class="rv" id="rNotice"></div>
+      <div class="fh"><h1>Revisión</h1><p id="rSub"></p><p class="hintw" style="margin-top:6px">Tocá una fecha para cambiar su director, intercambiarla o quitarla.</p></div>
+      <div class="rv" id="rNotice" aria-live="polite"></div>
       <div class="block"><div class="list" id="rList"></div></div>
       <div class="skipped" id="rSkip" hidden></div>
+      <p class="fine" id="rLock" hidden></p>
       <p class="fine">Cada servicio se crea con sus participaciones habituales y los turnos que correspondan. El setlist se agrega después, a mano.</p>
     </div>
     <div class="foot">
@@ -601,6 +635,17 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     </div>
   </div>
 
+  <!-- ===== Hoja: acciones de una fecha ===== -->
+  <div class="scrim" id="sheetA" hidden>
+    <div class="sheet fade" role="dialog" aria-modal="true" aria-labelledby="aT">
+      <div class="grab"></div>
+      <h2 id="aT">Fecha</h2>
+      <p class="sub" id="aSub"></p>
+      <div id="aBody"></div>
+      <button class="btn quiet block" type="button" data-close>Cancelar</button>
+    </div>
+  </div>
+
 </div>
 </div>
 
@@ -630,44 +675,68 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
 
   /* ---- Datos ficticios · hoy = miércoles 4 nov 2026 ---- */
   var TODAY = Date.UTC(2026, 10, 4);
+  var SUN2 = true; /* ajuste de la iglesia: dos servicios los domingos (mañana antes de 12:00, tarde desde 12:00) */
   var DOWS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   var DOWF = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   var MON = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   var MONF = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   var MONTHS = [
-    { y: 2026, m: 10, t: 'Noviembre 2026', n: 'Solo las fechas que restan' },
+    { y: 2026, m: 10, t: 'Noviembre 2026', n: 'Desde hoy, inclusive' },
     { y: 2026, m: 11, t: 'Diciembre 2026', n: 'Todas las fechas del mes' },
     { y: 2027, m: 0,  t: 'Enero 2027',     n: 'Todas las fechas del mes' }
   ];
-  /* Fechas que ya tienen servicio (los mismos del calendario) */
-  var BUSY = {}; [1, 3, 6, 8, 13, 15, 20].forEach(function (d) { BUSY[Date.UTC(2026, 10, d)] = 1; });
+  /* Servicios que ya existen (los del calendario): fecha → {franja: descripción}. 'u' = única, 'm' = mañana, 't' = tarde */
+  var BUSY = {};
+  function busy(y, m, d, s, l) { var t = Date.UTC(y, m, d); (BUSY[t] = BUSY[t] || {})[s] = l; }
+  busy(2026, 10, 1, 'm', 'Servicio dominical · Luis Ramírez');
+  busy(2026, 10, 1, 't', 'Servicio de la tarde · Marta Salas');
+  busy(2026, 10, 6, 'u', 'Servicio de oración · Ana Torres');
+  busy(2026, 10, 8, 'm', 'Servicio dominical · Pedro Gómez');
+  busy(2026, 10, 13, 'u', 'Servicio de oración · Juan Pérez');
+  busy(2026, 10, 15, 'm', 'Servicio dominical · Diego Vera');
+  busy(2026, 10, 15, 't', 'Servicio de la tarde · Marta Salas');
+  busy(2026, 10, 20, 'u', 'Servicio de oración · Luis Ramírez');
+  /* Fechas sin culto */
+  var CLOSED = {}; CLOSED[Date.UTC(2026, 11, 25)] = 'Navidad'; CLOSED[Date.UTC(2027, 0, 1)] = 'Año Nuevo';
   var PEOPLE = [
     { n: 'Ana Torres', s: 'Guitarra' }, { n: 'Diego Vera', s: 'Voces' }, { n: 'Juan Pérez', s: 'Batería' },
     { n: 'Luis Ramírez', s: 'Piano' }, { n: 'Marta Salas', s: 'Voces' }, { n: 'Pedro Gómez', s: 'Batería' },
     { n: 'Ricardo Soto', s: 'Piano · Guitarra' }
   ];
+  /* Lote anterior: la lista continúa desde quien quedó al final */
+  var PREV = { list: ['Ana Torres', 'Diego Vera', 'Juan Pérez', 'Luis Ramírez'], last: 'Diego Vera' };
 
-  var st = { mi: 1, wd: [5], dirs: [], slot: -1, cfg: {} };
-  function cfgOf(w) { if (!st.cfg[w]) st.cfg[w] = w === 0 ? { name: 'Servicio dominical', time: '10:00' } : { name: 'Servicio de oración', time: '19:30' }; return st.cfg[w]; }
+  var st = { mi: 1, wd: [5], cfg: {}, list: PREV.list.map(function (n) { return { n: n }; }), rep: true, cont: true, asg: [], rm: [], sw: null };
+  var pk = null;
+  function cfgOf(w) { if (!st.cfg[w]) st.cfg[w] = w === 0 ? { name: 'Servicio dominical', time: '10:00', time2: '18:00' } : { name: 'Servicio de oración', time: '19:30' }; return st.cfg[w]; }
   function wdText() { var a = st.wd.slice().sort().map(function (i) { return pl(i); }); return a.length > 1 ? a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1] : a[0]; }
 
   function fmt(t) { var d = new Date(t); return DOWS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MON[d.getUTCMonth()]; }
   function fmtF(t) { var d = new Date(t); return DOWF[d.getUTCDay()] + ' ' + d.getUTCDate() + ' de ' + MONF[d.getUTCMonth()]; }
   function pl(i) { var w = DOWF[i].toLowerCase(); return /s$/.test(w) ? w : w + 's'; }
   function initials(n) { return n.split(/\s+/).slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join(''); }
+  function timeOf(e) { var c = cfgOf(new Date(e.t).getUTCDay()); return e.s === 't' ? c.time2 : c.time; }
+  function lbl(e) { return fmt(e.t) + ' · ' + timeOf(e); }
+  function lblF(e) { return fmtF(e.t) + ' · ' + timeOf(e); }
+  function sunOk() { if (!SUN2 || st.wd.indexOf(0) < 0) return true; var c = cfgOf(0); return !!c.time && !!c.time2 && c.time < '12:00' && c.time2 >= '12:00'; }
 
-  /* Fechas del día elegido: [{t, busy}] */
+  /* Entradas del período: [{t, s, lock}] (hoy incluido; los domingos con dos servicios traen dos entradas) */
   function dates() {
-    var M = MONTHS[st.mi], out = [], last = new Date(Date.UTC(M.y, M.m + 1, 0)).getUTCDate(), d, t;
+    var M = MONTHS[st.mi], out = [], last = new Date(Date.UTC(M.y, M.m + 1, 0)).getUTCDate(), d, t, dow;
     for (d = 1; d <= last; d++) {
-      t = Date.UTC(M.y, M.m, d);
-      if (st.wd.indexOf(new Date(t).getUTCDay()) < 0) continue;
-      if (t <= TODAY) continue; /* hoy y pasado quedan fuera (regla de hoy pendiente) */
-      out.push({ t: t, busy: !!BUSY[t] });
+      t = Date.UTC(M.y, M.m, d); dow = new Date(t).getUTCDay();
+      if (st.wd.indexOf(dow) < 0 || t < TODAY) continue;
+      (dow === 0 && SUN2 ? ['m', 't'] : ['u']).forEach(function (s) {
+        var lock = null;
+        if (CLOSED[t]) lock = { k: 'closed', l: CLOSED[t] };
+        else if (BUSY[t] && BUSY[t][s]) lock = { k: 'busy', l: BUSY[t][s] };
+        out.push({ t: t, s: s, lock: lock });
+      });
     }
     return out;
   }
-  function free() { return dates().filter(function (x) { return !x.busy; }); }
+  function free() { return dates().filter(function (x) { return !x.lock; }); }
+  function resetAsg() { st.asg = []; st.rm = []; }
 
   /* ---- Paso 1 ---- */
   function renderMonths() {
@@ -685,70 +754,100 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
   function renderCfg() {
     $('#cfg').innerHTML = st.wd.slice().sort().map(function (w) {
       var c = cfgOf(w);
+      if (w === 0 && SUN2) {
+        return '<div class="cfgc"><h3>Domingo · dos servicios</h3><div class="field"><label for="n0">Nombre del servicio</label><input class="input" id="n0" data-w="0" data-k="name" value="' + esc(c.name) + '" autocomplete="off"></div>' +
+               '<div class="row3"><div class="field"><label for="t0">Hora de la mañana</label><input class="input num" id="t0" data-w="0" data-k="time" type="time" value="' + c.time + '"></div>' +
+               '<div class="field"><label for="u0">Hora de la tarde</label><input class="input num" id="u0" data-w="0" data-k="time2" type="time" value="' + c.time2 + '"></div></div>' +
+               '<p class="hintw">Tu iglesia tiene dos servicios los domingos: la mañana va antes de las 12:00 y la tarde desde las 12:00. Cada uno lleva su director.</p></div>';
+      }
       return '<div class="cfgc"><h3>' + DOWF[w] + '</h3><div class="row2"><div class="field"><label for="n' + w + '">Nombre del servicio</label><input class="input" id="n' + w + '" data-w="' + w + '" data-k="name" value="' + esc(c.name) + '" autocomplete="off"></div><div class="field"><label for="t' + w + '">Hora</label><input class="input num" id="t' + w + '" data-w="' + w + '" data-k="time" type="time" value="' + c.time + '"></div></div></div>';
     }).join('');
   }
-  $('#cfg').addEventListener('input', function (e) { var i = e.target; if (i.dataset.w) cfgOf(+i.dataset.w)[i.dataset.k] = i.value; });
+  $('#cfg').addEventListener('input', function (e) { var i = e.target; if (i.dataset.w) { cfgOf(+i.dataset.w)[i.dataset.k] = i.value; renderAvail(); } });
+  function chipTxt(x) { return fmt(x.t) + (x.s === 'u' ? '' : ' · ' + timeOf(x)) + (x.lock && x.lock.k === 'closed' ? ' · sin culto' : ''); }
   function renderAvail() {
-    var all = dates(), f = free(), busy = all.length - f.length, h;
+    var all = dates(), f = all.filter(function (x) { return !x.lock; }), lock = all.length - f.length, h;
     if (!f.length) {
       h = '<h2>Sin fechas disponibles</h2><p class="legend" style="font-size:.9375rem;color:var(--text-2)">No hay ' + wdText() + ' libres en ' + MONTHS[st.mi].t + '. Probá con otro mes o día.</p>';
-      if (all.length) h += '<div class="chips">' + all.map(function (x) { return '<span class="dchip x">' + fmt(x.t) + '</span>'; }).join('') + '</div><p class="legend">Ya tienen servicio.</p>';
+      if (all.length) h += '<div class="chips">' + all.map(function (x) { return '<span class="dchip x">' + chipTxt(x) + '</span>'; }).join('') + '</div><p class="legend">Ya tienen servicio o no hay culto.</p>';
     } else {
       h = '<h2>' + f.length + (f.length === 1 ? ' fecha disponible' : ' fechas disponibles') + ' · ' + wdText() + '</h2>' +
-          '<div class="chips">' + all.map(function (x) { return '<span class="dchip' + (x.busy ? ' x' : '') + '">' + fmt(x.t) + '</span>'; }).join('') + '</div>' +
-          (busy ? '<p class="legend">Tachadas: ya tienen servicio y no se tocan.</p>' : '');
+          '<div class="chips">' + all.map(function (x) { return '<span class="dchip' + (x.lock ? ' x' : '') + '">' + chipTxt(x) + '</span>'; }).join('') + '</div>' +
+          (lock ? '<p class="legend">Tachadas: ya tienen servicio o no hay culto. No se tocan.</p>' : '');
     }
+    if (!sunOk()) h += '<div class="notice warn">' + ico('i-info') + '<div><b>Revisa las horas del domingo</b>La mañana debe ser antes de las 12:00 y la tarde desde las 12:00.</div></div>';
     $('#avail').innerHTML = h;
-    $('#toDir').disabled = !f.length;
+    $('#toDir').disabled = !f.length || !sunOk();
   }
-  $('#months').addEventListener('click', function (e) { var b = e.target.closest('.mopt'); if (!b) return; st.mi = +b.dataset.mi; st.dirs = []; renderMonths(); renderAvail(); });
+  $('#months').addEventListener('click', function (e) { var b = e.target.closest('.mopt'); if (!b) return; st.mi = +b.dataset.mi; resetAsg(); renderMonths(); renderAvail(); });
   $('#wd').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b || b.disabled) return; var w = +b.dataset.wd, k = st.wd.indexOf(w);
     if (k > -1) { if (st.wd.length > 1) st.wd.splice(k, 1); } else if (st.wd.length < 3) st.wd.push(w);
-    st.dirs = []; renderWd(); renderAvail(); });
+    resetAsg(); renderWd(); renderAvail(); });
 
-  /* ---- Paso 2 ---- */
+  /* ---- Paso 2: lista ordenada de directores ---- */
+  function prevIdx() { var k = -1; st.list.forEach(function (p, i) { if (p.n === PREV.last) k = i; }); return k; }
+  function startIdx() { var L = st.list.length, k = prevIdx(); return (L && st.cont && k > -1) ? (k + 1) % L : 0; }
+  function compute() {
+    var f = free(), L = st.list.length, off = startIdx();
+    return f.map(function (x, i) { return (L && (st.rep || i < L)) ? st.list[(off + i) % L] : null; });
+  }
+  function lockRow(e) {
+    return '<div class="li static lk"><span class="k num">' + lbl(e) + '</span><span class="v">' + ico('i-lock') + (e.lock.k === 'closed' ? 'Sin culto' : 'Ya tiene servicio') + '</span><span class="sub2">' + esc(e.lock.l) + '</span></div>';
+  }
   function renderDirs() {
-    var f = free(), n = st.dirs.length;
-    $('#dSub').textContent = n + ' de ' + f.length + ' con director. Se asignan en orden; podés dejar las últimas sin programar.';
-    $('#drs').innerHTML = f.map(function (x, i) {
-      var d = st.dirs[i], body;
-      if (d) {
-        body = '<div class="filled"><span>' + esc(d.n) + (d.isNew ? ' <em class="newtag" style="font-style:normal">Nueva</em>' : '') + '</span>' +
-               (i === n - 1 ? '<button class="btn quiet icon" type="button" data-clear="' + i + '" aria-label="Quitar a ' + esc(d.n) + '">' + ico('i-x') + '</button>' : '') + '</div>';
-      } else if (i === n) {
-        body = '<button class="pick" type="button" data-pick="' + i + '"><span>Elegir director</span>' + ico('i-plus') + '</button>';
-      } else {
-        body = '<div class="lockd">' + ico('i-lock') + 'Sin programar</div>';
-      }
-      return '<div class="dr' + (!d && i !== n ? ' empty' : '') + '"><div class="d"><b>' + fmtF(x.t) + '</b><small class="num">' + (i + 1) + ' de ' + f.length + '</small></div>' + body + '</div>';
+    var f = free(), L = st.list.length, off = startIdx(), asg = compute(), n = asg.filter(Boolean).length, k = prevIdx(), all = dates(), j = 0;
+    $('#dSub').textContent = L ? n + ' de ' + f.length + (f.length === 1 ? ' fecha con director.' : ' fechas con director.') : 'Agregá al menos un director para continuar.';
+    $('#dlist').innerHTML = L ? st.list.map(function (p, i) {
+      return '<div class="lrow"><span class="ord">' + (i + 1) + '</span><span class="avatar">' + initials(p.n) + '</span><span class="nm">' + esc(p.n) +
+        (p.isNew ? ' <em class="newtag">Nueva</em>' : '') + (st.cont && k > -1 && i === off ? ' <em class="newtag">Empieza</em>' : '') + '</span>' +
+        (i > 0 ? '<button class="btn quiet icon" type="button" data-up="' + i + '" aria-label="Subir a ' + esc(p.n) + '"><svg class="ico" style="transform:rotate(180deg)"><use href="#i-down"/></svg></button>' : '<span class="sp"></span>') +
+        '<button class="btn quiet icon" type="button" data-rm="' + i + '" aria-label="Quitar a ' + esc(p.n) + ' de la lista">' + ico('i-x') + '</button></div>';
+    }).join('') : '<p class="empty-q">La lista está vacía.</p>';
+    $('#rep').checked = st.rep; $('#cont').checked = st.cont;
+    $('#repS').textContent = !L ? '' : st.rep
+      ? (L < f.length ? 'Con ' + L + (L === 1 ? ' persona' : ' personas') + ' y ' + f.length + ' fechas, la fecha ' + (L + 1) + ' la toma ' + st.list[(off + L) % L].n + '.' : 'La lista alcanza para todas las fechas.')
+      : (L < f.length ? 'Solo se programan las primeras ' + L + ' fechas; el resto queda sin programar.' : 'La lista alcanza para todas las fechas.');
+    $('#contS').textContent = !st.cont ? 'Empieza desde el primero de la lista.'
+      : k > -1 ? 'El lote anterior terminó con ' + PREV.last + '; este empieza con ' + st.list[off].n + '.'
+      : PREV.last + ' ya no está en la lista; empieza el primero.';
+    $('#prev').innerHTML = all.map(function (e) {
+      if (e.lock) return lockRow(e);
+      var p = asg[j++];
+      return '<div class="li static' + (p ? '' : ' muted') + '"><span class="k num">' + lbl(e) + '</span><span class="v">' + (p ? esc(p.n) : 'Sin programar') + '</span></div>';
     }).join('');
     $('#toRev').disabled = n === 0;
   }
-  $('#drs').addEventListener('click', function (e) {
-    var p = e.target.closest('[data-pick]'), c = e.target.closest('[data-clear]');
-    if (p) openPicker(+p.dataset.pick);
-    if (c) { st.dirs.pop(); renderDirs(); }
+  $('#dlist').addEventListener('click', function (e) {
+    var u = e.target.closest('[data-up]'), r = e.target.closest('[data-rm]');
+    if (u) { var i = +u.dataset.up, t = st.list[i - 1]; st.list[i - 1] = st.list[i]; st.list[i] = t; }
+    else if (r) st.list.splice(+r.dataset.rm, 1);
+    else return;
+    renderDirs();
+  });
+  $('#rep').addEventListener('change', function (e) { st.rep = e.target.checked; renderDirs(); });
+  $('#cont').addEventListener('change', function (e) { st.cont = e.target.checked; renderDirs(); });
+  $('#addDir').addEventListener('click', function () {
+    openPicker('Se suma al final de la lista', st.list.map(function (p) { return p.n; }), 'Ya está en la lista', true, function (p) { st.list.push(p); renderDirs(); });
   });
 
   /* ---- Selector de persona ---- */
   var lastFocus = null;
   function openSheet(id) { lastFocus = document.activeElement; var sh = $(id); sh.hidden = false; var f = $('input, button', sh); if (f) f.focus(); }
   function closeSheet(sh) { sh.hidden = true; if (lastFocus && lastFocus.focus) lastFocus.focus(); }
-  function openPicker(i) {
-    st.slot = i;
-    $('#pSub').textContent = fmtF(free()[i].t);
+  function openPicker(sub, used, tag, block, cb) {
+    pk = { used: used, tag: tag, block: block, cb: cb };
+    $('#pSub').textContent = sub;
     $('#pQ').value = ''; renderPicker();
     openSheet('#sheetP');
   }
   function renderPicker() {
     var q = $('#pQ').value.trim(), ql = q.toLowerCase();
-    var used = st.dirs.map(function (d) { return d.n; });
     var list = PEOPLE.filter(function (p) { return !ql || p.n.toLowerCase().indexOf(ql) > -1; });
-    var exact = PEOPLE.some(function (p) { return p.n.toLowerCase() === ql; });
+    var exact = PEOPLE.some(function (p) { return p.n.toLowerCase() === ql; }) || pk.used.some(function (n) { return n.toLowerCase() === ql; });
     var h = list.map(function (p) {
-      return '<button class="opt" role="option" type="button" data-person="' + esc(p.n) + '"><span class="avatar">' + initials(p.n) + '</span><span><b>' + esc(p.n) + '</b><small>' + esc(p.s) + '</small></span>' +
-             (used.indexOf(p.n) > -1 ? '<span class="tagu">Ya dirige en este lote</span>' : '') + '</button>';
+      var u = pk.used.indexOf(p.n) > -1;
+      return '<button class="opt" role="option" type="button" data-person="' + esc(p.n) + '"' + (u && pk.block ? ' disabled' : '') + '><span class="avatar">' + initials(p.n) + '</span><span><b>' + esc(p.n) + '</b><small>' + esc(p.s) + '</small></span>' +
+             (u ? '<span class="tagu">' + pk.tag + '</span>' : '') + '</button>';
     }).join('');
     if (q && !exact) h += '<button class="opt add" role="option" type="button" data-new="' + esc(q) + '"><span class="plus">' + ico('i-plus') + '</span><span>Agregar «' + esc(q) + '» como persona nueva</span></button>';
     if (!h) h = '<p class="empty-q">Escribí un nombre para buscar o agregar.</p>';
@@ -757,44 +856,97 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
   }
   $('#pQ').addEventListener('input', renderPicker);
   $('#pList').addEventListener('click', function (e) {
-    var b = e.target.closest('.opt'); if (!b) return;
-    if (b.dataset.person) st.dirs[st.slot] = { n: b.dataset.person };
-    else if (b.dataset.new) st.dirs[st.slot] = { n: b.dataset.new, isNew: true, save: $('#pSave input').checked };
+    var b = e.target.closest('.opt'); if (!b || b.disabled) return;
+    var p;
+    if (b.dataset.person) p = { n: b.dataset.person };
+    else if (b.dataset.new) p = { n: b.dataset.new, isNew: true, save: $('#pSave input').checked };
     else return;
-    closeSheet($('#sheetP')); renderDirs();
+    closeSheet($('#sheetP')); pk.cb(p);
   });
 
-  /* ---- Paso 3 ---- */
-  function skippedHtml(f, n, big) {
-    var rest = f.slice(n);
-    if (!rest.length) return '';
-    return '<b>Sin programar</b><span>' + rest.map(function (x) { return fmt(x.t); }).join(', ') + '. ' + (big ? 'No se crea servicio ni participaciones para ' + (rest.length === 1 ? 'esta fecha' : 'estas fechas') + '; las resolvés después.' : (rest.length === 1 ? 'Queda' : 'Quedan') + ' para resolver después.') + '</span>';
+  /* ---- Paso 3: revisión, cambio e intercambio ---- */
+  function skippedHtml(es, big) {
+    if (!es.length) return '';
+    return '<b>Sin programar</b><span>' + es.map(lbl).join(', ') + '. ' + (big ? 'No se crea servicio ni participaciones para ' + (es.length === 1 ? 'esta fecha' : 'estas fechas') + '; ' + (es.length === 1 ? 'la resolvés' : 'las resolvés') + ' después.' : (es.length === 1 ? 'Queda' : 'Quedan') + ' para resolver después.') + '</span>';
   }
+  function incl(i) { return !!st.asg[i] && !st.rm[i]; }
   function renderReview() {
-    var f = free(), n = st.dirs.length, partial = n < f.length;
+    var f = free(), n = 0, rmN = 0, un = 0, lockN = dates().length - f.length;
+    f.forEach(function (x, i) { if (!st.asg[i]) un++; else if (st.rm[i]) rmN++; else n++; });
     $('#rSub').textContent = MONTHS[st.mi].t + ' · ' + wdText();
+    var partial = n < f.length;
     $('#rNotice').innerHTML = partial
-      ? '<div class="notice warn">' + ico('i-info') + '<div><b>Se crearán ' + n + ' de ' + f.length + ' servicios</b>En las primeras ' + n + ' fechas, en el orden ingresado.</div></div>'
+      ? '<div class="notice warn">' + ico('i-info') + '<div><b>Se crearán ' + n + ' de ' + f.length + ' servicios</b>' + (un && !rmN ? 'En las primeras ' + n + ' fechas, en el orden ingresado.' : 'Las demás fechas quedan sin programar.') + '</div></div>'
       : '<div class="notice">' + ico('i-check') + '<div><b>Se crearán ' + n + ' de ' + f.length + ' servicios</b>Uno por cada fecha disponible.</div></div>';
-    $('#rList').innerHTML = st.dirs.map(function (d, i) {
-      return '<div class="li static"><span class="k num">' + fmt(f[i].t) + ' · ' + cfgOf(new Date(f[i].t).getUTCDay()).time + '</span><span class="v">' + esc(d.n) + '</span></div>';
+    $('#rList').innerHTML = f.map(function (x, i) {
+      if (!st.asg[i]) return '<div class="li static muted"><span class="k num">' + lbl(x) + '</span><span class="v">Sin programar</span></div>';
+      if (st.rm[i]) return '<button class="li muted" type="button" data-row="' + i + '" aria-label="' + lblF(x) + ', quitada del lote. Opciones"><span class="k num">' + lbl(x) + '</span><span class="v">Quitada del lote ' + ico('i-more') + '</span></button>';
+      return '<button class="li" type="button" data-row="' + i + '" aria-label="' + lblF(x) + ', ' + esc(st.asg[i].n) + '. Opciones"><span class="k num">' + lbl(x) + '</span><span class="v">' + esc(st.asg[i].n) + ico('i-more') + '</span></button>';
     }).join('');
-    var sk = $('#rSkip'); sk.innerHTML = skippedHtml(f, n, true); sk.hidden = !partial;
-    $('#doCreate').textContent = 'Crear ' + n + (n === 1 ? ' servicio' : ' servicios');
+    var sk = $('#rSkip'); sk.innerHTML = skippedHtml(f.filter(function (x, i) { return !incl(i); }), true); sk.hidden = !partial;
+    var lk = $('#rLock'); lk.hidden = !lockN; lk.textContent = lockN + (lockN === 1 ? ' fecha se saltó' : ' fechas se saltaron') + ': ya tienen servicio o no hay culto.';
+    var btn = $('#doCreate'); btn.disabled = n === 0; btn.textContent = n ? 'Crear ' + n + (n === 1 ? ' servicio' : ' servicios') : 'Sin servicios para crear';
   }
+  function renderA() {
+    var s = st.sw, f = free(), e = f[s.i], h, me = st.asg[s.i];
+    $('#aT').textContent = lblF(e);
+    function opt(a, t, sm, extra) { return '<button class="mopt" type="button" data-a="' + a + '"' + (extra || '') + '><span>' + t + (sm ? '<small>' + sm + '</small>' : '') + '</span>' + ico('i-right') + '</button>'; }
+    if (s.mode === 'menu') {
+      if (st.rm[s.i]) { $('#aSub').textContent = 'Quitada del lote. Director anterior: ' + me.n + '.'; h = '<div class="rlist">' + opt('back', 'Volver a incluir en el lote', 'Con ' + esc(me.n) + ' como director.') + '</div>'; }
+      else {
+        $('#aSub').textContent = 'Director: ' + me.n;
+        h = '<div class="rlist">' + opt('change', 'Cambiar director', 'Solo en esta fecha; las demás no cambian.') + opt('swap', 'Intercambiar con otra fecha', 'Se muestran ambas fechas antes de confirmar.') + opt('remove', 'Quitar de este lote', 'Queda sin programar.') + '</div>';
+      }
+    } else if (s.mode === 'pick') {
+      $('#aSub').textContent = 'Elegí la fecha con la que intercambiar a ' + me.n + '.';
+      var c = f.map(function (x, j) { return incl(j) && j !== s.i && st.asg[j].n !== me.n ? '<button class="mopt" type="button" data-j="' + j + '"><span>' + lbl(x) + '<small>' + esc(st.asg[j].n) + '</small></span>' + ico('i-right') + '</button>' : ''; }).join('');
+      h = c ? '<div class="rlist">' + c + '</div>' : '<p class="empty-q">No hay otra fecha con un director distinto.</p>';
+    } else {
+      var o = f[s.j], you = st.asg[s.j];
+      $('#aSub').textContent = 'Revisá los dos cambios antes de confirmar.';
+      h = '<div class="list"><div class="li static"><span class="k num">' + lbl(e) + '</span><span class="v">' + esc(me.n) + ' → ' + esc(you.n) + '</span></div><div class="li static"><span class="k num">' + lbl(o) + '</span><span class="v">' + esc(you.n) + ' → ' + esc(me.n) + '</span></div></div>' +
+          '<p class="fine" style="margin:var(--s-3) 0">Las fechas intermedias no cambian.</p><div class="actions"><button class="btn primary block" type="button" data-a="confirm">Confirmar intercambio</button><button class="btn quiet block" type="button" data-a="swap">Elegir otra fecha</button></div>';
+    }
+    $('#aBody').innerHTML = h;
+  }
+  $('#rList').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-row]'); if (!b) return;
+    st.sw = { i: +b.dataset.row, mode: 'menu' }; renderA(); openSheet('#sheetA');
+  });
+  $('#aBody').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var s = st.sw, f = free(), a = b.dataset.a;
+    if (b.dataset.j) { s.j = +b.dataset.j; s.mode = 'confirm'; renderA(); return; }
+    if (a === 'swap') { s.mode = 'pick'; renderA(); }
+    else if (a === 'confirm') { var t = st.asg[s.i]; st.asg[s.i] = st.asg[s.j]; st.asg[s.j] = t; closeSheet($('#sheetA')); renderReview(); }
+    else if (a === 'remove') { st.rm[s.i] = true; closeSheet($('#sheetA')); renderReview(); }
+    else if (a === 'back') { st.rm[s.i] = false; closeSheet($('#sheetA')); renderReview(); }
+    else if (a === 'change') {
+      var used = st.asg.filter(function (p, j) { return incl(j); }).map(function (p) { return p.n; }), i = s.i;
+      closeSheet($('#sheetA'));
+      openPicker(lblF(f[i]), used, 'Ya dirige en este lote', false, function (p) { st.asg[i] = p; renderReview(); });
+    }
+  });
   $('#doCreate').addEventListener('click', function () {
-    var f = free(), n = st.dirs.length, news = st.dirs.filter(function (d) { return d.isNew; }).length;
+    var f = free(), made = [], news = [], rest = [];
+    f.forEach(function (x, i) {
+      if (!incl(i)) { rest.push(x); return; }
+      var w = new Date(x.t).getUTCDay(), p = st.asg[i];
+      made.push({ x: x, p: p });
+      if (p.isNew && news.indexOf(p) < 0) news.push(p);
+    });
+    var n = made.length;
     $('#okT').textContent = n + (n === 1 ? ' servicio creado' : ' servicios creados');
-    $('#okS').textContent = 'Quedaron como borrador, con sus participaciones cargadas.' + (news ? ' ' + news + (news === 1 ? ' persona nueva guardada en el directorio.' : ' personas nuevas guardadas.') : '');
-    $('#okList').innerHTML = st.dirs.map(function (d, i) {
-      return '<div class="li static"><span class="k num">' + fmt(f[i].t) + ' · ' + cfgOf(new Date(f[i].t).getUTCDay()).time + '</span><span class="v">' + esc(d.n) + '</span></div>';
+    $('#okS').textContent = 'Quedaron como borrador, con sus participaciones cargadas.' + (news.length ? ' ' + news.length + (news.length === 1 ? ' persona nueva guardada en el directorio.' : ' personas nuevas guardadas.') : '');
+    $('#okList').innerHTML = made.map(function (m) {
+      return '<div class="li static"><span class="k num">' + lbl(m.x) + '</span><span class="v">' + esc(m.p.n) + '</span></div>';
     }).join('');
-    var sk = $('#okSkip'); sk.innerHTML = skippedHtml(f, n, false); sk.hidden = n >= f.length;
-    var made = st.dirs.map(function (d, i) { var w = new Date(f[i].t).getUTCDay(); return { u: f[i].t, t: cfgOf(w).name, h: cfgOf(w).time, dir: d.n }; });
-    $('#toCal').href = 'calendario.html#lote=' + encodeURIComponent(JSON.stringify(made));
+    var sk = $('#okSkip'); sk.innerHTML = skippedHtml(rest, false); sk.hidden = !rest.length;
+    var data = made.map(function (m) { var w = new Date(m.x.t).getUTCDay(); return { u: m.x.t, t: cfgOf(w).name, h: timeOf(m.x), dir: m.p.n }; });
+    $('#toCal').href = 'calendario.html#lote=' + encodeURIComponent(JSON.stringify(data));
     show('v-ok');
   });
-  $('#again').addEventListener('click', function () { st.dirs = []; renderAvail(); show('v-p'); });
+  $('#again').addEventListener('click', function () { resetAsg(); renderAvail(); show('v-p'); });
 
   /* ---- Navegación ---- */
   function show(id) {
@@ -802,7 +954,7 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
     var sc = $('#' + id + ' .scroll'); if (sc) sc.scrollTop = 0;
   }
   $('#toDir').addEventListener('click', function () { renderDirs(); show('v-d'); });
-  $('#toRev').addEventListener('click', function () { renderReview(); show('v-r'); });
+  $('#toRev').addEventListener('click', function () { st.asg = compute(); st.rm = []; renderReview(); show('v-r'); });
   $$('[data-go]').forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.go === 'v-d') renderDirs(); show(b.dataset.go); }); });
   $$('.scrim').forEach(function (sh) { sh.addEventListener('click', function (e) { if (e.target === sh || e.target.hasAttribute('data-close')) closeSheet(sh); }); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') $$('.scrim').forEach(function (s) { if (!s.hidden) closeSheet(s); }); });
