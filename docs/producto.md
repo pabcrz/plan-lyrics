@@ -27,9 +27,15 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 
 - Configurar por iglesia su nombre, sus días habituales de reunión y la hora de inicio de cada uno desde su panel general. Los días varían por iglesia; ejemplos acordados: martes/miércoles/viernes/domingo, jueves/domingo y viernes/domingo. Esta configuración no crea servicios recurrentes automáticamente: sirve para que el formulario de servicio y el lote lleguen con la hora ya cargada. La hora sigue siendo editable en cada servicio y los servicios especiales de días no habituales se crean con su propia fecha y hora, sin pasar por esa configuración.
 - Usar la zona horaria de Ciudad de México (`America/Mexico_City`) para el calendario y la sugerencia de fechas. El 4 de noviembre citado durante el diseño es contexto del ejemplo, no una fecha fija del producto.
-- Sugerir por defecto la fecha de reunión más cercana según los días configurados de la iglesia activa. Permitir crear un servicio especial en cualquier día de la semana, aunque no sea habitual. La inclusión de hoy cuando coincide con un día de reunión sigue pendiente.
+- Sugerir por defecto la fecha de reunión más cercana según los días configurados de la iglesia activa. Permitir crear un servicio especial en cualquier día de la semana, aunque no sea habitual. Hoy coincide con un día de reunión y es una fecha válida durante todo el día, sin comparar con la hora del servicio. No se pueden crear servicios con fechas anteriores a hoy, ni individuales ni en lote; "hoy" se determina con la zona horaria de la iglesia (`America/Mexico_City`).
 - Una fecha admite un solo servicio, con una excepción: el domingo, si la iglesia activa lo habilita en su configuración general, admite dos, uno matutino (antes del mediodía) y uno vespertino, cada uno con su hora habitual. Es una opción por iglesia: no se impone ni se crean ambos automáticamente. Ningún otro día admite dos servicios. Falta precisar cómo el lote selecciona una franja y cómo participan ambas en las rotaciones.
 - Distinguir los días habituales de una fecha con un servicio ya registrado. Una fecha que ya alcanzó su máximo de servicios (uno, o dos en un domingo con la opción habilitada) no se puede elegir para crear otro servicio; si el domingo tiene dos franjas, solo se ofrece la que sigue libre. Cómo resuelve el lote las fechas ocupadas sigue pendiente.
+
+### Fechas sin culto
+
+- Un editor de servicios o un administrador puede marcar una fecha como «No hay culto» (opcionalmente con un motivo breve, como un feriado), distinta de un servicio cancelado: no existe un servicio, solo se avisa que ese día no habrá reunión.
+- Una fecha marcada se muestra en el calendario y en todo lo que se comparte (enlaces, imágenes y PDF del ministerio y la lista mensual de dirección) con la leyenda «No hay culto», para que todos la tengan presente.
+- Una fecha marcada no se ofrece al crear servicios ni entra en la secuencia de fechas de un lote ni de sus directores; se puede desmarcar.
 
 ### Personas y dirección del servicio
 
@@ -42,9 +48,10 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 ### Creación mensual en lote
 
 - Dentro de la iglesia activa, seleccionar el mes y año y de uno a tres días de la semana, por ejemplo viernes, o jueves y domingo. Decisión explícita: se permite elegir más de un día en el mismo lote, con un máximo de tres. Cada día elegido define su propio nombre de servicio y su hora.
-- Si se elige el mes actual, considerar solo las fechas de esos días que resten del mes; si se elige un mes futuro, considerar todas las fechas de esos días dentro del mes elegido. Con varios días, las fechas se ordenan en una sola secuencia cronológica. Esas son las fechas disponibles, no una obligación de crear servicios para todas ellas. El tratamiento de la fecha de hoy y de meses pasados queda pendiente.
+- Si se elige el mes actual, considerar solo las fechas de esos días desde hoy inclusive hasta el fin del mes; si se elige un mes futuro, considerar todas las fechas de esos días dentro del mes elegido. Con varios días, las fechas se ordenan en una sola secuencia cronológica. Esas son las fechas disponibles, no una obligación de crear servicios para todas ellas. No se puede elegir un mes anterior al actual. Una fecha que ya alcanzó su máximo de servicios no se reemplaza ni se modifica: el lote la muestra bloqueada junto con el servicio existente, sin campo de director, y la secuencia de directores la salta, de modo que los directores se asignan en orden solo a las fechas libres.
 - Asignar manualmente un director a cada fecha en orden cronológico, aunque se mezclen días de la semana. La referencia de interacción aceptada es la alternativa 04: pasos de período, directores por fecha y revisión; en móvil cada fecha aparece sobre su campo. Buscar personas existentes y tratar nombres nuevos según el directorio descrito arriba, sin exigir cuentas de acceso.
-- Permitir lotes parciales: si hay cuatro fechas disponibles y se ingresan tres directores, pedir confirmación indicando que se crearán tres de cuatro servicios, en las primeras tres fechas consecutivas de esa secuencia (aunque correspondan a distintos días de la semana) y en el orden ingresado. Tras confirmar, crear solo esos tres servicios; no crear un servicio sin director para la cuarta fecha ni generar participaciones para ella. Las fechas restantes quedan sin programar para resolverlas después, por ejemplo ante incertidumbre de Navidad o fin de año.
+- Los directores se eligen como una lista ordenada de una o más personas, que puede ser menor que el número de fechas. Por defecto, la lista se repite en el mismo orden hasta cubrir todas las fechas disponibles (por ejemplo, cuatro directores para cinco jueves: el quinto lo toma el primero); el usuario puede desactivar la repetición. No es una rotación estricta: la revisión muestra el director de cada fecha, permite cambiarlo por otra persona sin afectar las demás e **intercambiar** dos fechas entre sí mostrando ambas antes de confirmar; la fecha intermedia no se modifica. Queda por definir si la repetición continúa en el lote del mes siguiente desde quien quedó al final.
+- Con la repetición desactivada, permitir lotes parciales: si hay cuatro fechas disponibles y se ingresan tres directores, pedir confirmación indicando que se crearán tres de cuatro servicios, en las primeras tres fechas consecutivas de esa secuencia (aunque correspondan a distintos días de la semana) y en el orden ingresado. Tras confirmar, crear solo esos tres servicios; no crear un servicio sin director para la cuarta fecha ni generar participaciones para ella. Las fechas restantes quedan sin programar para resolverlas después, por ejemplo ante incertidumbre de Navidad o fin de año.
 - Completar las participaciones mediante las asignaciones habituales y la modalidad de rotación configurada; agregar después el setlist manualmente.
 - No crear una recurrencia permanente de servicios. La secuencia de personas sí continúa entre lotes y meses según la rotación configurada; no se reinicia al crear otro lote.
 
@@ -61,6 +68,29 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 - Evitar que las participaciones habituales o las rotaciones asignen a la misma persona a dos roles del mismo servicio. Si coinciden dos propuestas, la resolución concreta sigue pendiente; no se inventa una prioridad entre roles.
 - Permitir cambiar manualmente las asignaciones generadas ante ausencias o compromisos. La acción predeterminada es **reemplazar solo en este servicio**: cambia esa asignación sin reordenar los turnos siguientes.
 - Ofrecer **intercambiar turnos** como alternativa explícita dentro del mismo rol, mostrando las dos fechas y personas afectadas antes de confirmar. Por ejemplo, Luis el viernes 6, Pedro el 13 y Juan el 20 puede quedar Pedro el 6, Luis el 13 y Juan el 20 tras confirmar el intercambio de Luis y Pedro. No ejecutar el intercambio como efecto oculto de un reemplazo.
+
+### Predicación
+
+Alcance nuevo, pendiente de confirmar como parte de la etapa 1. No es un rol musical: es una asignación aparte dentro del servicio y no concede permisos.
+
+- Cada servicio puede tener una sección de predicación con predicador (una persona del directorio, sin exigir cuenta), tema, citas bíblicas y notas.
+- Las **notas** son los puntos a considerar que el editor define al organizar una serie de temas (entre una y tres personas los acuerdan para delimitar el tema). No son el bosquejo del predicador: eso queda fuera de la aplicación. Admiten un formato mínimo: líneas con `- ` como viñetas, negritas y subrayado; no se admite un editor de texto enriquecido completo. Las citas se capturan en un campo aparte, una por línea, y se muestran como texto o etiquetas sin interpretarlas.
+- La predicación se asigna con las mismas reglas que la dirección: lista ordenada de personas, repetición opcional hasta cubrir las fechas, cambio por fecha e intercambio entre dos fechas. Los turnos pueden repetirse varias veces seguidas; no se exige una rotación estricta.
+- Un editor de servicios puede agregar y editar predicaciones sin importar qué rol musical tenga ni si es predicador. Ser predicador no concede permisos de edición.
+- Una persona puede dirigir la alabanza y predicar el mismo servicio; la regla de un solo rol aplica a los roles musicales, no a la predicación.
+- La predicación es opcional por iglesia: un interruptor «Usa predicación» en la configuración de la iglesia muestra u oculta la sección en el servicio y en el lote.
+- Las notas de predicación son internas: en la aplicación las ven quienes administran o editan servicios y las personas con asignación de predicador que tengan cuenta; fuera de ella solo llegan por un enlace o PDF del ministerio (ver [Compartir servicios](#compartir-servicios)), nunca por la vista de congregantes.
+
+### Compartir servicios
+
+Quien recibe lo compartido no necesita crear una cuenta: pastores, familiares y la congregación lo ven sin iniciar sesión. Hay dos audiencias con alcances distintos.
+
+- **Ministerio** (pastor, predicadores, equipo de alabanza): un enlace privado de solo lectura, por servicio o por rango de fechas, con tres versiones: *alabanza* (fechas, quién dirige y setlists), *predicación* (fechas, predicador, tema, citas y notas) y *servicio completo* (ambas, con fechas, horario y orden de los cantos). Cubre un servicio o un rango de fechas que elige quien lo crea (por ejemplo, un mes completo). Quien crea el enlace puede mostrar u ocultar bloques de información según el destinatario: por defecto no incluye tonos, BPM ni datos específicos de alabanza, pero puede mostrarlos, por ejemplo, para un músico. El enlace no es adivinable y quien administra o edita servicios puede revocarlo; quien lo tenga ve los nombres y las notas, por lo que se comparte solo con quien corresponde.
+- **Congregantes**: la vista pública del setlist con letras, limitada a la alabanza. Opcionalmente, y activada por la iglesia, puede mostrar de cada servicio solo el nombre del predicador y el tema, sin notas, citas ni otros datos. No incluye directores, equipos ni listas de personas.
+- **Imagen del setlist**: una imagen compartible con la fecha y las canciones numeradas, cada una con su autor entre paréntesis. Hay canciones con el mismo título y distinto autor y distinto contenido, por lo que el autor forma parte de cómo se identifica y muestra una canción.
+- **Lista mensual de dirección de alabanza**: un documento compartible (imagen o PDF) con el título «Rol alabanza» y el mes, una línea por fecha de servicio con su director, y un mensaje o versículo opcional al pie. Las fechas marcadas «No hay culto» aparecen como tales. Cubre el rango de fechas que se elija.
+- **PDF de predicaciones**: un documento imprimible con las fechas, a quién le toca, el tema, las citas y los puntos a considerar, pensado para entregarlo en papel al pastor.
+- **Vigencia de los enlaces del ministerio:** se pueden revocar a mano en cualquier momento. Además, cada enlace está activo desde que se crea hasta 30 días después de la fecha del último servicio que incluye, para poder consultarlo como referencia al planear la siguiente serie de temas; al terminar ese plazo se desactiva. Un enlace desactivado se puede volver a activar por otros 30 días, de solo lectura y referencia; es un caso poco común y no una renovación continua. La vista pública de congregantes sigue sus propias reglas. Cada documento (enlace, imagen o PDF) cubre un servicio o el rango de fechas que se elija, incluido un mes completo.
 
 ### Accesos acordados
 
@@ -101,7 +131,7 @@ Preservar la relación entre letra y acordes, permitir transposición respetando
 - Biblioteca musical compartida; no clonar canciones por iglesia o servicio como requisito.
 - Adaptaciones opcionales de iglesia y servicio heredan de la base. Los cambios heredados siguen vigentes incluso en contenido publicado; los overrides explícitos se conservan. No se exigen snapshots ni clones obligatorios.
 - La edición editorial global es distinta de la administración local de iglesia.
-- Un setlist público de servicio y sus letras podrán consultarse sin iniciar sesión. La vista pública no expondrá datos personales, listas de miembros, tonalidades internas, asignaciones privadas, BPM, acordes ni notas internas.
+- Un setlist público de servicio y sus letras podrán consultarse sin iniciar sesión. La vista pública no expondrá datos personales, listas de miembros, tonalidades internas, asignaciones privadas, BPM, acordes ni notas internas; la única excepción es el nombre y tema del predicador, si la iglesia lo activa (ver [Compartir servicios](#compartir-servicios)).
 - La rotación futura de canciones por iglesia se basa en uso confirmado de la canción, no de una versión concreta. Es distinta del generador de turnos de personas. Política de registro de uso/cancelación, zona horaria y cadencia aún por decidir.
 - Exportaciones TXT son futuras. La importación de TXT con acordes encima es opcional y no confirmada.
 
@@ -113,7 +143,7 @@ No ampliar la primera entrega con confirmaciones de asistencia, servicios recurr
 
 - Un editor de servicios puede crear un servicio fechado dentro de la iglesia activa sin volver a indicar la iglesia; un integrante no puede crearlo.
 - Se pueden crear servicios en lote con participaciones generadas y completar sus setlists manualmente después.
-- Un lote mensual incluye solo las fechas de los días elegidos (hasta tres) que resten del mes actual, o todas las del mes futuro elegido, y asigna directores en el orden ingresado.
+- Un lote mensual incluye solo las fechas de los días elegidos (hasta tres) desde hoy inclusive hasta el fin del mes actual, o todas las del mes futuro elegido, y asigna directores en el orden ingresado.
 - Los turnos respetan la modalidad configurada por rotación: independiente por día o compartida entre servicios; las participaciones generadas pueden corregirse manualmente.
 - Una persona puede ordenar canciones y otros momentos y asignar participantes con su rol musical, sin que dicho rol conceda permisos de edición.
 - Existe un único superadministrador, correspondiente a la persona propietaria del proyecto, con acceso total a todas las iglesias y capacidad de modificar todos los roles.
@@ -130,7 +160,8 @@ Son criterios futuros; no se ha implementado ni probado la infraestructura.
 
 ## Decisiones de producto abiertas
 
-- Precisar el lote mensual: inclusión de hoy, meses pasados, colisiones con servicios existentes, más directores que fechas, ausencia de directores y resolución de homónimos. Precisar permisos para guardar personas nuevas desde la asignación de dirección. La zona horaria, el recorrido por fecha y la separación entre personas y cuentas ya están acordados.
+- Confirmar la predicación y el compartir servicios como parte de la etapa 1; precisar si un enlace reactivado se puede reactivar de nuevo. Precisar si se puede asignar predicador a una fecha sin servicio creado y si el lote también lo pide.
+- Precisar el lote mensual: ausencia de directores y resolución de homónimos. Precisar permisos para guardar personas nuevas desde la asignación de dirección. La zona horaria, el recorrido por fecha y la separación entre personas y cuentas ya están acordados.
 - Concretar resolución de coincidencias entre asignaciones habituales o rotaciones que propongan a una persona en dos roles del mismo servicio, sin duplicar su asignación. La regla de un solo rol registrado y el canto junto al instrumento ya están acordados. Precisar elección de las franjas dominicales matutina/vespertina en lotes y rotaciones, servicios creados fuera de orden, cancelaciones y efecto de cambiar el orden sobre servicios ya generados. El inicio manual, la continuidad cíclica y la distinción entre reemplazo de una fecha e intercambio explícito ya están acordados.
 - Confirmar la propuesta de varios bloques de alabanza, cada uno con su setlist, dentro de un único servicio para ocasiones como bautizos. No confundir ese caso con dos cultos independientes ni adelantar la entrega de setlists.
 - Definir la eliminación de roles con asignaciones existentes y completar capacidades no especificadas. ¿Quién otorga el acceso de editor de biblioteca?
