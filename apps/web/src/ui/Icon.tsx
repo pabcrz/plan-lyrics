@@ -11,6 +11,7 @@ const paths = {
   x: <path d="M6 6l12 12M18 6 6 18" />,
   alert: <><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5M12 16v.01" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8v.01" /></>,
+  ban: <><circle cx="12" cy="12" r="8" /><path d="m6.3 6.3 11.4 11.4" /></>,
   dash: <circle cx="12" cy="12" r="8" strokeDasharray="3 3" />,
   dot: <circle cx="12" cy="12" r="6" fill="currentColor" />,
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,

@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { safeErrorCode } from './errors.js'
-import { dateCapacity, monthQuery, newServiceBody, planSlot, todayInZone } from './service-rules.js'
+import { closedDateBody, dateCapacity, isoDate, monthQuery, newServiceBody, planSlot, todayInZone } from './service-rules.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 
 export const timeZone = 'America/Mexico_City'
@@ -33,11 +33,15 @@ const present = (row: Row) => ({
   time: row.time, status: row.status, director: row.director.person,
 })
 
+const presentClosed = (row: { date: Date; reason: string | null }) => ({ date: row.date.toISOString().slice(0, 10), reason: row.reason })
+
 export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () => Date = () => new Date()) {
   const routes = new Hono<SessionEnvironment>()
   routes.use('/api/active-church', requireSession(config))
   routes.use('/api/people', requireSession(config))
   routes.use('/api/services', requireSession(config))
+  routes.use('/api/closed-dates', requireSession(config))
+  routes.use('/api/closed-dates/*', requireSession(config))
   routes.use('/api/*', async (c, next) => { await next(); c.header('Cache-Control', 'no-store') })
 
   // Shared envelope: database availability, active-church resolution and safe error logging.
@@ -92,6 +96,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     const result = await db.$transaction(async tx => {
       // Serialize creations per church so the capacity check cannot race another request.
       await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
+      if (await tx.closedDate.findUnique({ where: { churchId_date: { churchId: church.churchId, date: dateValue } }, select: { date: true } })) return 'closed' as const
       const director = await tx.churchPerson.findUnique({ where: { churchId_personId: { churchId: church.churchId, personId: directorId } }, select: { personId: true } })
       if (!director) return 'director' as const
       const taken = await tx.service.count({ where: { churchId: church.churchId, date: dateValue } })
@@ -103,7 +108,49 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     }).catch(error => { if (safeErrorCode(error) === 'P2002') return 'full' as const; throw error })
     if (result === 'director') return c.json({ error: 'Invalid request' }, 400)
     if (result === 'full') return c.json({ error: 'Date full' }, 409)
+    if (result === 'closed') return c.json({ error: 'Date closed' }, 409)
     return c.json(present(result), 201)
+  }))
+
+  // «No hay culto»: the date is a path parameter, the church always the caller's active one.
+  routes.get('/api/closed-dates', guarded('closed_dates_list_failed', async (c, db, church) => {
+    const month = monthQuery.safeParse(c.req.query('month'))
+    if (!month.success) return c.json({ error: 'Invalid request' }, 400)
+    const [year, number] = month.data.split('-').map(Number)
+    const rows = await db.closedDate.findMany({
+      where: { churchId: church.churchId, date: { gte: new Date(Date.UTC(year, number - 1, 1)), lt: new Date(Date.UTC(year, number, 1)) } },
+      orderBy: { date: 'asc' }, select: { date: true, reason: true },
+    })
+    return c.json(rows.map(presentClosed))
+  }))
+
+  routes.put('/api/closed-dates/:date', guarded('closed_date_mark_failed', async (c, db, church) => {
+    if (!church.canEdit) return c.json({ error: 'Forbidden' }, 403)
+    const date = isoDate.safeParse(c.req.param('date'))
+    const body = closedDateBody.safeParse(await c.req.json().catch(() => ({})))
+    if (!date.success || !body.success) return c.json({ error: 'Invalid request' }, 400)
+    if (date.data < todayInZone(now())) return c.json({ error: 'Date in the past' }, 400)
+    const dateValue = new Date(`${date.data}T00:00:00Z`)
+    const reason = body.data.reason ?? null
+    const result = await db.$transaction(async tx => {
+      // Same per-church lock as service creation: a service and a mark cannot both claim the date.
+      await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
+      if (await tx.service.count({ where: { churchId: church.churchId, date: dateValue } }) > 0) return 'service' as const
+      const key = { churchId_date: { churchId: church.churchId, date: dateValue } }
+      const existed = Boolean(await tx.closedDate.findUnique({ where: key, select: { date: true } }))
+      const row = await tx.closedDate.upsert({ where: key, update: { reason }, create: { churchId: church.churchId, date: dateValue, reason }, select: { date: true, reason: true } })
+      return { row, existed }
+    })
+    if (result === 'service') return c.json({ error: 'Date has service' }, 409)
+    return c.json(presentClosed(result.row), result.existed ? 200 : 201)
+  }))
+
+  routes.delete('/api/closed-dates/:date', guarded('closed_date_unmark_failed', async (c, db, church) => {
+    if (!church.canEdit) return c.json({ error: 'Forbidden' }, 403)
+    const date = isoDate.safeParse(c.req.param('date'))
+    if (!date.success) return c.json({ error: 'Invalid request' }, 400)
+    const removed = await db.closedDate.deleteMany({ where: { churchId: church.churchId, date: new Date(`${date.data}T00:00:00Z`) } })
+    return removed.count > 0 ? c.body(null, 204) : c.json({ error: 'Not found' }, 404)
   }))
   return routes
 }

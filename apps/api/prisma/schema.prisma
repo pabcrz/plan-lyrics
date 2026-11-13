@@ -69,6 +69,7 @@ model Church {
   memberships Membership[]
   services Service[]
   serviceDays ServiceDay[]
+  closedDates ClosedDate[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -127,4 +128,16 @@ model Service {
   updatedAt DateTime @updatedAt
   @@unique([churchId, date, slot])
   @@index([churchId, date])
+}
+
+// «No hay culto»: a date without a meeting. It is not a service, nor a cancelled one.
+model ClosedDate {
+  churchId String
+  date DateTime @db.Date
+  // Optional short reason, e.g. a holiday.
+  reason String?
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([churchId, date])
 }
