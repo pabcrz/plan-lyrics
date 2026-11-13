@@ -12,6 +12,8 @@ export const newServiceBody = z.strictObject({
   status: z.enum(['DRAFT', 'PUBLISHED']),
   directorId: z.string().trim().min(1).max(64),
 })
+// The church is never part of the body either; the date comes from the path.
+export const closedDateBody = z.strictObject({ reason: z.string().trim().min(1).max(120).optional() })
 export const monthQuery = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)
 
 export type SlotName = 'SINGLE' | 'MORNING' | 'AFTERNOON'

@@ -14,6 +14,9 @@ La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la 
 | `GET /api/people` | Cualquier miembro | Personas de la iglesia activa `[{id, name}]`, para elegir director. |
 | `GET /api/services?month=YYYY-MM` | Cualquier miembro | Servicios del mes `[{id, title, date, slot, time, status, director}]`. |
 | `POST /api/services` | Administrador o editor | `201` con el servicio. Cuerpo: `title`, `date` (`YYYY-MM-DD`), `status` (`DRAFT`/`PUBLISHED`), `directorId`, `time` (`HH:mm`, opcional), `slot` (`MORNING`/`AFTERNOON`, solo domingo doble). |
+| `GET /api/closed-dates?month=YYYY-MM` | Cualquier miembro | Fechas «No hay culto» del mes `[{date, reason}]` (`reason` puede ser `null`). |
+| `PUT /api/closed-dates/:date` | Administrador o editor | Marca la fecha (`YYYY-MM-DD` en la ruta). Cuerpo opcional `{reason}` (1–120 caracteres). `201` si es nueva, `200` si solo actualiza el motivo. |
+| `DELETE /api/closed-dates/:date` | Administrador o editor | Desmarca la fecha: `204`, o `404` si no estaba marcada. |
 
 ## Reglas aplicadas en servidor
 
@@ -22,6 +25,7 @@ La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la 
 - Una fecha admite un servicio; un domingo admite dos (mañana < 12:00 y tarde) solo si `Church.sundayDouble`. En domingo doble la franja es obligatoria y la hora debe caer en ella. Fuera de ahí no se acepta franja.
 - Fecha llena o franja repetida: `409 {"error":"Date full"}`. El conteo se serializa por iglesia (`FOR UPDATE`) y el índice único `(iglesia, fecha, franja)` actúa de respaldo.
 - Hoy (en `America/Mexico_City`) es válido todo el día; una fecha anterior se rechaza: `400 {"error":"Date in the past"}`. El límite es la medianoche local, no la de UTC.
+- «No hay culto»: no es un servicio ni un servicio cancelado; es una fila `ClosedDate` por iglesia y fecha (modelo listo para que los documentos compartibles la consulten después). No se marca una fecha anterior a hoy (`400 {"error":"Date in the past"}`) ni una que ya tiene un servicio (`409 {"error":"Date has service"}`). Crear un servicio en una fecha marcada (cualquier franja) responde `409 {"error":"Date closed"}`. Marcar y crear comparten el bloqueo por iglesia, así que no pueden competir por la misma fecha. Desmarcar no tiene restricción de fecha.
 - Integrante: `403` al crear. Sin sesión: `401`.
 
 ## Pendiente de decisión de producto
