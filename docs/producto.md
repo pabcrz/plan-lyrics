@@ -79,11 +79,12 @@ Alcance nuevo, pendiente de confirmar como parte de la etapa 1. No es un rol mus
 
 Quien recibe lo compartido no necesita crear una cuenta: pastores, familiares y la congregación lo ven sin iniciar sesión. Hay dos audiencias con alcances distintos.
 
-- **Ministerio** (pastor, predicadores, equipo de alabanza): un enlace privado de solo lectura, por servicio o por rango de fechas, con tres versiones: *alabanza* (fechas, quién dirige y setlists), *predicación* (fechas, predicador, tema, citas y notas) y *servicio completo* (ambas, con fechas, horario y orden de los cantos). Ninguna versión incluye tonos, BPM ni datos específicos de alabanza. El enlace no es adivinable y quien administra o edita servicios puede revocarlo; quien lo tenga ve los nombres y las notas, por lo que se comparte solo con quien corresponde.
+- **Ministerio** (pastor, predicadores, equipo de alabanza): un enlace privado de solo lectura, por servicio o por rango de fechas, con tres versiones: *alabanza* (fechas, quién dirige y setlists), *predicación* (fechas, predicador, tema, citas y notas) y *servicio completo* (ambas, con fechas, horario y orden de los cantos). Cubre un servicio o un rango de fechas que elige quien lo crea (por ejemplo, un mes completo). Quien crea el enlace puede mostrar u ocultar bloques de información según el destinatario: por defecto no incluye tonos, BPM ni datos específicos de alabanza, pero puede mostrarlos, por ejemplo, para un músico. El enlace no es adivinable y quien administra o edita servicios puede revocarlo; quien lo tenga ve los nombres y las notas, por lo que se comparte solo con quien corresponde.
 - **Congregantes**: la vista pública del setlist con letras, limitada a la alabanza. Opcionalmente, y activada por la iglesia, puede mostrar de cada servicio solo el nombre del predicador y el tema, sin notas, citas ni otros datos. No incluye directores, equipos ni listas de personas.
 - **Imagen del setlist**: una imagen compartible con la fecha y las canciones numeradas, cada una con su autor entre paréntesis. Hay canciones con el mismo título y distinto autor y distinto contenido, por lo que el autor forma parte de cómo se identifica y muestra una canción.
+- **Lista mensual de dirección de alabanza**: un documento compartible (imagen o PDF) con el título «Rol alabanza» y el mes, una línea por fecha de servicio con su director, y un mensaje o versículo opcional al pie. En el ejemplo aportado, una fecha habitual sin servicio aparece como «No hay culto». Cubre el rango de fechas que se elija.
 - **PDF de predicaciones**: un documento imprimible con las fechas, a quién le toca, el tema, las citas y los puntos a considerar, pensado para entregarlo en papel al pastor.
-- Revocación, vigencia de los enlaces y qué rango de fechas cubre cada documento quedan por definir.
+- La revocación y la vigencia de los enlaces quedan por definir. Cada documento (enlace, imagen o PDF) cubre un servicio o el rango de fechas que se elija, incluido un mes completo.
 
 ### Accesos acordados
 
@@ -153,7 +154,7 @@ Son criterios futuros; no se ha implementado ni probado la infraestructura.
 
 ## Decisiones de producto abiertas
 
-- Confirmar la predicación y el compartir servicios como parte de la etapa 1; definir la revocación y vigencia de los enlaces del ministerio y el rango de fechas de cada documento. Precisar si se puede asignar predicador a una fecha sin servicio creado y si el lote también lo pide.
+- Confirmar la predicación y el compartir servicios como parte de la etapa 1; definir la revocación y vigencia de los enlaces del ministerio. Precisar si se puede asignar predicador a una fecha sin servicio creado y si el lote también lo pide.
 - Precisar el lote mensual: ausencia de directores y resolución de homónimos. Precisar permisos para guardar personas nuevas desde la asignación de dirección. La zona horaria, el recorrido por fecha y la separación entre personas y cuentas ya están acordados.
 - Concretar resolución de coincidencias entre asignaciones habituales o rotaciones que propongan a una persona en dos roles del mismo servicio, sin duplicar su asignación. La regla de un solo rol registrado y el canto junto al instrumento ya están acordados. Precisar elección de las franjas dominicales matutina/vespertina en lotes y rotaciones, servicios creados fuera de orden, cancelaciones y efecto de cambiar el orden sobre servicios ya generados. El inicio manual, la continuidad cíclica y la distinción entre reemplazo de una fecha e intercambio explícito ya están acordados.
 - Confirmar la propuesta de varios bloques de alabanza, cada uno con su setlist, dentro de un único servicio para ocasiones como bautizos. No confundir ese caso con dos cultos independientes ni adelantar la entrega de setlists.
