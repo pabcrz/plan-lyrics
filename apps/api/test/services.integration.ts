@@ -114,7 +114,7 @@ test('lists a month only, with the director, in date order', async () => {
 test('reads the active church context and its directory only for that church', async () => {
   const context = await (await call('editor', '/api/active-church')).json()
   expect(context).toEqual({
-    id: 'church-a', name: 'Fixture Church A', sundayDouble: false, canEdit: true, timeZone: 'America/Mexico_City',
+    id: 'church-a', name: 'Fixture Church A', sundayDouble: false, usesPreaching: false, canEdit: true, canConfigure: false, timeZone: 'America/Mexico_City',
     days: [
       { weekday: 0, slot: 'SINGLE', time: '10:00', title: 'Servicio dominical' },
       { weekday: 5, slot: 'SINGLE', time: '19:30', title: 'Servicio de viernes' },

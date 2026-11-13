@@ -1,0 +1,1 @@
+ALTER TABLE "Church" ADD COLUMN "usesPreaching" BOOLEAN NOT NULL DEFAULT false;
