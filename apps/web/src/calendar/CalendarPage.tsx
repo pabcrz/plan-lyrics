@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useLocation, useSearchParams } from 'react-router'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { Avatar, Button, Icon, Notice, Sheet, StatusChip, TextField, Toast, format12h, from24h, type IconName, type ServiceStatus } from '../ui'
 import { ChurchGate, MainTabbar, TopBar } from './ChurchGate'
 import { ApiError, useClosedDateActions, useClosedDates, useServices } from './api'
@@ -79,7 +79,7 @@ function Calendar({ church }: { church: Church }) {
       {toast !== '' && <div className="px-4 pb-2"><Toast message={toast} onDismiss={() => setToast('')} /></div>}
       <MainTabbar church={church} current="calendar" />
       <Sheet open={Boolean(open)} onClose={() => setOpenId(null)} title={open?.title ?? 'Servicio'}>
-        {open && <Detail service={open} />}
+        {open && <Detail service={open} canEdit={church.canEdit} />}
       </Sheet>
       <Sheet open={openDate !== null} onClose={() => setOpenDate(null)} title={openDate && closedOn(closed, openDate) ? 'No hay culto' : openDate ? formatLongDay(openDate) : 'Fecha'}>
         {openDate && <DaySheet key={openDate} date={openDate} item={closedOn(closed, openDate)} canEdit={church.canEdit}
@@ -235,7 +235,8 @@ function ClosedChipOrDate({ date, item }: { date: string; item: ClosedDate | und
   )
 }
 
-function Detail({ service }: { service: Service }) {
+function Detail({ service, canEdit }: { service: Service; canEdit: boolean }) {
+  const navigate = useNavigate()
   return (
     <div className="grid gap-4">
       <StatusChip status={status(service.status)} className="w-fit" />
@@ -247,6 +248,7 @@ function Detail({ service }: { service: Service }) {
           <span className="font-semibold">{service.director.name}</span>
         </div>
       </section>
+      <Button variant={canEdit ? 'primary' : 'secondary'} block onClick={() => void navigate(`/servicios/${service.id}/setlist`)}>{canEdit ? 'Preparar setlist' : 'Ver setlist'}</Button>
     </div>
   )
 }
