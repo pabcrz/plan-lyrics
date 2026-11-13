@@ -53,6 +53,8 @@ model PlatformOwner {
 model Person {
   id String @id @default(cuid())
   name String
+  // General personal data, shared by every church the person belongs to; optional.
+  phone String?
   userId String? @unique
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   churches ChurchPerson[]
@@ -94,6 +96,8 @@ model ChurchPerson {
   church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
   person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
   directedServices Service[]
+  // Removed from this church's directory: hidden from lists and pickers, kept for past services.
+  removedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@id([churchId, personId])
