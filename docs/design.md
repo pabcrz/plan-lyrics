@@ -14,6 +14,8 @@ Mockups HTML autocontenidos, sin build, con datos ficticios. Se abren directamen
 | Pantalla | [pantallas/lote-mensual.html](design/pantallas/lote-mensual.html) | Creación mensual en lote: período, directores, revisión y resultado. |
 | Pantalla | [pantallas/servicio-nuevo.html](design/pantallas/servicio-nuevo.html) | Servicio individual: fecha, título, hora, estado, dirección y participaciones. |
 | Pantalla | [pantallas/ajustes-iglesia.html](design/pantallas/ajustes-iglesia.html) | Ajustes de la iglesia: nombre, días de servicio, horas habituales y domingo con dos servicios. |
+| Pantalla | [pantallas/personas.html](design/pantallas/personas.html) | Directorio de personas: lista con búsqueda y filtro por rol, ficha y alta. |
+| Pantalla | [pantallas/participaciones.html](design/pantallas/participaciones.html) | Participaciones: roles, habituales y rotación por día o entre todos. |
 
 El recorrido de wireframes previo vive en [`design/programacion-mensual`](../design/programacion-mensual/mapa-y-recorrido.md); la alternativa 04 fue la referencia que originó estas pantallas.
 
@@ -105,9 +107,32 @@ Primera sección de configuración general. Lo definido aquí alimenta los formu
 - **Guardar:** el botón se habilita al cambiar algo; «Descartar cambios» vuelve a lo guardado. Se exige un nombre, al menos un día y un título en cada servicio.
 - **Supuesto de diseño:** guardar no modifica los servicios ya creados; solo cambia lo que se precarga a partir de ahora.
 
+### Directorio de personas
+
+Destino de la pestaña «Personas». Tres vistas: lista, ficha y alta. Aplica las reglas de [Personas y dirección del servicio](producto.md).
+
+- **Lista:** orden alfabético, búsqueda por nombre sin distinguir acentos y filtro por rol (Todas, Batería, Guitarra, Piano, Voces). Cada fila muestra los roles que la persona tiene configurados en la iglesia y la etiqueta «Con cuenta» cuando está vinculada. Sin resultados, ofrece agregar el nombre buscado.
+- **Ficha:** nombre y teléfono editables; guardar y descartar aparecen solo al cambiar algo. Un aviso recuerda que esa información es general; si la persona participa en otra iglesia, lo dice sin nombrarla y aclara que sus roles y turnos no se comparten.
+- **En esta iglesia:** habitual, rotación y próxima participación, en solo lectura. Se editan en la configuración de participaciones, no aquí.
+- **Cuenta de acceso:** solo muestra el estado. Vincular o desvincular se indica como tarea del superadministrador o del gestor de cuentas.
+- **Alta:** nombre obligatorio y teléfono opcional, sin pedir cuenta. Si el nombre ya existe en la iglesia, un aviso lo señala, enlaza con esa ficha y exige confirmar que es otra persona antes de crear.
+- **Quitar de la iglesia:** acción destructiva con hoja de confirmación y «Deshacer».
+- **Supuestos de diseño** (no están en producto): el teléfono como único dato personal además del nombre; confirmar homónimos con una casilla; quitar a una persona de la iglesia sin borrarla del sistema ni de servicios pasados, avisando si tiene participaciones próximas.
+
+### Participaciones
+
+Configuración por iglesia de los roles musicales, las personas habituales y las rotaciones. Dos vistas: lista de roles y detalle de un rol.
+
+- **Roles:** en orden alfabético (Batería, Guitarra, Piano, Voces), cada uno con su resumen. «Agregar rol» pide un nombre y rechaza duplicados; «Eliminar rol» confirma y ofrece «Deshacer».
+- **Habitual:** personas que entran en cada servicio sin turnos. Voces admite varias; los demás roles, una sola.
+- **Rotación:** un interruptor la activa. La modalidad se elige con un control de dos opciones: **Por día** (una secuencia por cada día de servicio de la iglesia, independientes entre sí) o **Entre todos** (una sola secuencia). Cada secuencia es una lista numerada que se reordena con subir/bajar y se agrega con el selector de personas; el orden manda, y el primero de la lista es quien toma el primer turno.
+- **Próximos servicios:** vista previa calculada con la configuración actual; marca el turno de rotación y las personas habituales. Aclara que no cambia los servicios ya creados.
+- **Selector de personas:** no ofrece a quien ya está en el mismo rol como habitual o en rotación.
+- **Supuestos de diseño:** un solo habitual salvo en Voces; el primer turno lo toma la primera persona de la lista en la primera fecha de servicio futura. Sin resolver: qué ocurre al eliminar un rol con asignaciones previas, y la coincidencia de una persona en dos roles del mismo servicio (la vista previa no la detecta).
+
 ## Pendientes
 
-- Configuración de participaciones (asignaciones habituales y rotaciones), el resto de los ajustes de la iglesia y directorio de personas. Falta un punto de entrada a los ajustes desde la navegación.
+- El resto de los ajustes de la iglesia. Falta un punto de entrada a los ajustes y a las participaciones desde la navegación.
 - Unificar tokens en `apps/web` (Tailwind 4) cuando se implemente.
 - Probar teclado en pantalla, modo claro de las tarjetas por día y contraste en todos los temas.
 - Casos de producto abiertos que afectan estas pantallas: hoy y meses pasados, fechas ocupadas dentro del lote y franja del domingo en el lote, más directores que fechas, lote sin directores y homónimos.
