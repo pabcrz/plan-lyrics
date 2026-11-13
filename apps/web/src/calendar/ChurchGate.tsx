@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { UserButton } from '@clerk/react'
-import { Button, Icon, Notice, Tabbar } from '../ui'
+import { Button, Icon, Notice, Sheet, Tabbar } from '../ui'
 import { ApiError, useChurch } from './api'
 import type { Church } from './model'
 
@@ -23,11 +23,25 @@ export function TopBar({ name, settings }: { name?: string; settings?: boolean }
 /** Navegación inferior principal: Calendario, Nuevo (solo quien edita) y Personas. */
 export function MainTabbar({ church, current }: { church: Pick<Church, 'canEdit'>; current: 'calendar' | 'people' }) {
   const navigate = useNavigate()
+  const [choosing, setChoosing] = useState(false)
+  const option = (label: string, hint: string, path: string) => (
+    <button type="button" onClick={() => void navigate(path)}
+      className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-line bg-transparent px-4 text-left last:border-b-0 hover:bg-surface-2">
+      <span className="font-semibold">{label}<small className="block font-normal text-text-3">{hint}</small></span>
+      <Icon name="right" />
+    </button>
+  )
   return (
     <div className="sticky bottom-0">
       <Tabbar label="Principal" current={current} onSelect={(id) => void navigate(id === 'people' ? '/personas' : '/')}
         items={[{ id: 'calendar', label: 'Calendario', icon: 'calendar' }, { id: 'people', label: 'Personas', icon: 'users' }]}
-        action={church.canEdit ? { label: 'Nuevo', icon: 'plus', onAction: () => void navigate('/servicios/nuevo') } : undefined} />
+        action={church.canEdit ? { label: 'Nuevo', icon: 'plus', onAction: () => setChoosing(true) } : undefined} />
+      <Sheet open={choosing} onClose={() => setChoosing(false)} title="Nuevo">
+        <div className="overflow-hidden rounded-lg border border-line">
+          {option('Servicio individual', 'Una fecha, con su director.', '/servicios/nuevo')}
+          {option('Lote mensual', 'Varios servicios de un mes con una lista de directores.', '/servicios/lote')}
+        </div>
+      </Sheet>
     </div>
   )
 }

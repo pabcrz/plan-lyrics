@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router'
+import { BatchPage } from './BatchPage'
 import { CalendarPage } from './CalendarPage'
 import { SettingsPage } from './SettingsPage'
 import { ServiceFormPage } from './ServiceFormPage'
@@ -10,6 +11,7 @@ export function ProductRoutes() {
   return (
     <Routes>
       <Route path="/servicios/nuevo" element={<ServiceFormPage />} />
+      <Route path="/servicios/lote" element={<BatchPage />} />
       <Route path="/personas" element={<PeoplePage />} />
       <Route path="/personas/nueva" element={<NewPersonPage />} />
       <Route path="/personas/:personId" element={<PersonPage />} />
