@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { Avatar, Button, Icon, Notice, PersonPicker, Sheet, Switch, TextField, fold, format12h, from24h, type Person } from '../ui'
+import { Avatar, Button, Field, Icon, Notice, PersonPicker, Sheet, Switch, TextField, TimeWheel, fold, format12h, from24h, inputClass, to24h, type Person, type Time12 } from '../ui'
 import { ChurchGate, TopBar } from './ChurchGate'
 import { ApiError, usePeople, usePersonActions } from './api'
 import {
@@ -22,6 +22,8 @@ const plural = (weekday: number) => (WEEKDAYS[weekday]!.endsWith('s') ? WEEKDAYS
 const slotName = { SINGLE: '', MORNING: 'Mañana', AFTERNOON: 'Tarde' } as const
 const timeText = (time: string) => format12h(from24h(time))
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+/** Cierra una frase sin duplicar el punto cuando el texto ya termina en uno (p. ej. «8:30 p.m.»). */
+const endSentence = (text: string) => (text.endsWith('.') ? text : `${text}.`)
 const joinWords = (words: string[]) => (words.length > 1 ? `${words.slice(0, -1).join(', ')} y ${words[words.length - 1]}` : (words[0] ?? ''))
 
 export function BatchPage() {
@@ -292,8 +294,8 @@ function Batch({ church }: { church: Church }) {
                   <li key={key} className="border-b border-line last:border-b-0">
                     <button type="button" aria-label={`${longLabel(entry)}, ${removed ? 'quitada del lote' : nameOf(director)}. Opciones`} onClick={() => setPanel({ kind: 'actions', key, mode: 'menu' })}
                       className={`flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent px-4 text-left ${removed ? 'text-text-3' : ''}`}>
-                      <span className="font-mono text-[0.8125rem]">{label(entry)}</span>
-                      <span className="flex items-center gap-1 font-semibold">{removed ? 'Quitada del lote' : nameOf(director)}<Icon name="more" /></span>
+                      <span className="min-w-0 flex-1 font-mono text-[0.8125rem]">{label(entry)}</span>
+                      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap font-semibold">{removed ? 'Quitada del lote' : nameOf(director)}<Icon name="more" /></span>
                     </button>
                   </li>
                 )
@@ -301,7 +303,7 @@ function Batch({ church }: { church: Church }) {
             </ul>
             {pending.length > 0 && (
               <Notice icon="info" title="Sin programar">
-                {pending.map(label).join(', ')}. No se crea servicio ni participaciones para {pending.length === 1 ? 'esta fecha' : 'estas fechas'}; las resuelves después.
+                {endSentence(pending.map(label).join(', '))} No se crea servicio ni participaciones para {pending.length === 1 ? 'esta fecha' : 'estas fechas'}; las resuelves después.
               </Notice>
             )}
             {entries.length > free.length && <p className="m-0 text-[0.8125rem] text-text-3">{count(entries.length - free.length, 'fecha se saltó', 'fechas se saltaron')}: ya tienen servicio o no hay culto.</p>}
@@ -356,7 +358,7 @@ function Batch({ church }: { church: Church }) {
       <Sheet open={panel?.kind === 'partial'} onClose={closePanel} title={`Se crearán ${included.length} de ${free.length} servicios`}>
         <div className="grid gap-3">
           <p className="m-0 text-[0.9375rem] text-text-2">
-            No se crea ningún servicio sin director. {pending.length === 1 ? 'Esta fecha queda' : 'Estas fechas quedan'} sin programar para resolver{pending.length === 1 ? 'la' : 'las'} después: {pending.map(label).join(', ')}.
+            No se crea ningún servicio sin director. {pending.length === 1 ? 'Esta fecha queda' : 'Estas fechas quedan'} sin programar para resolver{pending.length === 1 ? 'la' : 'las'} después: {endSentence(pending.map(label).join(', '))}
           </p>
           <Button variant="primary" block loading={sending} onClick={() => void submit()}>Confirmar y crear</Button>
           <Button variant="quiet" block onClick={closePanel}>Volver a la revisión</Button>
@@ -369,8 +371,8 @@ function Batch({ church }: { church: Church }) {
 function Row({ date, value, muted }: { date: string; value: ReactNode; muted?: boolean }) {
   return (
     <li className={`flex min-h-12 items-center justify-between gap-3 border-b border-line px-4 py-2 last:border-b-0 ${muted ? 'text-text-3' : ''}`}>
-      <span className="font-mono text-[0.8125rem]">{date}</span>
-      <span className="text-right font-semibold">{value}</span>
+      <span className="min-w-0 flex-1 font-mono text-[0.8125rem]">{date}</span>
+      <span className="max-w-[55%] shrink-0 text-right font-semibold">{value}</span>
     </li>
   )
 }
@@ -409,16 +411,37 @@ function Availability({ pending, failed, entries, weekdays, month }: { pending: 
 
 function DayFields({ weekday, double, value, issue, onChange }: { weekday: number; double: boolean; value: DayConfig; issue: string; onChange: (patch: Partial<DayConfig>) => void }) {
   const name = WEEKDAYS[weekday]!.replace(/^./, (letter) => letter.toUpperCase())
+  const [wheel, setWheel] = useState<{ field: 'time' | 'time2'; value: Time12 } | null>(null)
+  const hour = (field: 'time' | 'time2', label: string) => (
+    <Field label={label}>
+      {(control) => (
+        <button type="button" {...control} className={`${inputClass} cursor-pointer text-left`} aria-label={`${label}: ${timeText(value[field])}`}
+          onClick={() => setWheel({ field, value: from24h(value[field]) })}>
+          {timeText(value[field])}
+        </button>
+      )}
+    </Field>
+  )
+  const morning = double && wheel?.field === 'time'
+  const afternoon = double && wheel?.field === 'time2'
   return (
     <fieldset className="m-0 grid gap-3 rounded-lg border border-line bg-surface p-4">
       <legend className="px-1 text-sm font-semibold">{double ? 'Domingo · dos servicios' : name}</legend>
       <TextField label={`Nombre del servicio (${WEEKDAYS[weekday]})`} value={value.title} maxLength={120} onChange={(event) => onChange({ title: event.target.value })} />
       <div className={double ? 'grid grid-cols-2 gap-3' : ''}>
-        <TextField label={double ? 'Hora de la mañana' : `Hora (${WEEKDAYS[weekday]})`} type="time" value={value.time} onChange={(event) => onChange({ time: event.target.value })} />
-        {double && <TextField label="Hora de la tarde" type="time" value={value.time2} onChange={(event) => onChange({ time2: event.target.value })} />}
+        {hour('time', double ? 'Hora de la mañana' : `Hora (${WEEKDAYS[weekday]})`)}
+        {double && hour('time2', 'Hora de la tarde')}
       </div>
       {double && <p className="m-0 text-[0.8125rem] text-text-3">Tu iglesia tiene dos servicios los domingos: la mañana va antes de las 12:00 y la tarde desde las 12:00. Cada uno lleva su director.</p>}
       {issue && <p role="alert" className="m-0 flex items-center gap-1.5 text-[0.8125rem] font-medium text-cancel-fg"><Icon name="alert" width={16} height={16} />{issue}</p>}
+      <Sheet open={Boolean(wheel)} onClose={() => setWheel(null)} title={morning ? 'Hora de la mañana' : afternoon ? 'Hora de la tarde' : 'Hora de inicio'}>
+        {wheel && (
+          <div className="grid gap-3">
+            <TimeWheel value={wheel.value} onChange={(next) => setWheel({ ...wheel, value: next })} meridiems={morning ? ['am'] : afternoon ? ['pm'] : ['am', 'pm']} />
+            <Button variant="primary" block onClick={() => { onChange({ [wheel.field]: to24h(wheel.value) }); setWheel(null) }}>Listo</Button>
+          </div>
+        )}
+      </Sheet>
     </fieldset>
   )
 }
