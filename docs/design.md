@@ -147,4 +147,4 @@ Se llega desde «Preparar setlist» en el detalle del servicio. Una sola vista c
 - El resto de los ajustes de la iglesia. Falta un punto de entrada a los ajustes y a las participaciones desde la navegación.
 - Unificar tokens en `apps/web` (Tailwind 4) cuando se implemente.
 - Probar teclado en pantalla, modo claro de las tarjetas por día y contraste en todos los temas.
-- Casos de producto abiertos que afectan estas pantallas: franja del domingo en el lote, más directores que fechas, lote sin directores y homónimos.
+- Casos de producto abiertos que afectan estas pantallas: franja del domingo en el lote, lote sin directores y homónimos.
