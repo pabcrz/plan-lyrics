@@ -3,6 +3,7 @@ import { requireSession, type SessionConfig, type SessionEnvironment } from './s
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { readChurch } from './church-access.js'
 import { safeErrorCode } from './errors.js'
+import { roleRoutes } from './roles.js'
 import { serviceRoutes } from './services.js'
 import { accountManagerBody, createUser, newUserBody, setAccountManager, userCapability } from './users.js'
 
@@ -50,6 +51,7 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
     }
   })
   app.route('/', serviceRoutes(config, database, now))
+  app.route('/', roleRoutes(config, database))
   return app
 }
 

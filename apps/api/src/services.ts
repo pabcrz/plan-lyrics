@@ -8,13 +8,13 @@ import { requireSession, type SessionConfig, type SessionEnvironment } from './s
 
 export const timeZone = 'America/Mexico_City'
 
-type Active = { churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; canEdit: boolean; canConfigure: boolean }
+export type Active = { churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; canEdit: boolean; canConfigure: boolean }
 
 /**
  * The active church is derived from the caller's memberships, never from the request.
  * Minimal rule (product has not defined a switcher): exactly one membership is active.
  */
-async function activeChurch(db: PrismaClient, subject: string): Promise<Active | 'none' | 'ambiguous'> {
+export async function activeChurch(db: PrismaClient, subject: string): Promise<Active | 'none' | 'ambiguous'> {
   const memberships = await db.membership.findMany({
     where: { user: { clerkSubject: subject } },
     select: { role: true, church: { select: { id: true, name: true, sundayDouble: true, usesPreaching: true } } },
