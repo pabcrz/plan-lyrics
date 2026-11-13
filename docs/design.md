@@ -112,13 +112,14 @@ Primera sección de configuración general. Lo definido aquí alimenta los formu
 
 Destino de la pestaña «Personas». Tres vistas: lista, ficha y alta. Aplica las reglas de [Personas y dirección del servicio](producto.md).
 
-- **Lista:** orden alfabético, búsqueda por nombre sin distinguir acentos y filtro por rol (Todas, Batería, Guitarra, Piano, Voces). Cada fila muestra los roles que la persona tiene configurados en la iglesia y la etiqueta «Con cuenta» cuando está vinculada. Sin resultados, ofrece agregar el nombre buscado.
-- **Ficha:** nombre y teléfono editables; guardar y descartar aparecen solo al cambiar algo. Un aviso recuerda que esa información es general; si la persona participa en otra iglesia, lo dice sin nombrarla y aclara que sus roles y turnos no se comparten.
-- **En esta iglesia:** habitual, rotación y próxima participación, en solo lectura. Se editan en la configuración de participaciones, no aquí.
+- **Lista:** orden alfabético y búsqueda por nombre sin distinguir acentos; cada fila muestra la etiqueta «Con cuenta» cuando la persona está vinculada. Sin resultados, ofrece agregar el nombre buscado. El filtro por rol (Todas, Batería, Guitarra, Piano, Voces) y los roles de cada fila dependen de las participaciones y aún no existen.
+- **Ficha:** nombre y teléfono editables por editores y administradores (el resto solo lee); guardar y descartar aparecen solo al cambiar algo. Un aviso recuerda que esa información es general; si la persona participa en otra iglesia, lo dice sin nombrarla y aclara que sus roles y turnos no se comparten.
+- **En esta iglesia:** habitual, rotación y próxima participación, en solo lectura, cuando existan las participaciones; mientras tanto la sección es un texto simple. Se editarán en la configuración de participaciones, no aquí.
 - **Cuenta de acceso:** solo muestra el estado. Vincular o desvincular se indica como tarea del superadministrador o del gestor de cuentas.
-- **Alta:** nombre obligatorio y teléfono opcional, sin pedir cuenta. Si el nombre ya existe en la iglesia, un aviso lo señala, enlaza con esa ficha y exige confirmar que es otra persona antes de crear.
-- **Quitar de la iglesia:** acción destructiva con hoja de confirmación y «Deshacer».
-- **Supuestos de diseño** (no están en producto): el teléfono como único dato personal además del nombre; confirmar homónimos con una casilla; quitar a una persona de la iglesia sin borrarla del sistema ni de servicios pasados, avisando si tiene participaciones próximas.
+- **Alta:** nombre completo obligatorio y teléfono opcional, sin pedir cuenta. Si el nombre ya existe en la iglesia (sin distinguir mayúsculas ni acentos), no se crea otra persona: un aviso lo señala, enlaza con esa ficha y pide completar el nombre. No hay casilla para crearla de todos modos.
+- **Quitar de la iglesia:** solo el administrador, con hoja de confirmación. No borra a la persona del sistema ni de servicios pasados y avisa si tiene servicios próximos a su cargo. No hay «Deshacer» todavía.
+- **Dirección en el servicio individual:** el selector usa este directorio (búsqueda sin acentos). Escribir un nombre nuevo ofrece «Agregar como persona nueva» con la misma regla del nombre completo; si ya existe, ofrece usar a esa persona. Siempre queda guardada en el directorio: elegir «solo para este servicio» aún no existe.
+- **Supuestos de diseño** (no están en producto): el teléfono como único dato personal además del nombre; quitar a una persona de la iglesia la oculta del directorio y del selector sin borrarla (marca de baja en su vínculo con la iglesia).
 
 ### Participaciones
 
