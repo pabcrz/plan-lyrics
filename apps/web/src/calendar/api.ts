@@ -1,10 +1,10 @@
 import { useCallback } from 'react'
 import { useAuth } from '@clerk/react'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { Church, Service, Status, Slot } from './model'
+import type { Church, ClosedDate, Service, Status, Slot } from './model'
 
 export class ApiError extends Error {
-  constructor(readonly status: number) {
+  constructor(readonly status: number, readonly code = '') {
     super(`API ${status}`)
   }
 }
@@ -22,8 +22,11 @@ function useApiFetch() {
       cache: 'no-store',
       credentials: 'omit',
     })
-    if (!response.ok) throw new ApiError(response.status)
-    return response.json() as Promise<T>
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { error?: unknown } | null
+      throw new ApiError(response.status, typeof body?.error === 'string' ? body.error : '')
+    }
+    return (response.status === 204 ? undefined : await response.json()) as T
   }, [getToken])
 }
 
@@ -67,7 +70,45 @@ export function useCreateService() {
       return await api<Service>('/api/services', { method: 'POST', body: service })
     } finally {
       // Éxito o rechazo (p. ej. fecha completa): la lista visible debe reflejar el servidor.
-      await client.invalidateQueries({ queryKey: ['services'] })
+      await Promise.all([client.invalidateQueries({ queryKey: ['services'] }), client.invalidateQueries({ queryKey: ['closed'] })])
     }
   }, [api, client])
+}
+
+/** Fechas «No hay culto» de uno o varios meses (`YYYY-MM`). */
+export function useClosedDates(months: string[]) {
+  const api = useApiFetch()
+  const results = useQueries({
+    queries: months.map((month) => ({
+      queryKey: ['closed', month],
+      queryFn: () => api<ClosedDate[]>(`/api/closed-dates?month=${month}`),
+      retry: false,
+    })),
+  })
+  return {
+    closed: results.flatMap((result) => result.data ?? []),
+    loading: results.some((result) => result.isPending),
+    error: results.find((result) => result.error)?.error ?? null,
+  }
+}
+
+/** Marca (con motivo opcional) o desmarca una fecha; el servidor decide permisos y reglas. */
+export function useClosedDateActions() {
+  const api = useApiFetch()
+  const client = useQueryClient()
+  const mark = useCallback(async (date: string, reason: string) => {
+    try {
+      await api<ClosedDate>(`/api/closed-dates/${date}`, { method: 'PUT', body: reason ? { reason } : {} })
+    } finally {
+      await client.invalidateQueries({ queryKey: ['closed'] })
+    }
+  }, [api, client])
+  const unmark = useCallback(async (date: string) => {
+    try {
+      await api<void>(`/api/closed-dates/${date}`, { method: 'DELETE' })
+    } finally {
+      await client.invalidateQueries({ queryKey: ['closed'] })
+    }
+  }, [api, client])
+  return { mark, unmark }
 }

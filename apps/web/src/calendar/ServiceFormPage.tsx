@@ -5,7 +5,7 @@ import {
   format12h, from24h, to24h, type Person, type Time12,
 } from '../ui'
 import { ChurchGate, TopBar } from './ChurchGate'
-import { ApiError, useCreateService, usePeople, useServices } from './api'
+import { ApiError, useClosedDates, useCreateService, usePeople, useServices } from './api'
 import { formatDay, formatLongDay, monthOf, todayIn, weekdayOf } from './dates'
 import { freeSlots, habitualFor, upcomingDates, type Church, type Slot } from './model'
 
@@ -57,11 +57,17 @@ function Form({ church }: { church: Church }) {
   const date = choice === 'other' ? other : choice
   const validOther = /^\d{4}-\d{2}-\d{2}$/.test(other)
   const months = [...new Set([...options.map(monthOf), ...(choice === 'other' && validOther ? [monthOf(other)] : [])])]
-  const { services, loading, error } = useServices(months)
+  const monthServices = useServices(months)
+  const monthClosed = useClosedDates(months)
+  const { services } = monthServices
+  const loading = monthServices.loading || monthClosed.loading
+  const error = monthServices.error ?? monthClosed.error
+  const isClosed = (target: string) => monthClosed.closed.some((item) => item.date === target)
   const people = usePeople(true)
   const slots = date ? freeSlots(church, date, services) : []
   const past = Boolean(date) && date < today
-  const full = Boolean(date) && !loading && slots.length === 0
+  const closed = Boolean(date) && !loading && isClosed(date)
+  const full = Boolean(date) && !loading && !closed && slots.length === 0
   const doubleDay = church.sundayDouble && Boolean(date) && weekdayOf(date) === 0
   const matches = (people.data ?? []).filter((person) => person.name.toLowerCase().includes(query.trim().toLowerCase()))
 
@@ -84,7 +90,7 @@ function Form({ church }: { church: Church }) {
     event.preventDefault()
     setAttempted(true)
     setFailure('')
-    if (!date || past || full || !slot || !title.trim() || !director) return
+    if (!date || past || closed || full || !slot || !title.trim() || !director) return
     setSending(true)
     try {
       await create({
@@ -94,7 +100,7 @@ function Form({ church }: { church: Church }) {
       void navigate({ pathname: '/', search: monthOf(date) === monthOf(today) ? '' : `?mes=${monthOf(date)}` }, { state: { created: true } })
     } catch (caught) {
       const code = caught instanceof ApiError ? caught.status : 0
-      setFailure(code === 409 ? 'Esa fecha ya está completa. Elige otra.' : code === 403 ? 'No tienes permiso para crear servicios.' : 'No se pudo crear el servicio. Inténtalo de nuevo.')
+      setFailure(caught instanceof ApiError && caught.code === 'Date closed' ? 'Esa fecha está marcada como «No hay culto». Elige otra.' : code === 409 ? 'Esa fecha ya está completa. Elige otra.' : code === 403 ? 'No tienes permiso para crear servicios.' : 'No se pudo crear el servicio. Inténtalo de nuevo.')
       setSending(false)
     }
   }
@@ -112,13 +118,14 @@ function Form({ church }: { church: Church }) {
           {error && <Notice tone="warn" icon="alert" role="alert">No se pudo comprobar qué fechas están ocupadas.</Notice>}
           <div className="grid grid-cols-2 gap-2">
             {options.map((option) => {
-              const busy = !loading && freeSlots(church, option, services).length === 0
+              const off = !loading && isClosed(option)
+              const busy = off || (!loading && freeSlots(church, option, services).length === 0)
               const habitual = church.days.filter((day) => day.weekday === weekdayOf(option))
               return (
                 <button key={option} type="button" disabled={loading || busy} aria-pressed={choice === option} onClick={() => pickDate(option, option)}
                   className={`grid min-h-16 cursor-pointer content-center justify-items-start rounded-md border px-3 text-left aria-pressed:border-accent aria-pressed:bg-accent-soft ${busy ? 'cursor-not-allowed border-dashed border-line-strong text-text-3 line-through' : 'border-line-strong bg-surface'}`}>
                   <span className="font-semibold">{formatDay(option)}</span>
-                  <span className="text-[0.8125rem] text-text-2">{busy ? 'Completo' : habitual.map((day) => format12h(from24h(day.time))).join(' · ')}</span>
+                  <span className="text-[0.8125rem] text-text-2">{off ? 'No hay culto' : busy ? 'Completo' : habitual.map((day) => format12h(from24h(day.time))).join(' · ')}</span>
                 </button>
               )
             })}
@@ -134,6 +141,7 @@ function Form({ church }: { church: Church }) {
           )}
           {attempted && !date && <p role="alert" className="m-0 text-[0.8125rem] font-medium text-cancel-fg">Elige una fecha.</p>}
           {date && <p className="m-0 text-[0.8125rem] text-text-2">{formatLongDay(date)}</p>}
+          {closed && <Notice tone="warn" icon="ban" role="status" title="No hay culto">Esa fecha está marcada sin reunión. Elige otra o desmárcala en el calendario.</Notice>}
           {full && <Notice tone="warn" icon="alert" role="status" title="Fecha completa">Esa fecha ya tiene {doubleDay ? 'sus dos servicios' : 'un servicio'}. Elige otra.</Notice>}
         </fieldset>
 
@@ -165,7 +173,7 @@ function Form({ church }: { church: Church }) {
           error={people.isError ? 'No se pudo cargar el directorio.' : attempted && !director ? 'Elige quién dirige el servicio.' : undefined} />
 
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
-        <Button type="submit" variant="primary" block loading={sending} disabled={full || past}>Crear servicio</Button>
+        <Button type="submit" variant="primary" block loading={sending} disabled={full || past || closed}>Crear servicio</Button>
       </form>
 
       <Sheet open={Boolean(wheel)} onClose={() => setWheel(null)} title="Hora de inicio">

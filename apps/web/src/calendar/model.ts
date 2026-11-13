@@ -9,6 +9,9 @@ export type Service = {
   director: { id: string; name: string }
 }
 
+/** Fecha «No hay culto»: no es un servicio; `reason` es un motivo breve opcional. */
+export type ClosedDate = { date: string; reason: string | null }
+
 const isDoubleDay = (church: Pick<Church, 'sundayDouble'>, date: string) => church.sundayDouble && weekdayOf(date) === 0
 
 /** Franjas que aún se pueden crear en la fecha; vacío = fecha completa (la API lo vuelve a comprobar). */
