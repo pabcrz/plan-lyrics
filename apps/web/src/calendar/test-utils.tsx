@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
 import type { Church, ClosedDate, PersonDetail, Service } from './model'
+import type { MusicalRole, RoleRestriction } from './roles-api'
 
 export const church: Church = {
   id: 'church-a', name: 'Betel', sundayDouble: false, usesPreaching: false, canEdit: true, canConfigure: true, timeZone: 'America/Mexico_City',
@@ -18,7 +19,12 @@ export const service = (over: Partial<Service>): Service => ({
   director: people[0], ...over,
 })
 
-type Handler = (url: string, init?: RequestInit) => { status?: number; body?: unknown } | undefined
+export const defaultRoles: MusicalRole[] = [
+  { id: 'r-drums', name: 'Batería' }, { id: 'r-guitar', name: 'Guitarra' }, { id: 'r-piano', name: 'Piano' }, { id: 'r-voices', name: 'Voces' },
+]
+export const defaultRestrictions: RoleRestriction[] = [{ id: 'x1', first: 'DIRIGIR', second: 'r-drums' }]
+
+type Handler =(url: string, init?: RequestInit) => { status?: number; body?: unknown } | undefined
 
 /** Doble de fetch por ruta; devuelve las peticiones hechas para poder inspeccionarlas. */
 export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
@@ -29,7 +35,11 @@ export function stubApi(routes: {
   church?: Church | number; services?: Service[]; closed?: ClosedDate[]; post?: Handler; save?: Handler; mark?: Handler; unmark?: Handler
   /** Directorio: lista, ficha por id y respuestas a alta, edición y baja. */
   directory?: PersonDetail[]; createPerson?: Handler; patchPerson?: Handler; removePerson?: Handler
+  /** Roles y restricciones de la iglesia; las altas y bajas los cambian como lo haría el servidor. */
+  roles?: MusicalRole[]; restrictions?: RoleRestriction[]; createRole?: Handler; addRestriction?: Handler
 }) {
+  const roles = [...(routes.roles ?? defaultRoles)]
+  const restrictions = [...(routes.restrictions ?? defaultRestrictions)]
   const calls: Array<{ url: string; init?: RequestInit }> = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, init })
@@ -38,6 +48,33 @@ export function stubApi(routes: {
     if (url === '/api/active-church' && init?.method === 'PUT') {
       const result = routes.save?.(url, init)
       return reply(result?.status ?? 200, result?.body ?? { ...church, ...JSON.parse(String(init.body)) })
+    }
+    if (url === '/api/roles' && init?.method === 'POST') {
+      const result = routes.createRole?.(url, init)
+      if (result?.status && result.status >= 400) return reply(result.status, result.body ?? { error: 'x' })
+      const role = { id: `new-${roles.length}`, name: JSON.parse(String(init.body)).name as string }
+      roles.push(role)
+      return reply(201, result?.body ?? role)
+    }
+    if (url === '/api/roles') return reply(200, [...roles].sort((a, b) => a.name.localeCompare(b.name, 'es')))
+    if (url.startsWith('/api/roles/') && init?.method === 'DELETE') {
+      const id = decodeURIComponent(url.split('/').pop() ?? '')
+      roles.splice(0, roles.length, ...roles.filter((role) => role.id !== id))
+      restrictions.splice(0, restrictions.length, ...restrictions.filter((item) => item.first !== id && item.second !== id))
+      return new Response(null, { status: 204 })
+    }
+    if (url === '/api/role-restrictions' && init?.method === 'POST') {
+      const result = routes.addRestriction?.(url, init)
+      if (result?.status && result.status >= 400) return reply(result.status, result.body ?? { error: 'x' })
+      const item = { id: `rr-${restrictions.length}`, ...JSON.parse(String(init.body)) } as RoleRestriction
+      restrictions.push(item)
+      return reply(201, item)
+    }
+    if (url === '/api/role-restrictions') return reply(200, restrictions)
+    if (url.startsWith('/api/role-restrictions/') && init?.method === 'DELETE') {
+      const id = decodeURIComponent(url.split('/').pop() ?? '')
+      restrictions.splice(0, restrictions.length, ...restrictions.filter((item) => item.id !== id))
+      return new Response(null, { status: 204 })
     }
     if (url === '/api/people' && init?.method === 'POST') {
       const result = routes.createPerson?.(url, init)

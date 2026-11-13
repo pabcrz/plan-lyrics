@@ -3,6 +3,7 @@ import { Button, Field, Notice, Sheet, Switch, TextField, TimeWheel, Toast, form
 import { ChurchGate, PageHeader, TopBar } from './ChurchGate'
 import { ApiError, useSaveChurch } from './api'
 import type { Church, ChurchSettings, Slot } from './model'
+import { RolesSettings } from './RolesSettings'
 
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const DAY_NAMES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
@@ -60,7 +61,10 @@ function ReadOnly({ church }: { church: Church }) {
     <main className="mx-auto max-w-[480px]">
       <TopBar name={church.name} />
       <PageHeader title="Ajustes de la iglesia" />
-      <div className="p-4"><Notice title="Solo lectura">Cambiar los ajustes requiere ser administrador de tu iglesia.</Notice></div>
+      <div className="grid gap-5 p-4">
+        <Notice title="Solo lectura">Cambiar los ajustes requiere ser administrador de tu iglesia.</Notice>
+        <RolesSettings editable={false} />
+      </div>
     </main>
   )
 }
@@ -182,6 +186,8 @@ function Settings({ church }: { church: Church }) {
 
         <Switch checked={form.usesPreaching} onCheckedChange={(on) => change((prev) => ({ ...prev, usesPreaching: on }))} label="Usa predicación"
           description="Solo se guarda: la sección de predicación llegará más adelante." />
+
+        <RolesSettings editable />
 
         <p className="m-0 text-[0.8125rem] text-text-3">Guardar no cambia los servicios ya creados; solo lo que se precarga a partir de ahora.</p>
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}

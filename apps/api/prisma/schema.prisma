@@ -69,7 +69,11 @@ model Church {
   sundayDouble Boolean @default(false)
   // Opt-in per church: only stored and exposed for now; the preaching section does not exist yet.
   usesPreaching Boolean @default(false)
+  // Set once the default musical roles and restriction were created; deleting every role never re-seeds them.
+  rolesSeeded Boolean @default(false)
   people ChurchPerson[]
+  musicalRoles MusicalRole[]
+  roleRestrictions RoleRestriction[]
   memberships Membership[]
   services Service[]
   serviceDays ServiceDay[]
@@ -146,4 +150,29 @@ model ClosedDate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@id([churchId, date])
+}
+
+// Musical role catalog of one church. «Dirigir» is a fixed service role and is not stored here.
+model MusicalRole {
+  id String @id @default(cuid())
+  churchId String
+  name String
+  // Case- and accent-insensitive form of the name: unique per church.
+  nameKey String
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([churchId, nameKey])
+}
+
+// Unordered pair of roles one person cannot hold at once in a service. Each side is a MusicalRole id
+// or the fixed key DIRIGIR; the pair is stored sorted (first < second) so it is unique and never self-paired.
+model RoleRestriction {
+  id String @id @default(cuid())
+  churchId String
+  first String
+  second String
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([churchId, first, second])
 }
