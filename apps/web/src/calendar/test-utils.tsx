@@ -37,6 +37,8 @@ export function stubApi(routes: {
   directory?: PersonDetail[]; createPerson?: Handler; patchPerson?: Handler; removePerson?: Handler
   /** Roles y restricciones de la iglesia; las altas y bajas los cambian como lo haría el servidor. */
   roles?: MusicalRole[]; restrictions?: RoleRestriction[]; createRole?: Handler; addRestriction?: Handler
+  /** Lote mensual: período (por URL) y creación. */
+  period?: Handler; batch?: Handler
 }) {
   const roles = [...(routes.roles ?? defaultRoles)]
   const restrictions = [...(routes.restrictions ?? defaultRestrictions)]
@@ -96,6 +98,14 @@ export function stubApi(routes: {
       }
       const found = (routes.directory ?? [detail()]).find((person) => person.id === id)
       return found ? reply(200, found) : reply(404, { error: 'Not found' })
+    }
+    if (url.startsWith('/api/service-batches/period')) {
+      const result = routes.period?.(url, init)
+      return reply(result?.status ?? 200, result?.body ?? { month: '', entries: [], previous: null })
+    }
+    if (url === '/api/service-batches' && init?.method === 'POST') {
+      const result = routes.batch?.(url, init)
+      return reply(result?.status ?? 201, result?.body ?? { services: [] })
     }
     if (url.startsWith('/api/services?month=')) {
       const month = url.split('=')[1]
