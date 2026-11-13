@@ -2,6 +2,7 @@ import { useId, useState, type ReactNode } from 'react'
 import { cx } from './cx'
 import { Field, inputClass } from './Field'
 import { Icon } from './Icon'
+import { fold } from './text'
 
 export type Person = { id: string; name: string; detail?: string }
 
@@ -86,7 +87,7 @@ export function PersonPicker({
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const name = query.trim()
-  const canAdd = Boolean(onAddNew) && name.length > 0 && !people.some((p) => p.name.toLowerCase() === name.toLowerCase())
+  const canAdd = Boolean(onAddNew) && name.length > 0 && !people.some((p) => fold(p.name) === fold(name))
   const count = people.length + (canAdd ? 1 : 0)
   const showList = open && count > 0
   const optionId = (index: number) => `${base}-o${index}`

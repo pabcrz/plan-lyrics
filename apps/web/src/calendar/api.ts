@@ -1,10 +1,10 @@
 import { useCallback } from 'react'
 import { useAuth } from '@clerk/react'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { Church, ChurchSettings, ClosedDate, Service, Status, Slot } from './model'
+import type { Church, ChurchSettings, ClosedDate, Person, PersonDetail, Service, Status, Slot } from './model'
 
 export class ApiError extends Error {
-  constructor(readonly status: number, readonly code = '', readonly issues: string[] = []) {
+  constructor(readonly status: number, readonly code = '', readonly issues: string[] = [], readonly existing?: { id: string; name: string }) {
     super(`API ${status}`)
   }
 }
@@ -25,7 +25,12 @@ function useApiFetch() {
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as { error?: unknown } | null
       const issues = (body as { issues?: unknown } | null)?.issues
-      throw new ApiError(response.status, typeof body?.error === 'string' ? body.error : '', Array.isArray(issues) ? issues.filter((item): item is string => typeof item === 'string') : [])
+      const existing = (body as { existing?: { id?: unknown; name?: unknown } } | null)?.existing
+      throw new ApiError(
+        response.status, typeof body?.error === 'string' ? body.error : '',
+        Array.isArray(issues) ? issues.filter((item): item is string => typeof item === 'string') : [],
+        typeof existing?.id === 'string' && typeof existing.name === 'string' ? { id: existing.id, name: existing.name } : undefined,
+      )
     }
     return (response.status === 204 ? undefined : await response.json()) as T
   }, [getToken])
@@ -49,7 +54,34 @@ export function useSaveChurch() {
 
 export function usePeople(enabled: boolean) {
   const api = useApiFetch()
-  return useQuery({ queryKey: ['people'], queryFn: () => api<Array<{ id: string; name: string }>>('/api/people'), enabled, retry: false })
+  return useQuery({ queryKey: ['people'], queryFn: () => api<Person[]>('/api/people'), enabled, retry: false })
+}
+
+export function usePerson(id: string) {
+  const api = useApiFetch()
+  return useQuery({ queryKey: ['person', id], queryFn: () => api<PersonDetail>(`/api/people/${encodeURIComponent(id)}`), retry: false })
+}
+
+/** Alta, edición de datos personales y baja; el servidor decide permisos, duplicados e iglesia. */
+export function usePersonActions() {
+  const api = useApiFetch()
+  const client = useQueryClient()
+  const refresh = useCallback(() => Promise.all([client.invalidateQueries({ queryKey: ['people'] }), client.invalidateQueries({ queryKey: ['person'] })]), [client])
+  const create = useCallback(async (person: { name: string; phone?: string }) => {
+    const created = await api<Omit<PersonDetail, 'sharedWithOtherChurches' | 'upcomingServices'>>('/api/people', { method: 'POST', body: person })
+    await refresh()
+    return created
+  }, [api, refresh])
+  const update = useCallback(async (id: string, patch: { name?: string; phone?: string | null }) => {
+    const saved = await api<Omit<PersonDetail, 'sharedWithOtherChurches' | 'upcomingServices'>>(`/api/people/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
+    await refresh()
+    return saved
+  }, [api, refresh])
+  const remove = useCallback(async (id: string) => {
+    await api<void>(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    await refresh()
+  }, [api, refresh])
+  return { create, update, remove }
 }
 
 /** Servicios de uno o varios meses (`YYYY-MM`), cada uno en su propia consulta. */

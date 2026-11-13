@@ -13,6 +13,11 @@ export type Service = {
   director: { id: string; name: string }
 }
 
+/** Persona del directorio de la iglesia activa (lista). */
+export type Person = { id: string; name: string; hasAccount: boolean }
+/** Ficha: datos personales generales y lo que el servidor sabe de ella en esta iglesia. */
+export type PersonDetail = Person & { phone: string | null; sharedWithOtherChurches: boolean; upcomingServices: number }
+
 /** Fecha «No hay culto»: no es un servicio; `reason` es un motivo breve opcional. */
 export type ClosedDate = { date: string; reason: string | null }
 

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { UserButton } from '@clerk/react'
-import { Button, Icon, Notice } from '../ui'
+import { Button, Icon, Notice, Tabbar } from '../ui'
 import { ApiError, useChurch } from './api'
 import type { Church } from './model'
 
@@ -20,12 +20,24 @@ export function TopBar({ name, settings }: { name?: string; settings?: boolean }
   )
 }
 
-/** Encabezado de una pantalla secundaria con vuelta al calendario. */
-export function PageHeader({ title }: { title: string }) {
+/** Navegación inferior principal: Calendario, Nuevo (solo quien edita) y Personas. */
+export function MainTabbar({ church, current }: { church: Pick<Church, 'canEdit'>; current: 'calendar' | 'people' }) {
+  const navigate = useNavigate()
+  return (
+    <div className="sticky bottom-0">
+      <Tabbar label="Principal" current={current} onSelect={(id) => void navigate(id === 'people' ? '/personas' : '/')}
+        items={[{ id: 'calendar', label: 'Calendario', icon: 'calendar' }, { id: 'people', label: 'Personas', icon: 'users' }]}
+        action={church.canEdit ? { label: 'Nuevo', icon: 'plus', onAction: () => void navigate('/servicios/nuevo') } : undefined} />
+    </div>
+  )
+}
+
+/** Encabezado de una pantalla secundaria; vuelve al calendario salvo que se indique otro destino. */
+export function PageHeader({ title, back = '/', backLabel = 'Volver al calendario' }: { title: string; back?: string; backLabel?: string }) {
   const navigate = useNavigate()
   return (
     <div className="flex min-h-14 items-center gap-1 border-b border-line px-2">
-      <Button variant="quiet" icon aria-label="Volver al calendario" onClick={() => void navigate('/')}><Icon name="right" className="-scale-x-100" /></Button>
+      <Button variant="quiet" icon aria-label={backLabel} onClick={() => void navigate(back)}><Icon name="right" className="-scale-x-100" /></Button>
       <h1 className="m-0 font-display text-lg font-bold">{title}</h1>
     </div>
   )
