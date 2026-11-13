@@ -2,6 +2,7 @@ import type { Context } from 'hono'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { batchBody, batchEntries, checkBatch, lastDirectorOf, parseWeekdays } from './batch-rules.js'
 import { safeErrorCode } from './errors.js'
+import { generateForServices } from './participation-generation.js'
 import { monthQuery, todayInZone, type SlotName } from './service-rules.js'
 import type { SessionEnvironment } from './session.js'
 
@@ -82,6 +83,8 @@ export async function createBatch(c: Http, db: PrismaClient, church: Church, now
         select: serviceSelect,
       }))
     }
+    // Habitual people and rotation turns, in date order so the sequences continue from where the last batch left them.
+    await generateForServices(tx, church.churchId, created.map((row, index) => ({ id: row.id, date: entries[index].date, slot: entries[index].slot, directorId: entries[index].directorId })))
     const state = { directorIds: body.data.directorIds, lastDirectorId: lastDirectorOf(entries) }
     await tx.batchDirectors.upsert({ where: { churchId: church.churchId }, update: state, create: { churchId: church.churchId, ...state } })
     return { created }

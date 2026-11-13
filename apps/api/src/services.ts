@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { safeErrorCode } from './errors.js'
 import { batchPeriod, createBatch } from './batches.js'
+import { generateForServices } from './participation-generation.js'
 import { checkSettings } from './settings-rules.js'
 import { findSameName, newPersonBody, personPatch } from './people-rules.js'
 import { closedDateBody, dateCapacity, isoDate, monthQuery, newServiceBody, planSlot, todayInZone } from './service-rules.js'
@@ -197,10 +198,13 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       if (!director) return 'director' as const
       const taken = await tx.service.count({ where: { churchId: church.churchId, date: dateValue } })
       if (taken >= dateCapacity(date, church.sundayDouble)) return 'full' as const
-      return tx.service.create({
+      const created = await tx.service.create({
         data: { churchId: church.churchId, directorId, date: dateValue, slot: plan.slot, title: fields.title, time: fields.time ?? null, status: fields.status },
-        select: serviceSelect,
+        select: { ...serviceSelect, id: true },
       })
+      // Habitual people and the rotation's next turns, under the same church lock as the creation.
+      await generateForServices(tx, church.churchId, [{ id: created.id, date, slot: plan.slot, directorId }])
+      return created
     }).catch(error => { if (safeErrorCode(error) === 'P2002') return 'full' as const; throw error })
     if (result === 'director') return c.json({ error: 'Invalid request' }, 400)
     if (result === 'full') return c.json({ error: 'Date full' }, 409)
