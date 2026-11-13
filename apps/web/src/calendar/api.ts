@@ -10,7 +10,7 @@ export class ApiError extends Error {
 }
 
 /** Petición con el Bearer de Clerk; sin cookies ni caché. La API decide siempre los permisos. */
-function useApiFetch() {
+export function useApiFetch() {
   const { getToken } = useAuth()
   return useCallback(async <T,>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> => {
     const token = await getToken()
