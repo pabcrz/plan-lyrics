@@ -15,7 +15,7 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 ### Etapa 1 — servicios y organización
 
 - Trabajar dentro de la iglesia activa, determinada por el contexto de acceso de la persona. La jerarquía es iglesia → servicio (fecha, director y participaciones) → setlist → canciones (BPM, orden, letra y demás datos según su etapa). Crear un servicio no pide seleccionar ni registrar una iglesia: pertenece automáticamente a la iglesia activa.
-- Crear servicios con título, fecha, hora de inicio opcional y estado (borrador, publicado, completado o cancelado); organizarlos en una vista tipo calendario.
+- Crear servicios con título, fecha, director, hora de inicio opcional y estado (borrador, publicado, completado o cancelado); organizarlos en una vista tipo calendario. El director es obligatorio al crear un servicio, individual o en lote; las demás participaciones se completan con las habituales y la rotación.
 - Incluir en la primera entrega creación de servicios en lote y generación automática de turnos. Cada servicio se puede completar después con su setlist manualmente; crear un lote no establece recurrencia automática.
 - Designar dirección y participantes, asignando a cada persona un rol musical para ese servicio. No incluir confirmaciones de asistencia ni estados de aceptación o rechazo de asignaciones.
 - Ordenar canciones y otros momentos del servicio; registrar tonalidad contextual y enlaces de referencia manuales a YouTube o Spotify. No se prevé integración automática con esos servicios.
@@ -25,11 +25,11 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 
 ### Configuración general y fechas de servicio
 
-- Configurar por iglesia su nombre y sus días habituales de reunión desde su panel general. Los días varían por iglesia; ejemplos acordados: martes/miércoles/viernes/domingo, jueves/domingo y viernes/domingo. Esta configuración no crea servicios recurrentes automáticamente.
+- Configurar por iglesia su nombre, sus días habituales de reunión y la hora de inicio de cada uno desde su panel general. Los días varían por iglesia; ejemplos acordados: martes/miércoles/viernes/domingo, jueves/domingo y viernes/domingo. Esta configuración no crea servicios recurrentes automáticamente: sirve para que el formulario de servicio y el lote lleguen con la hora ya cargada. La hora sigue siendo editable en cada servicio y los servicios especiales de días no habituales se crean con su propia fecha y hora, sin pasar por esa configuración.
 - Usar la zona horaria de Ciudad de México (`America/Mexico_City`) para el calendario y la sugerencia de fechas. El 4 de noviembre citado durante el diseño es contexto del ejemplo, no una fecha fija del producto.
 - Sugerir por defecto la fecha de reunión más cercana según los días configurados de la iglesia activa. Permitir crear un servicio especial en cualquier día de la semana, aunque no sea habitual. La inclusión de hoy cuando coincide con un día de reunión sigue pendiente.
-- Actualmente las iglesias no celebran dos cultos el mismo día. Contemplar una opción de configuración general para domingos con servicio matutino y vespertino si una iglesia adopta esa costumbre; no imponer dos servicios por domingo ni crearlos automáticamente. Falta precisar cómo el lote selecciona una franja y cómo participan ambas en las rotaciones.
-- Distinguir los días habituales de una fecha con un servicio ya registrado. La resolución de una colisión con un servicio existente sigue pendiente; no se adopta una prohibición global de varios servicios en una fecha.
+- Una fecha admite un solo servicio, con una excepción: el domingo, si la iglesia activa lo habilita en su configuración general, admite dos, uno matutino (antes del mediodía) y uno vespertino, cada uno con su hora habitual. Es una opción por iglesia: no se impone ni se crean ambos automáticamente. Ningún otro día admite dos servicios. Falta precisar cómo el lote selecciona una franja y cómo participan ambas en las rotaciones.
+- Distinguir los días habituales de una fecha con un servicio ya registrado. Una fecha que ya alcanzó su máximo de servicios (uno, o dos en un domingo con la opción habilitada) no se puede elegir para crear otro servicio; si el domingo tiene dos franjas, solo se ofrece la que sigue libre. Cómo resuelve el lote las fechas ocupadas sigue pendiente.
 
 ### Personas y dirección del servicio
 
@@ -41,10 +41,10 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 
 ### Creación mensual en lote
 
-- Dentro de la iglesia activa, seleccionar el mes y año y un día de la semana, por ejemplo viernes.
-- Si se elige el mes actual, considerar solo las fechas de ese día que resten del mes; si se elige un mes futuro, considerar todas las fechas de ese día dentro del mes elegido. Esas son las fechas disponibles, no una obligación de crear servicios para todas ellas. El tratamiento de la fecha de hoy y de meses pasados queda pendiente.
-- Asignar manualmente un director a cada fecha en orden cronológico. La referencia de interacción aceptada es la alternativa 04: pasos de período, directores por fecha y revisión; en móvil cada fecha aparece sobre su campo. Buscar personas existentes y tratar nombres nuevos según el directorio descrito arriba, sin exigir cuentas de acceso.
-- Permitir lotes parciales: si hay cuatro fechas disponibles y se ingresan tres directores, pedir confirmación indicando que se crearán tres de cuatro servicios, en las primeras tres fechas consecutivas y en el orden ingresado. Tras confirmar, crear solo esos tres servicios; no crear un servicio sin director para la cuarta fecha ni generar participaciones para ella. Las fechas restantes quedan sin programar para resolverlas después, por ejemplo ante incertidumbre de Navidad o fin de año.
+- Dentro de la iglesia activa, seleccionar el mes y año y de uno a tres días de la semana, por ejemplo viernes, o jueves y domingo. Decisión explícita: se permite elegir más de un día en el mismo lote, con un máximo de tres. Cada día elegido define su propio nombre de servicio y su hora.
+- Si se elige el mes actual, considerar solo las fechas de esos días que resten del mes; si se elige un mes futuro, considerar todas las fechas de esos días dentro del mes elegido. Con varios días, las fechas se ordenan en una sola secuencia cronológica. Esas son las fechas disponibles, no una obligación de crear servicios para todas ellas. El tratamiento de la fecha de hoy y de meses pasados queda pendiente.
+- Asignar manualmente un director a cada fecha en orden cronológico, aunque se mezclen días de la semana. La referencia de interacción aceptada es la alternativa 04: pasos de período, directores por fecha y revisión; en móvil cada fecha aparece sobre su campo. Buscar personas existentes y tratar nombres nuevos según el directorio descrito arriba, sin exigir cuentas de acceso.
+- Permitir lotes parciales: si hay cuatro fechas disponibles y se ingresan tres directores, pedir confirmación indicando que se crearán tres de cuatro servicios, en las primeras tres fechas consecutivas de esa secuencia (aunque correspondan a distintos días de la semana) y en el orden ingresado. Tras confirmar, crear solo esos tres servicios; no crear un servicio sin director para la cuarta fecha ni generar participaciones para ella. Las fechas restantes quedan sin programar para resolverlas después, por ejemplo ante incertidumbre de Navidad o fin de año.
 - Completar las participaciones mediante las asignaciones habituales y la modalidad de rotación configurada; agregar después el setlist manualmente.
 - No crear una recurrencia permanente de servicios. La secuencia de personas sí continúa entre lotes y meses según la rotación configurada; no se reinicia al crear otro lote.
 
@@ -113,7 +113,7 @@ No ampliar la primera entrega con confirmaciones de asistencia, servicios recurr
 
 - Un editor de servicios puede crear un servicio fechado dentro de la iglesia activa sin volver a indicar la iglesia; un integrante no puede crearlo.
 - Se pueden crear servicios en lote con participaciones generadas y completar sus setlists manualmente después.
-- Un lote mensual incluye solo las fechas del día elegido que resten del mes actual, o todas las del mes futuro elegido, y asigna directores en el orden ingresado.
+- Un lote mensual incluye solo las fechas de los días elegidos (hasta tres) que resten del mes actual, o todas las del mes futuro elegido, y asigna directores en el orden ingresado.
 - Los turnos respetan la modalidad configurada por rotación: independiente por día o compartida entre servicios; las participaciones generadas pueden corregirse manualmente.
 - Una persona puede ordenar canciones y otros momentos y asignar participantes con su rol musical, sin que dicho rol conceda permisos de edición.
 - Existe un único superadministrador, correspondiente a la persona propietaria del proyecto, con acceso total a todas las iglesias y capacidad de modificar todos los roles.
