@@ -31,6 +31,12 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 - Una fecha admite un solo servicio, con una excepción: el domingo, si la iglesia activa lo habilita en su configuración general, admite dos, uno matutino (antes del mediodía) y uno vespertino, cada uno con su hora habitual. Es una opción por iglesia: no se impone ni se crean ambos automáticamente. Ningún otro día admite dos servicios. Falta precisar cómo el lote selecciona una franja y cómo participan ambas en las rotaciones.
 - Distinguir los días habituales de una fecha con un servicio ya registrado. Una fecha que ya alcanzó su máximo de servicios (uno, o dos en un domingo con la opción habilitada) no se puede elegir para crear otro servicio; si el domingo tiene dos franjas, solo se ofrece la que sigue libre. Cómo resuelve el lote las fechas ocupadas sigue pendiente.
 
+### Fechas sin culto
+
+- Un editor de servicios o un administrador puede marcar una fecha como «No hay culto» (opcionalmente con un motivo breve, como un feriado), distinta de un servicio cancelado: no existe un servicio, solo se avisa que ese día no habrá reunión.
+- Una fecha marcada se muestra en el calendario y en todo lo que se comparte (enlaces, imágenes y PDF del ministerio y la lista mensual de dirección) con la leyenda «No hay culto», para que todos la tengan presente.
+- Una fecha marcada no se ofrece al crear servicios ni entra en la secuencia de fechas de un lote ni de sus directores; se puede desmarcar.
+
 ### Personas y dirección del servicio
 
 - Mantener un directorio de personas de la iglesia reutilizable para dirección y participaciones. Figurar en ese directorio no requiere una cuenta de acceso a la aplicación.
@@ -82,9 +88,9 @@ Quien recibe lo compartido no necesita crear una cuenta: pastores, familiares y 
 - **Ministerio** (pastor, predicadores, equipo de alabanza): un enlace privado de solo lectura, por servicio o por rango de fechas, con tres versiones: *alabanza* (fechas, quién dirige y setlists), *predicación* (fechas, predicador, tema, citas y notas) y *servicio completo* (ambas, con fechas, horario y orden de los cantos). Cubre un servicio o un rango de fechas que elige quien lo crea (por ejemplo, un mes completo). Quien crea el enlace puede mostrar u ocultar bloques de información según el destinatario: por defecto no incluye tonos, BPM ni datos específicos de alabanza, pero puede mostrarlos, por ejemplo, para un músico. El enlace no es adivinable y quien administra o edita servicios puede revocarlo; quien lo tenga ve los nombres y las notas, por lo que se comparte solo con quien corresponde.
 - **Congregantes**: la vista pública del setlist con letras, limitada a la alabanza. Opcionalmente, y activada por la iglesia, puede mostrar de cada servicio solo el nombre del predicador y el tema, sin notas, citas ni otros datos. No incluye directores, equipos ni listas de personas.
 - **Imagen del setlist**: una imagen compartible con la fecha y las canciones numeradas, cada una con su autor entre paréntesis. Hay canciones con el mismo título y distinto autor y distinto contenido, por lo que el autor forma parte de cómo se identifica y muestra una canción.
-- **Lista mensual de dirección de alabanza**: un documento compartible (imagen o PDF) con el título «Rol alabanza» y el mes, una línea por fecha de servicio con su director, y un mensaje o versículo opcional al pie. En el ejemplo aportado, una fecha habitual sin servicio aparece como «No hay culto». Cubre el rango de fechas que se elija.
+- **Lista mensual de dirección de alabanza**: un documento compartible (imagen o PDF) con el título «Rol alabanza» y el mes, una línea por fecha de servicio con su director, y un mensaje o versículo opcional al pie. Las fechas marcadas «No hay culto» aparecen como tales. Cubre el rango de fechas que se elija.
 - **PDF de predicaciones**: un documento imprimible con las fechas, a quién le toca, el tema, las citas y los puntos a considerar, pensado para entregarlo en papel al pastor.
-- La revocación y la vigencia de los enlaces quedan por definir. Cada documento (enlace, imagen o PDF) cubre un servicio o el rango de fechas que se elija, incluido un mes completo.
+- **Vigencia de los enlaces del ministerio:** se pueden revocar a mano en cualquier momento. Además tienen un plazo de gracia después de la fecha del último servicio que incluyen (propuesto: 90 días, pensado para consultarlos al planear la siguiente serie de temas de uno a tres meses); al terminar el plazo dejan de abrir. Un enlace vencido o revocado se puede reactivar por un tiempo limitado, en modo de solo lectura y referencia. La vista pública de congregantes sigue sus propias reglas. Cada documento (enlace, imagen o PDF) cubre un servicio o el rango de fechas que se elija, incluido un mes completo.
 
 ### Accesos acordados
 
@@ -154,7 +160,7 @@ Son criterios futuros; no se ha implementado ni probado la infraestructura.
 
 ## Decisiones de producto abiertas
 
-- Confirmar la predicación y el compartir servicios como parte de la etapa 1; definir la revocación y vigencia de los enlaces del ministerio. Precisar si se puede asignar predicador a una fecha sin servicio creado y si el lote también lo pide.
+- Confirmar la predicación y el compartir servicios como parte de la etapa 1; confirmar el plazo de gracia de los enlaces del ministerio (90 días propuestos) y la duración de su reactivación. Precisar si se puede asignar predicador a una fecha sin servicio creado y si el lote también lo pide.
 - Precisar el lote mensual: ausencia de directores y resolución de homónimos. Precisar permisos para guardar personas nuevas desde la asignación de dirección. La zona horaria, el recorrido por fecha y la separación entre personas y cuentas ya están acordados.
 - Concretar resolución de coincidencias entre asignaciones habituales o rotaciones que propongan a una persona en dos roles del mismo servicio, sin duplicar su asignación. La regla de un solo rol registrado y el canto junto al instrumento ya están acordados. Precisar elección de las franjas dominicales matutina/vespertina en lotes y rotaciones, servicios creados fuera de orden, cancelaciones y efecto de cambiar el orden sobre servicios ya generados. El inicio manual, la continuidad cíclica y la distinción entre reemplazo de una fecha e intercambio explícito ya están acordados.
 - Confirmar la propuesta de varios bloques de alabanza, cada uno con su setlist, dentro de un único servicio para ocasiones como bautizos. No confundir ese caso con dos cultos independientes ni adelantar la entrega de setlists.
