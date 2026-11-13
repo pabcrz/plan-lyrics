@@ -27,6 +27,14 @@ describe('Button', () => {
     expect(onClick).not.toHaveBeenCalled()
   })
 
+  test('secondary and danger keep a visible border (not overridden by transparent)', () => {
+    render(<><Button variant="secondary">A</Button><Button variant="danger">B</Button></>)
+    for (const name of ['A', 'B']) {
+      const classes = screen.getByRole('button', { name }).className
+      expect(classes).not.toContain('border-transparent')
+    }
+  })
+
   test('disabled and icon-only buttons keep their accessible state and name', () => {
     render(<><Button disabled>Nada</Button><Button icon aria-label="Más acciones" variant="secondary">⋯</Button></>)
     expect(screen.getByRole('button', { name: 'Nada' })).toBeDisabled()

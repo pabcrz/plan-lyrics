@@ -16,7 +16,9 @@ export function Toast({
   duration?: number
 }) {
   const dismiss = useRef(onDismiss)
-  dismiss.current = onDismiss
+  useEffect(() => {
+    dismiss.current = onDismiss
+  })
   useEffect(() => {
     const timer = setTimeout(() => dismiss.current(), duration)
     return () => clearTimeout(timer)

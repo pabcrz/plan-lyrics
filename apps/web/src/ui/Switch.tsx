@@ -37,6 +37,7 @@ export function Switch({
           'relative h-8 w-[52px] flex-none cursor-pointer rounded-full border p-0 disabled:cursor-not-allowed disabled:opacity-45',
           checked ? 'border-accent bg-accent' : 'border-line-strong bg-surface-2',
           'after:absolute after:top-[3px] after:left-[3px] after:size-6 after:rounded-full after:content-[""]',
+          'before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[""]', // área táctil de 44 px
           'after:transition-transform after:duration-(--t-fast)',
           checked ? 'after:translate-x-5 after:bg-on-accent' : 'after:bg-text-3',
         )}

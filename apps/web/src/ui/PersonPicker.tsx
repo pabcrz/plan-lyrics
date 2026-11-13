@@ -39,7 +39,8 @@ export function PersonOption({
   add?: boolean
 }) {
   return (
-    <div
+    <button
+      type="button"
       id={id}
       role="option"
       aria-selected={active}
@@ -54,7 +55,7 @@ export function PersonOption({
       )}
     >
       {children}
-    </div>
+    </button>
   )
 }
 

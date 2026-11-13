@@ -57,21 +57,23 @@ function Column<T extends number | string>({
     >
       <div aria-hidden="true" className="h-[88px]" />
       {items.map((item, i) => (
-        <div
+        <button
+          type="button"
           key={item}
           role="option"
+          tabIndex={-1}
           aria-selected={i === index}
           onClick={() => {
             move(i)
             ref.current?.scrollTo?.({ top: i * ITEM, behavior: 'smooth' })
           }}
           className={cx(
-            'flex h-11 cursor-pointer snap-center items-center justify-center text-[1.375rem] tabular-nums select-none',
+            'flex h-11 w-full cursor-pointer snap-center items-center justify-center border-0 bg-transparent p-0 text-[1.375rem] tabular-nums select-none',
             i === index ? 'font-semibold text-text' : 'font-medium text-text-3',
           )}
         >
           {text(item)}
-        </div>
+        </button>
       ))}
       <div aria-hidden="true" className="h-[88px]" />
     </div>

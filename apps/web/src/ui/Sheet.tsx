@@ -22,7 +22,9 @@ export function Sheet({
   const titleId = useId()
   const panel = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
 
   useEffect(() => {
     if (!open) return
@@ -64,6 +66,7 @@ export function Sheet({
   if (!open) return null
   return createPortal(
     <div
+      role="presentation"
       className="fixed inset-0 z-50 flex items-end justify-center bg-[oklch(0_0_0/0.42)]"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()

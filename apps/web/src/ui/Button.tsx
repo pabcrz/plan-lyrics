@@ -18,9 +18,9 @@ type Props = Common &
   )
 
 const variants: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-on-accent hover:bg-accent-hover',
+  primary: 'border-transparent bg-accent text-on-accent hover:bg-accent-hover',
   secondary: 'bg-surface border-line-strong hover:bg-surface-2',
-  quiet: 'bg-transparent text-accent hover:bg-accent-soft',
+  quiet: 'border-transparent bg-transparent text-accent hover:bg-accent-soft',
   danger: 'bg-cancel-bg text-cancel-fg border-cancel-bd',
 }
 
@@ -43,7 +43,7 @@ export function Button({
       aria-busy={loading || undefined}
       onClick={loading ? undefined : onClick}
       className={cx(
-        'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-transparent text-[0.9375rem] font-semibold',
+        'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border text-[0.9375rem] font-semibold',
         'transition-[background-color,transform] duration-(--t-fast) ease-out active:translate-y-px',
         'disabled:cursor-not-allowed disabled:opacity-45',
         size,
