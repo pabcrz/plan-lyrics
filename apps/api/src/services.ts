@@ -1,12 +1,13 @@
 import { Hono } from 'hono'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { safeErrorCode } from './errors.js'
+import { checkSettings } from './settings-rules.js'
 import { closedDateBody, dateCapacity, isoDate, monthQuery, newServiceBody, planSlot, todayInZone } from './service-rules.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 
 export const timeZone = 'America/Mexico_City'
 
-type Active = { churchId: string; name: string; sundayDouble: boolean; canEdit: boolean }
+type Active = { churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; canEdit: boolean; canConfigure: boolean }
 
 /**
  * The active church is derived from the caller's memberships, never from the request.
@@ -15,12 +16,17 @@ type Active = { churchId: string; name: string; sundayDouble: boolean; canEdit: 
 async function activeChurch(db: PrismaClient, subject: string): Promise<Active | 'none' | 'ambiguous'> {
   const memberships = await db.membership.findMany({
     where: { user: { clerkSubject: subject } },
-    select: { role: true, church: { select: { id: true, name: true, sundayDouble: true } } },
+    select: { role: true, church: { select: { id: true, name: true, sundayDouble: true, usesPreaching: true } } },
   })
   if (memberships.length === 0) return 'none'
   if (memberships.length > 1) return 'ambiguous'
   const { role, church } = memberships[0]
-  return { churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, canEdit: role === 'ADMIN' || role === 'EDITOR' }
+  // Church settings: the church administrator or the platform owner (who still needs an active church).
+  const owner = role === 'ADMIN' ? null : await db.platformOwner.findFirst({ where: { user: { clerkSubject: subject } }, select: { id: true } })
+  return {
+    churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching,
+    canEdit: role === 'ADMIN' || role === 'EDITOR', canConfigure: role === 'ADMIN' || Boolean(owner),
+  }
 }
 
 const serviceSelect = {
@@ -59,12 +65,32 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       }
     }
 
-  routes.get('/api/active-church', guarded('active_church_failed', async (c, db, church) => {
+  const presentChurch = async (db: PrismaClient, church: Active) => {
     const days = await db.serviceDay.findMany({
       where: { churchId: church.churchId }, orderBy: [{ weekday: 'asc' }, { slot: 'asc' }],
       select: { weekday: true, slot: true, time: true, title: true },
     })
-    return c.json({ id: church.churchId, name: church.name, sundayDouble: church.sundayDouble, canEdit: church.canEdit, timeZone, days })
+    return {
+      id: church.churchId, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching,
+      canEdit: church.canEdit, canConfigure: church.canConfigure, timeZone, days,
+    }
+  }
+
+  routes.get('/api/active-church', guarded('active_church_failed', async (c, db, church) => c.json(await presentChurch(db, church))))
+
+  // Saving changes only what is prefilled from now on; services already created are never touched.
+  routes.put('/api/active-church', guarded('church_settings_failed', async (c, db, church) => {
+    if (!church.canConfigure) return c.json({ error: 'Forbidden' }, 403)
+    const body = checkSettings(await c.req.json().catch(() => undefined))
+    if ('issues' in body) return c.json({ error: 'Invalid request', issues: body.issues }, 400)
+    const { days, ...fields } = body.data
+    await db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
+      await tx.church.update({ where: { id: church.churchId }, data: fields })
+      await tx.serviceDay.deleteMany({ where: { churchId: church.churchId } })
+      await tx.serviceDay.createMany({ data: days.map(day => ({ ...day, churchId: church.churchId })) })
+    })
+    return c.json(await presentChurch(db, await activeChurch(db, c.get('clerkSubject')) as Active))
   }))
 
   routes.get('/api/people', guarded('people_failed', async (c, db, church) => {

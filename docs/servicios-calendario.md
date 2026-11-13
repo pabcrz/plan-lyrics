@@ -10,7 +10,8 @@ La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la 
 
 | Ruta | Quién | Resultado |
 | --- | --- | --- |
-| `GET /api/active-church` | Cualquier miembro | `{id, name, sundayDouble, canEdit, timeZone:"America/Mexico_City", days:[{weekday (0=domingo), slot, time, title}]}`. Los días solo precargan el formulario. |
+| `GET /api/active-church` | Cualquier miembro | `{id, name, sundayDouble, usesPreaching, canEdit, canConfigure, timeZone:"America/Mexico_City", days:[{weekday (0=domingo), slot, time, title}]}`. Los días solo precargan el formulario. |
+| `PUT /api/active-church` | Administrador de la iglesia o superadministrador | Reemplaza los ajustes: `{name, sundayDouble, usesPreaching, days:[{weekday, slot, time, title}]}` y responde como el `GET`. Guardar no modifica servicios ya creados. |
 | `GET /api/people` | Cualquier miembro | Personas de la iglesia activa `[{id, name}]`, para elegir director. |
 | `GET /api/services?month=YYYY-MM` | Cualquier miembro | Servicios del mes `[{id, title, date, slot, time, status, director}]`. |
 | `POST /api/services` | Administrador o editor | `201` con el servicio. Cuerpo: `title`, `date` (`YYYY-MM-DD`), `status` (`DRAFT`/`PUBLISHED`), `directorId`, `time` (`HH:mm`, opcional), `slot` (`MORNING`/`AFTERNOON`, solo domingo doble). |
@@ -26,11 +27,12 @@ La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la 
 - Fecha llena o franja repetida: `409 {"error":"Date full"}`. El conteo se serializa por iglesia (`FOR UPDATE`) y el índice único `(iglesia, fecha, franja)` actúa de respaldo.
 - Hoy (en `America/Mexico_City`) es válido todo el día; una fecha anterior se rechaza: `400 {"error":"Date in the past"}`. El límite es la medianoche local, no la de UTC.
 - «No hay culto»: no es un servicio ni un servicio cancelado; es una fila `ClosedDate` por iglesia y fecha (modelo listo para que los documentos compartibles la consulten después). No se marca una fecha anterior a hoy (`400 {"error":"Date in the past"}`) ni una que ya tiene un servicio (`409 {"error":"Date has service"}`). Crear un servicio en una fecha marcada (cualquier franja) responde `409 {"error":"Date closed"}`. Marcar y crear comparten el bloqueo por iglesia, así que no pueden competir por la misma fecha. Desmarcar no tiene restricción de fecha.
+- Ajustes (`PUT /api/active-church`): nombre obligatorio (≤120), al menos un día, título obligatorio por servicio, horas `HH:mm` en múltiplos de 15, sin días repetidos y sin `churchId` (`400`). Con `sundayDouble` el domingo lleva exactamente `MORNING` (< 12:00) y `AFTERNOON` (≥ 12:00); sin él, todo día es `SINGLE`; ningún otro día admite dos servicios; `sundayDouble` exige que el domingo sea día de servicio. El `400` trae `{"error":"Invalid request","issues":["name","days.<día>.<franja>.title|time","days","sundayDouble"]}`. Editor e integrante: `403`. `usesPreaching` solo se guarda y se expone.
 - Integrante: `403` al crear. Sin sesión: `401`.
 
 ## Pendiente de decisión de producto
 
-Selector de iglesia activa con varias membresías; acceso del superadministrador a una iglesia concreta; creación con estado completado/cancelado (aquí solo borrador o publicado, según el diseño); edición y cancelación de servicios; pantalla de ajustes (los días y `sundayDouble` se cargan por seed: `pnpm --filter @plan-lyrics/api db:seed`).
+Selector de iglesia activa con varias membresías; acceso del superadministrador a una iglesia concreta; creación con estado completado/cancelado (aquí solo borrador o publicado, según el diseño); edición y cancelación de servicios; acceso del superadministrador sin membresía a los ajustes de una iglesia (hoy necesita tenerla como iglesia activa). Al apagar `sundayDouble` con un domingo que ya tiene dos servicios, esa fecha pasa a verse «Completa» (capacidad 1) y los servicios existentes se conservan.
 
 ## Interfaz web (apps/web)
 

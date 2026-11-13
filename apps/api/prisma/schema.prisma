@@ -65,6 +65,8 @@ model Church {
   name String
   // Opt-in per church: Sunday may then hold a morning (before 12:00) and an afternoon service.
   sundayDouble Boolean @default(false)
+  // Opt-in per church: only stored and exposed for now; the preaching section does not exist yet.
+  usesPreaching Boolean @default(false)
   people ChurchPerson[]
   memberships Membership[]
   services Service[]
