@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { cleanup, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { MemoryRouter } from 'react-router'
 import { ClerkApp } from './ClerkApp'
 
 const clerk = vi.hoisted(() => ({
@@ -10,7 +11,7 @@ const clerk = vi.hoisted(() => ({
 
 type Children = { children: ReactNode }
 vi.mock('@clerk/react', () => ({
-  useAuth: () => ({ getToken: vi.fn() }),
+  useAuth: () => ({ getToken: async () => 'token-ficticio' }),
   ClerkProvider: ({ children, ...props }: Children) => {
     clerk.provider(props)
     return children
@@ -87,11 +88,11 @@ test('signed-out view delegates modal sign-in to Clerk', () => {
   expect(clerk.provider).toHaveBeenCalledWith({ publishableKey: publicKey, afterSignOutUrl: '/' })
 })
 
-test('signed-in view exposes the Clerk account without church permissions or persistence claims', () => {
+test('signed-in view hands over to the product screens, with the Clerk account', async () => {
   clerk.signedIn = true
-  mount(publicKey)
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })))
+  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><ClerkApp publishableKey={publicKey} /></MemoryRouter></QueryClientProvider>)
+  expect(await screen.findByText('Sin iglesia asignada')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Cuenta de Clerk' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Iniciar sesión' })).toBeNull()
-  expect(screen.getByText('Sesión de Clerk iniciada; los permisos del producto todavía no están implementados.')).toBeTruthy()
-  expect(screen.getByText('Base de datos: pendiente de configurar.')).toBeTruthy()
 })

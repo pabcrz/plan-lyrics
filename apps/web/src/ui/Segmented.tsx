@@ -1,6 +1,6 @@
 import { cx } from './cx'
 
-export type SegmentedOption<T extends string> = { value: T; label: string }
+export type SegmentedOption<T extends string> = { value: T; label: string; disabled?: boolean }
 
 export function Segmented<T extends string>({
   label,
@@ -24,9 +24,10 @@ export function Segmented<T extends string>({
           key={option.value}
           type="button"
           aria-pressed={option.value === value}
+          disabled={option.disabled}
           onClick={() => onChange(option.value)}
           className={cx(
-            'min-h-touch cursor-pointer rounded-lg border-0 text-sm font-semibold',
+            'min-h-touch cursor-pointer rounded-lg border-0 text-sm font-semibold disabled:cursor-not-allowed disabled:text-text-3 disabled:line-through',
             option.value === value ? 'bg-surface text-text shadow-1' : 'bg-transparent text-text-2',
           )}
         >
