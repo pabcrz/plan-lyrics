@@ -16,4 +16,4 @@ Propuesta para la entrega siguiente a programación y turnos. No incluye editor 
 
 ## Evidencia
 
-Pendiente de implementación y verificación. Esta historia documenta comportamiento propuesto, no funciones existentes.
+Implementado en API y pantalla (ver [servicios y calendario](../servicios-calendario.md)): orden, tonalidad contextual y enlace manual a YouTube o Spotify, con edición solo para editores de servicios. Verificado con pruebas unitarias, de integración con PostgreSQL y de componente. Quién da de alta canciones desde el setlist sigue sin definirse en el producto: hoy solo lo hace el editor de biblioteca o el superadministrador.

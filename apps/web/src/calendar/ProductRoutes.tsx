@@ -5,6 +5,7 @@ import { SettingsPage } from './SettingsPage'
 import { ServiceFormPage } from './ServiceFormPage'
 import { NewPersonPage } from '../people/NewPersonPage'
 import { PeoplePage } from '../people/PeoplePage'
+import { SetlistPage } from '../setlist/SetlistPage'
 import { PersonPage } from '../people/PersonPage'
 
 export function ProductRoutes() {
@@ -12,6 +13,7 @@ export function ProductRoutes() {
     <Routes>
       <Route path="/servicios/nuevo" element={<ServiceFormPage />} />
       <Route path="/servicios/lote" element={<BatchPage />} />
+      <Route path="/servicios/:serviceId/setlist" element={<SetlistPage />} />
       <Route path="/personas" element={<PeoplePage />} />
       <Route path="/personas/nueva" element={<NewPersonPage />} />
       <Route path="/personas/:personId" element={<PersonPage />} />
