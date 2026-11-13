@@ -12,6 +12,7 @@
     "build": "pnpm db:generate && tsc --noEmit false",
     "start": "node dist/index.js",
     "typecheck": "pnpm db:generate && tsc --noEmit",
+    "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {
