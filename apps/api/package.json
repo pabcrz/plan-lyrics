@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "db:generate": "prisma generate",
+    "db:bootstrap-owner": "tsx src/bootstrap-owner-cli.ts",
     "db:validate": "prisma validate",
     "db:seed": "tsx prisma/dev-seed.ts",
     "db:migrate": "prisma migrate deploy",
