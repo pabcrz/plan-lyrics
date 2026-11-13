@@ -132,6 +132,9 @@ model Service {
   time String?
   status ServiceStatus @default(DRAFT)
   directorId String
+  // Bumped by every setlist change: a reorder sent with a stale version is rejected.
+  setlistVersion Int @default(0)
+  setlist SetlistEntry[]
   church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
   // The director must belong to the same church: composite key, not just a Person id.
   director ChurchPerson @relation(fields: [churchId, directorId], references: [churchId, personId], onDelete: Restrict)
@@ -187,4 +190,40 @@ model BatchDirectors {
   church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Shared music library (no lyrics or chords yet). A song is identified by title + author, compared
+// without case, accents or repeated spaces: two songs may share a title if the author differs.
+model Song {
+  id String @id @default(cuid())
+  title String
+  author String
+  titleKey String
+  authorKey String
+  entries SetlistEntry[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([titleKey, authorKey])
+}
+
+// One line of a service setlist: a library song or a free-form moment (exactly one of songId / moment).
+// The church is never stored here: it is always reached through the service.
+model SetlistEntry {
+  id String @id @default(cuid())
+  serviceId String
+  // 0-based and gapless; rewritten under the service row lock by every add, removal and reorder.
+  position Int
+  songId String?
+  moment String?
+  // Contextual key of this service ("G", "Bbm"); never edits the library.
+  key String?
+  // Manual reference link (YouTube or Spotify).
+  link String?
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  song Song? @relation(fields: [songId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // A song appears once per setlist (null songId, i.e. moments, never collide).
+  @@unique([serviceId, songId])
+  @@unique([serviceId, position])
 }
