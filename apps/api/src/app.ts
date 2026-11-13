@@ -5,6 +5,8 @@ import { readChurch } from './church-access.js'
 import { safeErrorCode } from './errors.js'
 import { roleRoutes } from './roles.js'
 import { serviceRoutes } from './services.js'
+import { setlistRoutes } from './setlist.js'
+import { songRoutes } from './songs.js'
 import { accountManagerBody, createUser, newUserBody, setAccountManager, userCapability } from './users.js'
 
 export function createApp(config: SessionConfig = {}, database?: PrismaClient, now?: () => Date) {
@@ -52,6 +54,8 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
   })
   app.route('/', serviceRoutes(config, database, now))
   app.route('/', roleRoutes(config, database))
+  app.route('/', songRoutes(config, database))
+  app.route('/', setlistRoutes(config, database))
   return app
 }
 
