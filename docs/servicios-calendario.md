@@ -26,3 +26,10 @@ La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la 
 ## Pendiente de decisión de producto
 
 Selector de iglesia activa con varias membresías; acceso del superadministrador a una iglesia concreta; creación con estado completado/cancelado (aquí solo borrador o publicado, según el diseño); edición y cancelación de servicios; pantalla de ajustes (los días y `sundayDouble` se cargan por seed: `pnpm --filter @plan-lyrics/api db:seed`).
+
+## Interfaz web (apps/web)
+
+- `/` (sesión iniciada): calendario del mes (`?mes=YYYY-MM`), semanas de domingo a sábado, marca por estado con icono y texto, agenda del mes, detalle del servicio con su dirección en una hoja inferior. Zona horaria `America/Mexico_City` para «hoy».
+- `/servicios/nuevo`: fechas habituales (las próximas cuatro, **empezando mañana**: incluir hoy sigue pendiente en producto) con la hora habitual debajo, fechas completas deshabilitadas, «Otra fecha» para un servicio especial, selector Mañana/Tarde en domingo doble, hora editable con la rueda y director obligatorio. La API vuelve a validar todo.
+- El botón «Nuevo» y el formulario solo se ofrecen a quien puede editar (`canEdit`); el servidor decide de todos modos.
+- `SessionCheck` ya no se muestra (la sesión se ejerce al cargar el calendario); su archivo y pruebas siguen en el repositorio.

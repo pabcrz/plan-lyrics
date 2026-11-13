@@ -65,8 +65,10 @@ function Calendar({ church }: { church: Church }) {
         )}
       </main>
       {toast && <div className="px-4 pb-2"><Toast message="Servicio creado" onDismiss={() => setToast(false)} /></div>}
+      <div className="sticky bottom-0">
       <Tabbar label="Principal" items={[{ id: 'calendar', label: 'Calendario', icon: 'calendar' }]} current="calendar" onSelect={() => {}}
         action={church.canEdit ? { label: 'Nuevo', icon: 'plus', onAction: () => void navigate('/servicios/nuevo') } : undefined} />
+      </div>
       <Sheet open={Boolean(open)} onClose={() => setOpenId(null)} title={open?.title ?? 'Servicio'}>
         {open && <Detail service={open} />}
       </Sheet>
