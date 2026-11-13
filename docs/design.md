@@ -16,6 +16,7 @@ Mockups HTML autocontenidos, sin build, con datos ficticios. Se abren directamen
 | Pantalla | [pantallas/ajustes-iglesia.html](design/pantallas/ajustes-iglesia.html) | Ajustes de la iglesia: nombre, días de servicio, horas habituales y domingo con dos servicios. |
 | Pantalla | [pantallas/personas.html](design/pantallas/personas.html) | Directorio de personas: lista con búsqueda y filtro por rol, ficha y alta. |
 | Pantalla | [pantallas/participaciones.html](design/pantallas/participaciones.html) | Participaciones: roles, habituales y rotación por día o entre todos. |
+| Pantalla | [pantallas/setlist.html](design/pantallas/setlist.html) | Setlist del servicio: canciones y momentos ordenados, tonalidad y enlace de referencia. |
 
 El recorrido de wireframes previo vive en [`design/programacion-mensual`](../design/programacion-mensual/mapa-y-recorrido.md); la alternativa 04 fue la referencia que originó estas pantallas.
 
@@ -129,6 +130,17 @@ Configuración por iglesia de los roles musicales, las personas habituales y las
 - **Próximos servicios:** vista previa calculada con la configuración actual; marca el turno de rotación y las personas habituales. Aclara que no cambia los servicios ya creados.
 - **Selector de personas:** no ofrece a quien ya está en el mismo rol como habitual o en rotación.
 - **Supuestos de diseño:** un solo habitual salvo en Voces; el primer turno lo toma la primera persona de la lista en la primera fecha de servicio futura. Sin resolver: qué ocurre al eliminar un rol con asignaciones previas, y la coincidencia de una persona en dos roles del mismo servicio (la vista previa no la detecta).
+
+### Setlist del servicio
+
+Se llega desde «Preparar setlist» en el detalle del servicio. Una sola vista con el servicio como contexto.
+
+- **Lista:** canciones y momentos en el orden en que ocurren, numerados; los momentos se distinguen con fondo tenue e ícono, no solo por color. Cada canción muestra su tonalidad y, si lo tiene, el origen del enlace (YouTube o Spotify). Se reordena arrastrando el asa de cada fila (la fila sigue al dedo, las demás se apartan y la lista se desplaza sola cerca de los bordes); con teclado, las flechas arriba y abajo sobre el asa, con aviso de la nueva posición. Tocar una fila abre su edición. Resumen de canciones y momentos arriba.
+- **Agregar:** hoja con dos pestañas. *Canción* busca en la biblioteca compartida y marca «Ya está» las ya incluidas; *Momento* ofrece los comunes (Oración, Ofrenda, Anuncios, Lectura bíblica, Predicación, Santa cena) y uno libre.
+- **Editar canción:** tonalidad contextual (doce notas, mayor o menor) y enlace manual de referencia, validado como YouTube o Spotify. Muestra el tono habitual y el BPM de la biblioteca solo como información; la canción no se edita aquí.
+- **Quitar:** desde la edición, con «Deshacer».
+- **Aviso fijo:** tonos, BPM y notas son internos y no aparecen en la vista pública.
+- **Supuesto de diseño:** una canción no se repite en el mismo setlist; un momento sí.
 
 ## Pendientes
 
