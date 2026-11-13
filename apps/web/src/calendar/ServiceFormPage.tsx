@@ -2,10 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import {
   Button, Notice, PersonPicker, Segmented, Sheet, TextField, TimeWheel, Field, inputClass,
-  format12h, from24h, to24h, type Person, type Time12,
+  fold, format12h, from24h, to24h, type Person, type Time12,
 } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from './ChurchGate'
-import { ApiError, useClosedDates, useCreateService, usePeople, useServices } from './api'
+import { ApiError, useClosedDates, useCreateService, usePeople, usePersonActions, useServices } from './api'
 import { formatDay, formatLongDay, monthOf, todayIn, weekdayOf } from './dates'
 import { freeSlots, habitualFor, upcomingDates, type Church, type Slot } from './model'
 
@@ -54,12 +54,15 @@ function Form({ church }: { church: Church }) {
   const error = monthServices.error ?? monthClosed.error
   const isClosed = (target: string) => monthClosed.closed.some((item) => item.date === target)
   const people = usePeople(true)
+  const { create: createPerson } = usePersonActions()
+  const [duplicate, setDuplicate] = useState<Person | null>(null)
+  const [personFailure, setPersonFailure] = useState('')
   const slots = date ? freeSlots(church, date, services) : []
   const past = Boolean(date) && date < today
   const closed = Boolean(date) && !loading && isClosed(date)
   const full = Boolean(date) && !loading && !closed && slots.length === 0
   const doubleDay = church.sundayDouble && Boolean(date) && weekdayOf(date) === 0
-  const matches = (people.data ?? []).filter((person) => person.name.toLowerCase().includes(query.trim().toLowerCase()))
+  const matches = (people.data ?? []).filter((person) => fold(person.name).includes(fold(query)))
 
   /** Elegir fecha o franja precarga título y hora habituales; un día no habitual queda sin precarga. */
   function prefill(target: string, chosen: Slot | '') {
@@ -74,6 +77,20 @@ function Form({ church }: { church: Church }) {
     const first = free[0] ?? ''
     setSlot(first)
     prefill(target, first)
+  }
+
+  /** Alta desde el selector: el servidor aplica la regla del nombre completo; la persona queda en el directorio. */
+  async function addPerson(name: string) {
+    setDuplicate(null)
+    setPersonFailure('')
+    try {
+      const person = await createPerson({ name })
+      setDirector(person)
+      setQuery(person.name)
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 409 && caught.existing) setDuplicate(caught.existing)
+      else setPersonFailure(caught instanceof ApiError && caught.status === 403 ? 'No tienes permiso para agregar personas.' : 'No se pudo agregar a la persona. Inténtalo de nuevo.')
+    }
   }
 
   async function submit(event: FormEvent) {
@@ -157,10 +174,17 @@ function Form({ church }: { church: Church }) {
         <Segmented label="Estado" value={status} onChange={setStatus}
           options={[{ value: 'DRAFT', label: 'Borrador' }, { value: 'PUBLISHED', label: 'Publicado' }]} />
 
-        <PersonPicker label="Dirección" query={query} onQueryChange={(next) => { setQuery(next); setDirector(null) }} people={matches}
-          onSelect={(person) => { setDirector(person); setQuery(person.name) }}
-          help={people.isError ? undefined : 'Obligatoria: elige a quien dirige.'}
+        <PersonPicker label="Dirección" query={query} onQueryChange={(next) => { setQuery(next); setDirector(null); setDuplicate(null); setPersonFailure('') }} people={matches}
+          onSelect={(person) => { setDirector(person); setQuery(person.name); setDuplicate(null) }} onAddNew={(name) => void addPerson(name)}
+          help={people.isError ? undefined : 'Obligatoria: elige a quien dirige, o agrega a alguien con su nombre completo (se guarda en el directorio).'}
           error={people.isError ? 'No se pudo cargar el directorio.' : attempted && !director ? 'Elige quién dirige el servicio.' : undefined} />
+        {duplicate && (
+          <Notice tone="warn" icon="alert" role="alert" title={`Ya existe «${duplicate.name}»`}>
+            No se crea otra persona con el mismo nombre. Completa el nombre completo para distinguirla, o{' '}
+            <button type="button" className="cursor-pointer border-0 bg-transparent p-0 font-semibold text-accent underline" onClick={() => { setDirector(duplicate); setQuery(duplicate.name); setDuplicate(null) }}>usa a {duplicate.name}</button>.
+          </Notice>
+        )}
+        {personFailure && <Notice tone="warn" icon="alert" role="alert">{personFailure}</Notice>}
 
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
         <Button type="submit" variant="primary" block loading={sending} disabled={full || past || closed}>Crear servicio</Button>

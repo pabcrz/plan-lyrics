@@ -3,7 +3,7 @@ import { render } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
-import type { Church, ClosedDate, Service } from './model'
+import type { Church, ClosedDate, PersonDetail, Service } from './model'
 
 export const church: Church = {
   id: 'church-a', name: 'Betel', sundayDouble: false, usesPreaching: false, canEdit: true, canConfigure: true, timeZone: 'America/Mexico_City',
@@ -21,7 +21,15 @@ export const service = (over: Partial<Service>): Service => ({
 type Handler = (url: string, init?: RequestInit) => { status?: number; body?: unknown } | undefined
 
 /** Doble de fetch por ruta; devuelve las peticiones hechas para poder inspeccionarlas. */
-export function stubApi(routes: { church?: Church | number; services?: Service[]; closed?: ClosedDate[]; post?: Handler; save?: Handler; mark?: Handler; unmark?: Handler }) {
+export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
+  id: 'p1', name: 'Ana Ramírez', phone: null, hasAccount: false, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
+})
+
+export function stubApi(routes: {
+  church?: Church | number; services?: Service[]; closed?: ClosedDate[]; post?: Handler; save?: Handler; mark?: Handler; unmark?: Handler
+  /** Directorio: lista, ficha por id y respuestas a alta, edición y baja. */
+  directory?: PersonDetail[]; createPerson?: Handler; patchPerson?: Handler; removePerson?: Handler
+}) {
   const calls: Array<{ url: string; init?: RequestInit }> = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, init })
@@ -31,7 +39,27 @@ export function stubApi(routes: { church?: Church | number; services?: Service[]
       const result = routes.save?.(url, init)
       return reply(result?.status ?? 200, result?.body ?? { ...church, ...JSON.parse(String(init.body)) })
     }
-    if (url === '/api/people') return reply(200, people)
+    if (url === '/api/people' && init?.method === 'POST') {
+      const result = routes.createPerson?.(url, init)
+      return reply(result?.status ?? 201, result?.body ?? detail({ id: 'new', ...JSON.parse(String(init.body)) }))
+    }
+    if (url === '/api/people') {
+      const list = routes.directory ?? people.map((person) => detail(person))
+      return reply(200, list.map(({ id, name, hasAccount }) => ({ id, name, hasAccount })))
+    }
+    if (url.startsWith('/api/people/')) {
+      const id = decodeURIComponent(url.split('/').pop() ?? '')
+      if (init?.method === 'PATCH') {
+        const result = routes.patchPerson?.(url, init)
+        return reply(result?.status ?? 200, result?.body ?? { ...detail({ id }), ...JSON.parse(String(init.body)) })
+      }
+      if (init?.method === 'DELETE') {
+        const result = routes.removePerson?.(url, init)
+        return result?.status && result.status >= 400 ? reply(result.status, result.body ?? { error: 'x' }) : new Response(null, { status: 204 })
+      }
+      const found = (routes.directory ?? [detail()]).find((person) => person.id === id)
+      return found ? reply(200, found) : reply(404, { error: 'Not found' })
+    }
     if (url.startsWith('/api/services?month=')) {
       const month = url.split('=')[1]
       return reply(200, (routes.services ?? []).filter((item) => item.date.startsWith(month)))

@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router'
-import { Avatar, Button, Icon, Notice, Sheet, StatusChip, Tabbar, TextField, Toast, format12h, from24h, type IconName, type ServiceStatus } from '../ui'
-import { ChurchGate, TopBar } from './ChurchGate'
+import { useLocation, useSearchParams } from 'react-router'
+import { Avatar, Button, Icon, Notice, Sheet, StatusChip, TextField, Toast, format12h, from24h, type IconName, type ServiceStatus } from '../ui'
+import { ChurchGate, MainTabbar, TopBar } from './ChurchGate'
 import { ApiError, useClosedDateActions, useClosedDates, useServices } from './api'
 import { formatDay, formatLongDay, monthCells, monthOf, monthTitle, shiftMonth, todayIn } from './dates'
 import type { Church, ClosedDate, Service, Status } from './model'
@@ -19,7 +19,6 @@ export function CalendarPage() {
 
 function Calendar({ church }: { church: Church }) {
   const [params, setParams] = useSearchParams()
-  const navigate = useNavigate()
   const created = Boolean((useLocation().state as { created?: boolean } | null)?.created)
   const [toast, setToast] = useState(created ? 'Servicio creado' : '')
   const [openId, setOpenId] = useState<string | null>(null)
@@ -78,10 +77,7 @@ function Calendar({ church }: { church: Church }) {
         )}
       </main>
       {toast !== '' && <div className="px-4 pb-2"><Toast message={toast} onDismiss={() => setToast('')} /></div>}
-      <div className="sticky bottom-0">
-      <Tabbar label="Principal" items={[{ id: 'calendar', label: 'Calendario', icon: 'calendar' }]} current="calendar" onSelect={() => {}}
-        action={church.canEdit ? { label: 'Nuevo', icon: 'plus', onAction: () => void navigate('/servicios/nuevo') } : undefined} />
-      </div>
+      <MainTabbar church={church} current="calendar" />
       <Sheet open={Boolean(open)} onClose={() => setOpenId(null)} title={open?.title ?? 'Servicio'}>
         {open && <Detail service={open} />}
       </Sheet>

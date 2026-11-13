@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { ServiceFormPage } from './ServiceFormPage'
-import { church, mount, service, stubApi } from './test-utils'
+import { church, detail, mount, service, stubApi } from './test-utils'
 
 vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-ficticio' }), UserButton: () => <button>Cuenta</button> }))
 
@@ -152,4 +152,47 @@ test('shows the server rejection when the date was marked «No hay culto» meanw
   fireEvent.click(await screen.findByRole('option', { name: /Ana/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Crear servicio' }))
   expect((await screen.findByRole('alert')).textContent).toContain('No hay culto')
+})
+
+const type = (text: string) => {
+  const director = screen.getByRole('combobox', { name: /Dirección/ })
+  fireEvent.focus(director)
+  fireEvent.change(director, { target: { value: text } })
+}
+
+test('the director picker searches the directory without accents', async () => {
+  stubApi({ directory: [detail({ id: 'p9', name: 'Álvaro Núñez' }), detail({ id: 'p2', name: 'Luis Herrera' })] })
+  form()
+  await screen.findByRole('button', { name: /vie 13 nov/ })
+  type('alvaro nunez')
+  expect(await screen.findByRole('option', { name: /Álvaro Núñez/ })).toBeTruthy()
+  expect(screen.queryByRole('option', { name: /Luis Herrera/ })).toBeNull()
+})
+
+test('a new person is added from the picker with the full name, saved in the directory and used as director', async () => {
+  const calls = stubApi({ createPerson: () => ({ body: detail({ id: 'nueva', name: 'Juan Pérez Rodríguez' }) }) })
+  form()
+  fireEvent.click(await date(/vie 13 nov/))
+  type('Juan Pérez Rodríguez')
+  fireEvent.click(await screen.findByRole('option', { name: /Agregar «Juan Pérez Rodríguez» como persona nueva/ }))
+  await waitFor(() => expect(calls.filter((call) => call.url === '/api/people' && call.init?.method === 'POST')).toHaveLength(1))
+  expect(JSON.parse(String(calls.find((call) => call.init?.method === 'POST')!.init!.body))).toEqual({ name: 'Juan Pérez Rodríguez' })
+  await waitFor(() => expect((screen.getByRole('combobox', { name: /Dirección/ }) as HTMLInputElement).value).toBe('Juan Pérez Rodríguez'))
+  fireEvent.click(screen.getByRole('button', { name: 'Crear servicio' }))
+  expect(await screen.findByText('Calendario')).toBeTruthy()
+  expect(JSON.parse(String(posted(calls).find((call) => call.url === '/api/services')!.init!.body)).directorId).toBe('nueva')
+})
+
+test('an existing name is not created again: the form asks for the full name or offers the existing person', async () => {
+  const calls = stubApi({ createPerson: () => ({ status: 409, body: { error: 'Name exists', existing: { id: 'p1', name: 'Ana Ramírez' } } }) })
+  form()
+  fireEvent.click(await date(/vie 13 nov/))
+  type('Ana')
+  fireEvent.click(await screen.findByRole('option', { name: /Agregar «Ana» como persona nueva/ }))
+  expect(await screen.findByText('Ya existe «Ana Ramírez»')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'usa a Ana Ramírez' }))
+  expect((screen.getByRole('combobox', { name: /Dirección/ }) as HTMLInputElement).value).toBe('Ana Ramírez')
+  fireEvent.click(screen.getByRole('button', { name: 'Crear servicio' }))
+  expect(await screen.findByText('Calendario')).toBeTruthy()
+  expect(JSON.parse(String(posted(calls).find((call) => call.url === '/api/services')!.init!.body)).directorId).toBe('p1')
 })
