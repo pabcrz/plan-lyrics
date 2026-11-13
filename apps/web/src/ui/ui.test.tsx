@@ -108,6 +108,14 @@ describe('Segmented', () => {
     fireEvent.click(within(group).getByRole('button', { name: 'Entre todos' }))
     expect(onChange).toHaveBeenCalledWith('b')
   })
+
+  test('a disabled option cannot be chosen', () => {
+    const onChange = vi.fn()
+    render(<Segmented label="Franja" value="a" onChange={onChange}
+      options={[{ value: 'a', label: 'Mañana' }, { value: 'b', label: 'Tarde', disabled: true }]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Tarde' }))
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })
 
 describe('Tabbar', () => {

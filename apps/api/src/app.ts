@@ -2,9 +2,11 @@ import { Hono } from 'hono'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { readChurch } from './church-access.js'
+import { safeErrorCode } from './errors.js'
+import { serviceRoutes } from './services.js'
 import { accountManagerBody, createUser, newUserBody, setAccountManager, userCapability } from './users.js'
 
-export function createApp(config: SessionConfig = {}, database?: PrismaClient) {
+export function createApp(config: SessionConfig = {}, database?: PrismaClient, now?: () => Date) {
   const app = new Hono<SessionEnvironment>()
   app.get('/api/health', (c) => c.json({ status: 'ok', service: 'plan-lyrics-api' }))
   app.get('/api/session', requireSession(config), (c) => c.json({ authenticated: true }))
@@ -47,12 +49,8 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient) {
       return c.json({ error: 'Access unavailable' }, 503)
     }
   })
+  app.route('/', serviceRoutes(config, database, now))
   return app
 }
 
 export const app = createApp()
-
-function safeErrorCode(error: unknown) {
-  const code = (error as { code?: unknown } | null)?.code
-  return typeof code === 'string' && /^[A-Z0-9_]{1,32}$/.test(code) ? code : 'unknown'
-}

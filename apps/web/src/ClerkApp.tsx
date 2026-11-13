@@ -1,9 +1,9 @@
 import {
   ClerkFailed, ClerkLoaded, ClerkLoading, ClerkProvider,
-  Show, SignInButton, UserButton,
+  Show, SignInButton,
 } from '@clerk/react'
 import { App } from './App'
-import { SessionCheck } from './SessionCheck'
+import { ProductRoutes } from './calendar/ProductRoutes'
 
 export function ClerkApp({ publishableKey }: { publishableKey?: string }) {
   const key = publishableKey?.trim()
@@ -17,22 +17,18 @@ export function ClerkApp({ publishableKey }: { publishableKey?: string }) {
 
   return (
     <ClerkProvider publishableKey={key} afterSignOutUrl="/">
-      <App authentication={<>
-        <ClerkLoading><p role="status">Cargando autenticación…</p></ClerkLoading>
-        <ClerkFailed><p role="alert">No se pudo cargar Clerk. Recargá la página para reintentar.</p></ClerkFailed>
-        <ClerkLoaded>
-          <Show when="signed-out">
+      <Show when="signed-in"><ProductRoutes /></Show>
+      <ClerkLoading><App authentication={<p role="status">Cargando autenticación…</p>} /></ClerkLoading>
+      <ClerkFailed><App authentication={<p role="alert">No se pudo cargar Clerk. Recargá la página para reintentar.</p>} /></ClerkFailed>
+      <ClerkLoaded>
+        <Show when="signed-out">
+          <App authentication={
             <SignInButton mode="modal">
               <button type="button" className="min-h-11 rounded border px-4 py-2">Iniciar sesión</button>
             </SignInButton>
-          </Show>
-          <Show when="signed-in">
-            <p>Sesión de Clerk iniciada; los permisos del producto todavía no están implementados.</p>
-            <UserButton />
-            <SessionCheck />
-          </Show>
-        </ClerkLoaded>
-      </>} />
+          } />
+        </Show>
+      </ClerkLoaded>
     </ClerkProvider>
   )
 }
