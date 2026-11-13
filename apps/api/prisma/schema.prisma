@@ -78,6 +78,7 @@ model Church {
   services Service[]
   serviceDays ServiceDay[]
   closedDates ClosedDate[]
+  batchDirectors BatchDirectors?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -175,4 +176,15 @@ model RoleRestriction {
   church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   @@unique([churchId, first, second])
+}
+
+// Continuity between monthly batches: the last ordered director list of the church and who was
+// assigned last. One row per church; ids are not foreign keys (a removed person is filtered when read).
+model BatchDirectors {
+  churchId String @id
+  directorIds String[]
+  lastDirectorId String?
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

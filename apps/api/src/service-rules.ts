@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/
+export const hhmm =/^([01]\d|2[0-3]):[0-5]\d$/
 export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const d = new Date(`${value}T00:00:00Z`); return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(value) }, { abort: true })
 
 // The church is never part of the body: it is always the caller's active church.

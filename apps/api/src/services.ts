@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { safeErrorCode } from './errors.js'
+import { batchPeriod, createBatch } from './batches.js'
 import { checkSettings } from './settings-rules.js'
 import { findSameName, newPersonBody, personPatch } from './people-rules.js'
 import { closedDateBody, dateCapacity, isoDate, monthQuery, newServiceBody, planSlot, todayInZone } from './service-rules.js'
@@ -54,6 +55,8 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
   routes.use('/api/people', requireSession(config))
   routes.use('/api/people/*', requireSession(config))
   routes.use('/api/services', requireSession(config))
+  routes.use('/api/service-batches', requireSession(config))
+  routes.use('/api/service-batches/*', requireSession(config))
   routes.use('/api/closed-dates', requireSession(config))
   routes.use('/api/closed-dates/*', requireSession(config))
   routes.use('/api/*', async (c, next) => { await next(); c.header('Cache-Control', 'no-store') })
@@ -204,6 +207,10 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     if (result === 'closed') return c.json({ error: 'Date closed' }, 409)
     return c.json(present(result), 201)
   }))
+
+  // Monthly batch: the reviewed assignment is validated again and created atomically (see batches.ts).
+  routes.get('/api/service-batches/period', guarded('batch_period_failed', (c, db, church) => batchPeriod(c, db, church, now())))
+  routes.post('/api/service-batches', guarded('batch_creation_failed', (c, db, church) => createBatch(c, db, church, now())))
 
   // «No hay culto»: the date is a path parameter, the church always the caller's active one.
   routes.get('/api/closed-dates', guarded('closed_dates_list_failed', async (c, db, church) => {
