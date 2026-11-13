@@ -545,6 +545,18 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
 .saved { margin: 0 var(--s-4) var(--s-4); }
 .saved[hidden] { display: none; }
 .input[aria-invalid="true"] { border-color: var(--st-cancel-fg); }
+/* Predicación y combinaciones de roles */
+.swrow.solo { border-top: 0; padding-top: 0; }
+.crow { display: flex; align-items: center; gap: var(--s-2); min-height: 52px; border-bottom: 1px solid var(--line); }
+.crow:last-child { border-bottom: 0; }
+.crow .ct { flex: 1; font-weight: 600; font-size: .9375rem; }
+.crow .ct small { display: block; font-weight: 400; color: var(--text-3); font-size: .8125rem; }
+.crow .btn.icon { width: 40px; min-height: 40px; color: var(--text-3); flex: none; }
+.rolechips { display: flex; flex-wrap: wrap; gap: 8px; margin: var(--s-3) 0; }
+.rc { min-height: 44px; padding: 0 var(--s-4); border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); font: 600 .9375rem var(--font-body); color: var(--text); cursor: pointer; }
+.rc[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.rc:disabled { background: var(--surface-2); color: var(--text-3); border-color: var(--line); cursor: not-allowed; }
+.sheet .actions { display: grid; gap: var(--s-2); margin-top: var(--s-3); }
 </style>
 </head>
 
@@ -610,12 +622,38 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
 
       <div class="fgroup" id="rows"></div>
       <p class="err saved" id="eDays" hidden><svg class="ico"><use href="#i-alert"/></svg>Elige al menos un día de servicio.</p>
+
+      <div class="fgroup">
+        <div class="svc"><div class="swrow solo"><span>Usa predicación<small id="predS"></small></span><button class="sw" type="button" role="switch" id="swP" aria-label="Usa predicación"></button></div></div>
+      </div>
+
+      <div class="fgroup">
+        <span class="lbl" id="lCombo">Roles que no se pueden combinar</span>
+        <p class="help">Una persona puede tener varios roles en un mismo servicio. Estas combinaciones no se permiten. La predicación no es un rol musical y no entra aquí.</p>
+        <div class="svc" id="combos" role="group" aria-labelledby="lCombo"></div>
+        <button class="pick" type="button" id="addCombo"><span>Agregar restricción</span><svg class="ico"><use href="#i-plus"/></svg></button>
+      </div>
     </div>
     <div class="foot">
       <button class="btn primary block" type="button" id="doSave" disabled>Guardar cambios</button>
       <button class="btn quiet block" type="button" id="doCancel">Descartar cambios</button>
     </div>
   </section>
+
+  <!-- ===== Hoja: nueva restricción de roles ===== -->
+  <div class="scrim" id="sheetC" hidden>
+    <div class="sheet fade" role="dialog" aria-modal="true" aria-labelledby="cT">
+      <div class="grab"></div>
+      <h2 id="cT">Nueva restricción</h2>
+      <p class="sub">Elige los dos roles que una misma persona no podrá tener a la vez en un servicio.</p>
+      <div class="rolechips" id="rolechips" role="group" aria-label="Roles"></div>
+      <p class="help" id="cHint" aria-live="polite"></p>
+      <div class="actions">
+        <button class="btn primary block" type="button" id="cAdd" disabled>Agregar restricción</button>
+        <button class="btn quiet block" type="button" data-close>Cancelar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== Hoja: elegir hora ===== -->
   <div class="scrim" id="sheetH" hidden>
@@ -661,7 +699,8 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
   var DOWS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   var DOWF = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   var SUN2 = [{ name: 'Servicio dominical', time: '10:00' }, { name: 'Servicio vespertino', time: '18:00' }];
-  var saved = { name: 'Betel', two: true, days: {
+  var ROLES = ['Batería', 'Dirigir', 'Guitarra', 'Piano', 'Voces'];
+  var saved = { name: 'Betel', two: true, pred: true, combos: [['Batería', 'Dirigir']], days: {
     0: [{ name: 'Servicio dominical', time: '10:00' }, { name: 'Servicio vespertino', time: '18:00' }],
     2: [{ name: 'Servicio de oración', time: '19:30' }],
     5: [{ name: 'Servicio de oración', time: '19:30' }]
@@ -773,6 +812,42 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
   $$('.scrim').forEach(function (sh) { sh.addEventListener('click', function (e) { if (e.target === sh || e.target.hasAttribute('data-close')) closeSheet(sh); }); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') $$('.scrim').forEach(function (s) { if (!s.hidden) closeSheet(s); }); });
 
+
+  /* ---- Predicación y combinaciones de roles ---- */
+  function renderExtra() {
+    var sw = $('#swP'); sw.setAttribute('aria-checked', String(!!cfg.pred));
+    $('#predS').textContent = cfg.pred ? 'La sección de predicación aparece en el servicio y en el lote.' : 'La sección de predicación queda oculta en el servicio y en el lote.';
+    $('#combos').innerHTML = cfg.combos.length ? cfg.combos.map(function (c, i) {
+      return '<div class="crow"><span class="ct">' + esc(c[0]) + ' + ' + esc(c[1]) + '<small>No a la vez en el mismo servicio</small></span><button class="btn quiet icon" type="button" data-rmc="' + i + '" aria-label="Quitar la restricción ' + esc(c[0]) + ' y ' + esc(c[1]) + '">' + ico('i-x') + '</button></div>';
+    }).join('') : '<p class="help" style="margin:0">Sin restricciones: una persona puede combinar cualquier rol.</p>';
+  }
+  $('#swP').addEventListener('click', function () { cfg.pred = !cfg.pred; $('#saved').hidden = true; renderExtra(); syncSave(); });
+  $('#combos').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-rmc]'); if (!b) return;
+    cfg.combos.splice(+b.dataset.rmc, 1); $('#saved').hidden = true; renderExtra(); syncSave(); $('#addCombo').focus();
+  });
+  var pickR = [];
+  function hasCombo(a, b) { return cfg.combos.some(function (c) { return (c[0] === a && c[1] === b) || (c[0] === b && c[1] === a); }); }
+  function renderRoleChips() {
+    $('#rolechips').innerHTML = ROLES.map(function (r) {
+      var on = pickR.indexOf(r) > -1;
+      return '<button type="button" class="rc" data-r="' + r + '" aria-pressed="' + on + '"' + (!on && pickR.length >= 2 ? ' disabled' : '') + '>' + r + '</button>';
+    }).join('');
+    var dup = pickR.length === 2 && hasCombo(pickR[0], pickR[1]);
+    $('#cHint').textContent = dup ? 'Esa restricción ya existe.' : pickR.length < 2 ? 'Elige ' + (2 - pickR.length) + (pickR.length === 1 ? ' rol más.' : ' roles.') : pickR[0] + ' y ' + pickR[1] + ' no podrán combinarse.';
+    $('#cAdd').disabled = pickR.length !== 2 || dup;
+  }
+  $('#addCombo').addEventListener('click', function () { pickR = []; renderRoleChips(); openSheet('#sheetC'); });
+  $('#rolechips').addEventListener('click', function (e) {
+    var b = e.target.closest('.rc'); if (!b || b.disabled) return;
+    var r = b.dataset.r, k = pickR.indexOf(r); if (k > -1) pickR.splice(k, 1); else pickR.push(r);
+    renderRoleChips(); var again = $('[data-r="' + r + '"]'); if (again) again.focus();
+  });
+  $('#cAdd').addEventListener('click', function () {
+    cfg.combos.push(pickR.slice().sort(function (a, b) { return ROLES.indexOf(a) - ROLES.indexOf(b); }));
+    closeSheet($('#sheetC')); $('#saved').hidden = true; renderExtra(); syncSave();
+  });
+
   /* ---- Nombre, guardar, descartar ---- */
   $('#cName').addEventListener('input', function () { cfg.name = this.value; if (this.value.trim()) { $('#eName').hidden = true; this.removeAttribute('aria-invalid'); } $('#saved').hidden = true; syncSave(); });
   $('#doSave').addEventListener('click', function () {
@@ -788,10 +863,10 @@ body.ro .tabbar.three { grid-template-columns: 1fr 1fr; }
   });
   $('#doCancel').addEventListener('click', function () {
     cfg = clone(saved); $('#cName').value = cfg.name; $('#eName').hidden = true; $('#eDays').hidden = true; $('#cName').removeAttribute('aria-invalid');
-    renderDays(); renderRows(); syncSave();
+    renderDays(); renderRows(); renderExtra(); syncSave();
   });
 
-  renderDays(); renderRows(); syncSave();
+  renderDays(); renderRows(); renderExtra(); syncSave();
 })();
 </script>
 
