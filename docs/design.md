@@ -17,6 +17,7 @@ Mockups HTML autocontenidos, sin build, con datos ficticios. Se abren directamen
 | Pantalla | [pantallas/personas.html](design/pantallas/personas.html) | Directorio de personas: lista con búsqueda y filtro por rol, ficha y alta. |
 | Pantalla | [pantallas/participaciones.html](design/pantallas/participaciones.html) | Participaciones: roles, habituales y rotación por día o entre todos. |
 | Pantalla | [pantallas/setlist.html](design/pantallas/setlist.html) | Setlist del servicio: canciones y momentos ordenados, tonalidad y enlace de referencia. |
+| Pantalla | [pantallas/compartir.html](design/pantallas/compartir.html) | Compartir: enlaces del ministerio (crear, revocar, reactivar), setlist en imagen, lista mensual de dirección y PDF de predicaciones. |
 
 El recorrido de wireframes previo vive en [`design/programacion-mensual`](../design/programacion-mensual/mapa-y-recorrido.md); la alternativa 04 fue la referencia que originó estas pantallas.
 
