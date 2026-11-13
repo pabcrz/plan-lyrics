@@ -1,0 +1,134 @@
+/*
+ * Tokens del sistema visual (docs/design.md). Un solo par --h / --c gobierna el
+ * acento y el tinte de los neutros; cambiar de tema equivale a cambiar esos dos
+ * números (data-accent). Modo claro u oscuro por data-mode en <html>.
+ */
+:root {
+  --h: 178;
+  --c: 0.085; /* Salvia, predeterminado */
+
+  --t-fast: 140ms;
+  --t-base: 240ms;
+
+  --a-100: oklch(0.93 calc(var(--c) * 0.3) var(--h));
+  --a-200: oklch(0.87 calc(var(--c) * 0.55) var(--h));
+  --a-300: oklch(0.79 calc(var(--c) * 0.8) var(--h));
+  --a-500: oklch(0.6 var(--c) var(--h));
+  --a-600: oklch(0.5 var(--c) var(--h));
+  --a-700: oklch(0.42 var(--c) var(--h));
+  --a-800: oklch(0.33 calc(var(--c) * 0.8) var(--h));
+}
+:root[data-accent='indigo'] { --h: 272; --c: 0.15; }
+:root[data-accent='ocre'] { --h: 62; --c: 0.105; }
+
+/* Semánticos — modo claro (predeterminado) */
+:root,
+:root[data-mode='light'] {
+  color-scheme: light;
+  --bg: oklch(0.975 0.008 var(--h));
+  --surface: oklch(0.995 0.004 var(--h));
+  --surface-2: oklch(0.952 0.01 var(--h));
+  --line: oklch(0.905 0.012 var(--h));
+  --line-strong: oklch(0.8 0.016 var(--h));
+  --text: oklch(0.22 0.03 var(--h));
+  --text-2: oklch(0.42 0.025 var(--h));
+  --text-3: oklch(0.51 0.02 var(--h));
+  --accent: var(--a-600);
+  --accent-hover: var(--a-700);
+  --on-accent: oklch(0.99 0.005 var(--h));
+  --accent-soft: var(--a-100);
+  --accent-soft-text: var(--a-800);
+  --focus: var(--a-500);
+  --st-draft-bg: var(--surface-2); --st-draft-fg: oklch(0.42 0.02 var(--h)); --st-draft-bd: var(--line-strong);
+  --st-pub-bg: oklch(0.945 0.045 152); --st-pub-fg: oklch(0.36 0.09 152); --st-pub-bd: oklch(0.8 0.08 152);
+  --st-done-bg: oklch(0.945 0.03 250); --st-done-fg: oklch(0.38 0.09 250); --st-done-bd: oklch(0.8 0.06 250);
+  --st-cancel-bg: oklch(0.95 0.03 25); --st-cancel-fg: oklch(0.42 0.14 25); --st-cancel-bd: oklch(0.82 0.08 25);
+  --elev-1: 0 1px 2px oklch(0.25 0.03 var(--h) / 0.07), 0 1px 1px oklch(0.25 0.03 var(--h) / 0.05);
+  --elev-2: 0 6px 18px -4px oklch(0.25 0.03 var(--h) / 0.14), 0 2px 4px oklch(0.25 0.03 var(--h) / 0.06);
+  --elev-3: 0 18px 40px -8px oklch(0.25 0.03 var(--h) / 0.22), 0 4px 10px oklch(0.25 0.03 var(--h) / 0.08);
+}
+
+/* Semánticos — modo oscuro */
+:root[data-mode='dark'] {
+  color-scheme: dark;
+  --bg: oklch(0.185 0.02 var(--h));
+  --surface: oklch(0.225 0.022 var(--h));
+  --surface-2: oklch(0.27 0.024 var(--h));
+  --line: oklch(0.32 0.024 var(--h));
+  --line-strong: oklch(0.43 0.026 var(--h));
+  --text: oklch(0.96 0.008 var(--h));
+  --text-2: oklch(0.8 0.014 var(--h));
+  --text-3: oklch(0.69 0.016 var(--h));
+  --accent: oklch(0.76 calc(var(--c) * 1.05) var(--h));
+  --accent-hover: oklch(0.82 calc(var(--c) * 0.95) var(--h));
+  --on-accent: oklch(0.2 0.03 var(--h));
+  --accent-soft: oklch(0.31 calc(var(--c) * 0.55) var(--h));
+  --accent-soft-text: var(--a-200);
+  --focus: oklch(0.76 calc(var(--c) * 1.05) var(--h));
+  --st-draft-bg: var(--surface-2); --st-draft-fg: oklch(0.8 0.014 var(--h)); --st-draft-bd: var(--line-strong);
+  --st-pub-bg: oklch(0.3 0.05 152); --st-pub-fg: oklch(0.86 0.11 152); --st-pub-bd: oklch(0.46 0.08 152);
+  --st-done-bg: oklch(0.3 0.04 250); --st-done-fg: oklch(0.86 0.08 250); --st-done-bd: oklch(0.46 0.06 250);
+  --st-cancel-bg: oklch(0.3 0.05 25); --st-cancel-fg: oklch(0.86 0.09 25); --st-cancel-bd: oklch(0.46 0.09 25);
+  --elev-1: 0 1px 2px oklch(0 0 0 / 0.35);
+  --elev-2: 0 8px 20px -4px oklch(0 0 0 / 0.45);
+  --elev-3: 0 20px 44px -8px oklch(0 0 0 / 0.55);
+}
+
+/* Utilidades de Tailwind respaldadas por los tokens (siguen el tema y el modo). */
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-text: var(--accent-soft-text);
+  --color-focus: var(--focus);
+  --color-a-300: var(--a-300);
+  --color-draft-bg: var(--st-draft-bg); --color-draft-fg: var(--st-draft-fg); --color-draft-bd: var(--st-draft-bd);
+  --color-pub-bg: var(--st-pub-bg); --color-pub-fg: var(--st-pub-fg); --color-pub-bd: var(--st-pub-bd);
+  --color-done-bg: var(--st-done-bg); --color-done-fg: var(--st-done-fg); --color-done-bd: var(--st-done-bd);
+  --color-cancel-bg: var(--st-cancel-bg); --color-cancel-fg: var(--st-cancel-fg); --color-cancel-bd: var(--st-cancel-bd);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Spline Sans Mono', ui-monospace, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-1: var(--elev-1);
+  --shadow-2: var(--elev-2);
+  --shadow-3: var(--elev-3);
+
+  --spacing-touch: 44px;
+  --spacing-touch-lg: 48px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 400 16px/1.5 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-sm); }
+  ::selection { background: var(--accent-soft); color: var(--accent-soft-text); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
