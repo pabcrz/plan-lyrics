@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { freeSlots, habitualFor, upcomingDates, type Church, type Service } from './model'
 
 const church: Church = {
-  id: 'c', name: 'Betel', sundayDouble: true, canEdit: true, timeZone: 'America/Mexico_City',
+  id: 'c', name: 'Betel', sundayDouble: true, usesPreaching: false, canEdit: true, canConfigure: true, timeZone: 'America/Mexico_City',
   days: [
     { weekday: 5, slot: 'SINGLE', time: '19:30', title: 'Viernes' },
     { weekday: 0, slot: 'MORNING', time: '09:00', title: 'Mañana' },

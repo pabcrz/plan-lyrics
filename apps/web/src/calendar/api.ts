@@ -1,10 +1,10 @@
 import { useCallback } from 'react'
 import { useAuth } from '@clerk/react'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { Church, ClosedDate, Service, Status, Slot } from './model'
+import type { Church, ChurchSettings, ClosedDate, Service, Status, Slot } from './model'
 
 export class ApiError extends Error {
-  constructor(readonly status: number, readonly code = '') {
+  constructor(readonly status: number, readonly code = '', readonly issues: string[] = []) {
     super(`API ${status}`)
   }
 }
@@ -24,7 +24,8 @@ function useApiFetch() {
     })
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as { error?: unknown } | null
-      throw new ApiError(response.status, typeof body?.error === 'string' ? body.error : '')
+      const issues = (body as { issues?: unknown } | null)?.issues
+      throw new ApiError(response.status, typeof body?.error === 'string' ? body.error : '', Array.isArray(issues) ? issues.filter((item): item is string => typeof item === 'string') : [])
     }
     return (response.status === 204 ? undefined : await response.json()) as T
   }, [getToken])
@@ -33,6 +34,17 @@ function useApiFetch() {
 export function useChurch() {
   const api = useApiFetch()
   return useQuery({ queryKey: ['church'], queryFn: () => api<Church>('/api/active-church'), retry: false })
+}
+
+/** Guarda los ajustes; la respuesta del servidor reemplaza la iglesia en caché para calendario y formulario. */
+export function useSaveChurch() {
+  const api = useApiFetch()
+  const client = useQueryClient()
+  return useCallback(async (settings: ChurchSettings) => {
+    const saved = await api<Church>('/api/active-church', { method: 'PUT', body: settings })
+    client.setQueryData(['church'], saved)
+    return saved
+  }, [api, client])
 }
 
 export function usePeople(enabled: boolean) {

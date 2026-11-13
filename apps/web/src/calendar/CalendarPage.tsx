@@ -46,7 +46,7 @@ function Calendar({ church }: { church: Church }) {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
-      <TopBar name={church.name} />
+      <TopBar name={church.name} settings={church.canConfigure} />
       <main className="flex-1 pb-4">
         <div className="flex items-center gap-1 px-4 py-3">
           <h1 className="m-0 flex-1 font-display text-xl font-bold">{monthTitle(month)}</h1>

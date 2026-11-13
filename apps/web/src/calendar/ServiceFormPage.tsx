@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import {
-  Button, Icon, Notice, PersonPicker, Segmented, Sheet, TextField, TimeWheel, Field, inputClass,
+  Button, Notice, PersonPicker, Segmented, Sheet, TextField, TimeWheel, Field, inputClass,
   format12h, from24h, to24h, type Person, type Time12,
 } from '../ui'
-import { ChurchGate, TopBar } from './ChurchGate'
+import { ChurchGate, PageHeader, TopBar } from './ChurchGate'
 import { ApiError, useClosedDates, useCreateService, usePeople, useServices } from './api'
 import { formatDay, formatLongDay, monthOf, todayIn, weekdayOf } from './dates'
 import { freeSlots, habitualFor, upcomingDates, type Church, type Slot } from './model'
@@ -16,21 +16,11 @@ export function ServiceFormPage() {
   return <ChurchGate>{(church) => (church.canEdit ? <Form church={church} /> : <ReadOnly />)}</ChurchGate>
 }
 
-function Header() {
-  const navigate = useNavigate()
-  return (
-    <div className="flex min-h-14 items-center gap-1 border-b border-line px-2">
-      <Button variant="quiet" icon aria-label="Volver al calendario" onClick={() => void navigate('/')}><Icon name="right" className="-scale-x-100" /></Button>
-      <h1 className="m-0 font-display text-lg font-bold">Nuevo servicio</h1>
-    </div>
-  )
-}
-
 function ReadOnly() {
   return (
     <main className="mx-auto max-w-[480px]">
       <TopBar />
-      <Header />
+      <PageHeader title="Nuevo servicio" />
       <div className="p-4"><Notice title="Solo lectura">Crear servicios requiere ser editor o administrador de tu iglesia.</Notice></div>
     </main>
   )
@@ -110,8 +100,8 @@ function Form({ church }: { church: Church }) {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
-      <TopBar name={church.name} />
-      <Header />
+      <TopBar name={church.name} settings={church.canConfigure} />
+      <PageHeader title="Nuevo servicio" />
       <form onSubmit={(event) => void submit(event)} noValidate className="grid flex-1 content-start gap-5 p-4">
         <fieldset className="m-0 grid gap-2 border-0 p-0">
           <legend className="mb-1.5 text-sm font-semibold">Fecha</legend>

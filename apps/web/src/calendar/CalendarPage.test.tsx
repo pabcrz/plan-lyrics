@@ -148,3 +148,14 @@ test('shows the server rejection when the date got a service meanwhile', async (
   fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Marcar «No hay culto»' }))
   expect((await screen.findByRole('alert')).textContent).toContain('ya tiene un servicio')
 })
+
+test('offers the settings entry point only to the church administrator', async () => {
+  stubApi({})
+  mount(<CalendarPage />)
+  expect(await screen.findByRole('button', { name: 'Ajustes' })).toBeTruthy()
+  cleanup()
+  stubApi({ church: { ...church, canConfigure: false } })
+  mount(<CalendarPage />)
+  await screen.findByText(/Cargando servicios|No hay servicios/)
+  expect(screen.queryByRole('button', { name: 'Ajustes' })).toBeNull()
+})
