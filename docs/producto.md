@@ -73,8 +73,17 @@ Alcance nuevo, pendiente de confirmar como parte de la etapa 1. No es un rol mus
 - Un editor de servicios puede agregar y editar predicaciones sin importar qué rol musical tenga ni si es predicador. Ser predicador no concede permisos de edición.
 - Una persona puede dirigir la alabanza y predicar el mismo servicio; la regla de un solo rol aplica a los roles musicales, no a la predicación.
 - La predicación es opcional por iglesia: un interruptor «Usa predicación» en la configuración de la iglesia muestra u oculta la sección en el servicio y en el lote.
-- Las notas de predicación son internas. Solo las ven quienes administran o editan servicios y las personas con asignación de predicador; nunca el enlace público.
-- Compartir: se puede compartir solo la predicación, solo la alabanza o el servicio completo. La alabanza incluye fechas, quién dirige y los setlists; la predicación, fechas, predicador, tema, citas y notas; el servicio completo incluye ambas con fechas, horario y orden de los cantos, sin tonos, BPM ni datos específicos de alabanza. La forma de compartir (enlace privado, texto o PDF) y cómo la ve un predicador sin cuenta quedan por definir.
+- Las notas de predicación son internas: en la aplicación las ven quienes administran o editan servicios y las personas con asignación de predicador que tengan cuenta; fuera de ella solo llegan por un enlace o PDF del ministerio (ver [Compartir servicios](#compartir-servicios)), nunca por la vista de congregantes.
+
+### Compartir servicios
+
+Quien recibe lo compartido no necesita crear una cuenta: pastores, familiares y la congregación lo ven sin iniciar sesión. Hay dos audiencias con alcances distintos.
+
+- **Ministerio** (pastor, predicadores, equipo de alabanza): un enlace privado de solo lectura, por servicio o por rango de fechas, con tres versiones: *alabanza* (fechas, quién dirige y setlists), *predicación* (fechas, predicador, tema, citas y notas) y *servicio completo* (ambas, con fechas, horario y orden de los cantos). Ninguna versión incluye tonos, BPM ni datos específicos de alabanza. El enlace no es adivinable y quien administra o edita servicios puede revocarlo; quien lo tenga ve los nombres y las notas, por lo que se comparte solo con quien corresponde.
+- **Congregantes**: la vista pública del setlist con letras, limitada a la alabanza. Opcionalmente, y activada por la iglesia, puede mostrar de cada servicio solo el nombre del predicador y el tema, sin notas, citas ni otros datos. No incluye directores, equipos ni listas de personas.
+- **Imagen del setlist**: una imagen compartible con la fecha y las canciones numeradas, cada una con su autor entre paréntesis. Hay canciones con el mismo título y distinto autor y distinto contenido, por lo que el autor forma parte de cómo se identifica y muestra una canción.
+- **PDF de predicaciones**: un documento imprimible con las fechas, a quién le toca, el tema, las citas y los puntos a considerar, pensado para entregarlo en papel al pastor.
+- Revocación, vigencia de los enlaces y qué rango de fechas cubre cada documento quedan por definir.
 
 ### Accesos acordados
 
@@ -115,7 +124,7 @@ Preservar la relación entre letra y acordes, permitir transposición respetando
 - Biblioteca musical compartida; no clonar canciones por iglesia o servicio como requisito.
 - Adaptaciones opcionales de iglesia y servicio heredan de la base. Los cambios heredados siguen vigentes incluso en contenido publicado; los overrides explícitos se conservan. No se exigen snapshots ni clones obligatorios.
 - La edición editorial global es distinta de la administración local de iglesia.
-- Un setlist público de servicio y sus letras podrán consultarse sin iniciar sesión. La vista pública no expondrá datos personales, listas de miembros, tonalidades internas, asignaciones privadas, BPM, acordes ni notas internas.
+- Un setlist público de servicio y sus letras podrán consultarse sin iniciar sesión. La vista pública no expondrá datos personales, listas de miembros, tonalidades internas, asignaciones privadas, BPM, acordes ni notas internas; la única excepción es el nombre y tema del predicador, si la iglesia lo activa (ver [Compartir servicios](#compartir-servicios)).
 - La rotación futura de canciones por iglesia se basa en uso confirmado de la canción, no de una versión concreta. Es distinta del generador de turnos de personas. Política de registro de uso/cancelación, zona horaria y cadencia aún por decidir.
 - Exportaciones TXT son futuras. La importación de TXT con acordes encima es opcional y no confirmada.
 
@@ -144,7 +153,7 @@ Son criterios futuros; no se ha implementado ni probado la infraestructura.
 
 ## Decisiones de producto abiertas
 
-- Confirmar la predicación como parte de la etapa 1 y definir la forma de compartir servicios (enlace privado, texto o PDF), su revocación y su relación con el enlace público, que no incluye datos personales. Precisar si se puede asignar predicador a una fecha sin servicio creado y si el lote también lo pide.
+- Confirmar la predicación y el compartir servicios como parte de la etapa 1; definir la revocación y vigencia de los enlaces del ministerio y el rango de fechas de cada documento. Precisar si se puede asignar predicador a una fecha sin servicio creado y si el lote también lo pide.
 - Precisar el lote mensual: ausencia de directores y resolución de homónimos. Precisar permisos para guardar personas nuevas desde la asignación de dirección. La zona horaria, el recorrido por fecha y la separación entre personas y cuentas ya están acordados.
 - Concretar resolución de coincidencias entre asignaciones habituales o rotaciones que propongan a una persona en dos roles del mismo servicio, sin duplicar su asignación. La regla de un solo rol registrado y el canto junto al instrumento ya están acordados. Precisar elección de las franjas dominicales matutina/vespertina en lotes y rotaciones, servicios creados fuera de orden, cancelaciones y efecto de cambiar el orden sobre servicios ya generados. El inicio manual, la continuidad cíclica y la distinción entre reemplazo de una fecha e intercambio explícito ya están acordados.
 - Confirmar la propuesta de varios bloques de alabanza, cada uno con su setlist, dentro de un único servicio para ocasiones como bautizos. No confundir ese caso con dos cultos independientes ni adelantar la entrega de setlists.
