@@ -61,6 +61,8 @@ enum ChurchRole {
 model User {
   id String @id @default(cuid())
   clerkSubject String @unique
+  // Address the account was invited with (lowercase); only account managers and the owner ever read it.
+  email String? @unique
   libraryEditor Boolean @default(false)
   // Global capability granted only by the platform owner; never grants church access.
   accountManager Boolean @default(false)
