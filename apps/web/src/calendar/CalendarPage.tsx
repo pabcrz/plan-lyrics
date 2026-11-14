@@ -4,6 +4,7 @@ import { Avatar, Button, Icon, Notice, Sheet, StatusChip, TextField, Toast, form
 import { ChurchGate, MainTabbar, TopBar } from './ChurchGate'
 import { ApiError, useClosedDateActions, useClosedDates, useServices } from './api'
 import { formatDay, formatLongDay, monthCells, monthOf, monthTitle, shiftMonth, todayIn } from './dates'
+import { ServiceParticipations } from './ServiceParticipations'
 import type { Church, ClosedDate, Service, Status } from './model'
 
 const status = (value: Status) => value.toLowerCase() as ServiceStatus
@@ -248,6 +249,7 @@ function Detail({ service, canEdit }: { service: Service; canEdit: boolean }) {
           <span className="font-semibold">{service.director.name}</span>
         </div>
       </section>
+      <ServiceParticipations service={service} canEdit={canEdit} />
       <Button variant={canEdit ? 'primary' : 'secondary'} block onClick={() => void navigate(`/servicios/${service.id}/setlist`)}>{canEdit ? 'Preparar setlist' : 'Ver setlist'}</Button>
     </div>
   )

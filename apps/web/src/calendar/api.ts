@@ -4,7 +4,7 @@ import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Church, ChurchSettings, ClosedDate, Person, PersonDetail, Service, Status, Slot } from './model'
 
 export class ApiError extends Error {
-  constructor(readonly status: number, readonly code = '', readonly issues: string[] = [], readonly existing?: { id: string; name: string }) {
+  constructor(readonly status: number, readonly code = '', readonly issues: string[] = [], readonly existing?: { id: string; name: string }, readonly services?: number) {
     super(`API ${status}`)
   }
 }
@@ -30,6 +30,7 @@ export function useApiFetch() {
         response.status, typeof body?.error === 'string' ? body.error : '',
         Array.isArray(issues) ? issues.filter((item): item is string => typeof item === 'string') : [],
         typeof existing?.id === 'string' && typeof existing.name === 'string' ? { id: existing.id, name: existing.name } : undefined,
+        typeof (body as { services?: unknown } | null)?.services === 'number' ? (body as { services: number }).services : undefined,
       )
     }
     return (response.status === 204 ? undefined : await response.json()) as T

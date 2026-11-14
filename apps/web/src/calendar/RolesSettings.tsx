@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Button, Icon, Notice, Sheet, TextField, fold } from '../ui'
+import { Button, Icon, Notice, Sheet } from '../ui'
 import { ApiError } from './api'
 import { DIRECTOR_KEY, useRoleActions, useRoleRestrictions, useRoles, type MusicalRole, type RoleRestriction } from './roles-api'
+import { DIRECTOR_NAME, NewRoleSheet, RemoveRoleSheet } from './RoleSheets'
 
-const DIRECTOR_NAME = 'Dirigir'
 type Dialog = { kind: 'role' } | { kind: 'restriction' } | { kind: 'remove'; role: MusicalRole } | null
 
 /** Dirigir va primero y el resto en orden alfabético, como en el resto de la app. */
@@ -95,48 +95,8 @@ export function RolesSettings({ editable }: { editable: boolean }) {
         onCreate={async (name) => { setFailure(''); return actions.createRole(name) }} />
       <NewRestrictionSheet open={dialog?.kind === 'restriction'} catalog={catalog} existing={restrictions.data} onClose={() => setDialog(null)}
         onAdd={(first, second) => actions.addRestriction(first, second)} />
-      <Sheet open={dialog?.kind === 'remove'} onClose={() => setDialog(null)} title={dialog?.kind === 'remove' ? `¿Quitar el rol ${dialog.role.name}?` : ''}>
-        {dialog?.kind === 'remove' && (
-          <div className="grid gap-3">
-            <p className="m-0 text-sm text-text-2">También se quitarán las restricciones que incluyan este rol. Podrás volver a crearlo cuando quieras.</p>
-            <Button variant="danger" block onClick={() => { const { role } = dialog; setDialog(null); void perform(() => actions.removeRole(role.id)) }}>Quitar rol</Button>
-            <Button variant="quiet" block onClick={() => setDialog(null)}>Cancelar</Button>
-          </div>
-        )}
-      </Sheet>
+      <RemoveRoleSheet role={dialog?.kind === 'remove' ? dialog.role : null} onClose={() => setDialog(null)} onRemove={actions.removeRole} />
     </>
-  )
-}
-
-function NewRoleSheet({ open, existing, onClose, onCreate }: {
-  open: boolean; existing: MusicalRole[]; onClose: () => void; onCreate: (name: string) => Promise<unknown>
-}) {
-  const [name, setName] = useState('')
-  const [error, setError] = useState('')
-  const [sending, setSending] = useState(false)
-  const close = () => { setName(''); setError(''); onClose() }
-
-  async function submit() {
-    const trimmed = name.trim().replace(/\s+/g, ' ')
-    if (!trimmed) return setError('Escribe el nombre del rol.')
-    if (fold(trimmed) === fold(DIRECTOR_NAME) || existing.some((role) => fold(role.name) === fold(trimmed))) return setError('Ya existe un rol con ese nombre.')
-    setSending(true)
-    try {
-      await onCreate(trimmed)
-      close()
-    } catch (caught) {
-      setError(caught instanceof ApiError && caught.status === 409 ? 'Ya existe un rol con ese nombre.' : caught instanceof ApiError && caught.status === 403 ? 'No tienes permiso para cambiar los roles.' : 'No se pudo crear el rol. Inténtalo de nuevo.')
-    } finally { setSending(false) }
-  }
-
-  return (
-    <Sheet open={open} onClose={close} title="Nuevo rol">
-      <form noValidate onSubmit={(event) => { event.preventDefault(); void submit() }} className="grid gap-3">
-        <TextField label="Nombre del rol" value={name} maxLength={40} error={error} onChange={(event) => { setName(event.target.value); setError('') }} />
-        <Button type="submit" variant="primary" block loading={sending}>Agregar rol</Button>
-        <Button variant="quiet" block onClick={close}>Cancelar</Button>
-      </form>
-    </Sheet>
   )
 }
 

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
 import type { Church, ClosedDate, PersonDetail, Service } from './model'
+import type { Assignment, RoleParticipation, Turn } from './participations-api'
 import type { MusicalRole, RoleRestriction } from './roles-api'
 
 export const church: Church = {
@@ -39,9 +40,18 @@ export function stubApi(routes: {
   roles?: MusicalRole[]; restrictions?: RoleRestriction[]; createRole?: Handler; addRestriction?: Handler
   /** Lote mensual: período (por URL) y creación. */
   period?: Handler; batch?: Handler
+  /** Participaciones por rol, asignaciones por servicio, turnos para intercambiar y servicios futuros por rol (avisa al quitarlo). */
+  participations?: RoleParticipation[]; assignments?: Record<string, Assignment[]>; turns?: Turn[]; futureServices?: Record<string, number>
+  /** Respuestas a guardar un rol, y a reemplazar, agregar, quitar e intercambiar asignaciones. */
+  saveParticipation?: Handler; assignmentChange?: Handler
 }) {
   const roles = [...(routes.roles ?? defaultRoles)]
   const restrictions = [...(routes.restrictions ?? defaultRestrictions)]
+  const directoryPeople = () => (routes.directory ?? people.map((person) => detail(person))).map(({ id, name }) => ({ id, name }))
+  const participations = routes.participations ?? roles.map((role): RoleParticipation => ({
+    roleId: role.id, name: role.name, habitual: [], rotation: { enabled: false, mode: 'BY_DAY', startsOn: null, sequences: [] }, preview: [],
+  }))
+  const assignments = { ...routes.assignments }
   const calls: Array<{ url: string; init?: RequestInit }> = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, init })
@@ -60,7 +70,10 @@ export function stubApi(routes: {
     }
     if (url === '/api/roles') return reply(200, [...roles].sort((a, b) => a.name.localeCompare(b.name, 'es')))
     if (url.startsWith('/api/roles/') && init?.method === 'DELETE') {
-      const id = decodeURIComponent(url.split('/').pop() ?? '')
+      const [path, query = ''] = url.split('?')
+      const id = decodeURIComponent(path.split('/').pop() ?? '')
+      const ahead = routes.futureServices?.[id] ?? 0
+      if (ahead > 0 && query !== 'confirm=future-assignments') return reply(409, { error: 'Future assignments', services: ahead })
       roles.splice(0, roles.length, ...roles.filter((role) => role.id !== id))
       restrictions.splice(0, restrictions.length, ...restrictions.filter((item) => item.first !== id && item.second !== id))
       return new Response(null, { status: 204 })
@@ -78,6 +91,47 @@ export function stubApi(routes: {
       restrictions.splice(0, restrictions.length, ...restrictions.filter((item) => item.id !== id))
       return new Response(null, { status: 204 })
     }
+    if (url === '/api/role-participations') return reply(200, participations)
+    if (url.startsWith('/api/role-participations/') && init?.method === 'PUT') {
+      const result = routes.saveParticipation?.(url, init)
+      if (result?.status && result.status >= 400) return reply(result.status, result.body ?? { error: 'x' })
+      const id = decodeURIComponent(url.split('/').pop() ?? '')
+      const body = JSON.parse(String(init.body)) as { habitualIds: string[]; rotation: { enabled: boolean; mode: 'BY_DAY' | 'SHARED'; startsOn: string | null; sequences: { weekday: number | null; personIds: string[] }[] } }
+      const who = (ids: string[]) => ids.map((personId) => directoryPeople().find((person) => person.id === personId)!)
+      const index = participations.findIndex((role) => role.roleId === id)
+      participations[index] = {
+        ...participations[index], habitual: who(body.habitualIds),
+        rotation: { ...body.rotation, sequences: body.rotation.sequences.map((sequence) => ({ weekday: sequence.weekday, people: who(sequence.personIds) })) },
+      }
+      return reply(200, participations[index])
+    }
+    if (url.startsWith('/api/services/') && url.endsWith('/assignments')) {
+      const serviceId = decodeURIComponent(url.split('/')[3] ?? '')
+      if (init?.method === 'POST') {
+        const result = routes.assignmentChange?.(url, init)
+        if (result?.status && result.status >= 400) return reply(result.status, result.body ?? { error: 'x' })
+        const body = JSON.parse(String(init.body)) as { roleId: string; personId: string }
+        const row: Assignment = { id: `new-${Math.random()}`, roleId: body.roleId, roleName: roles.find((role) => role.id === body.roleId)?.name ?? '', source: 'MANUAL', pending: null, person: directoryPeople().find((person) => person.id === body.personId)!, proposed: null }
+        assignments[serviceId] = [...(assignments[serviceId] ?? []), row]
+        return reply(201, row)
+      }
+      return reply(200, { service: { id: serviceId, title: 'Servicio', date: '2026-11-13', slot: 'SINGLE', director: people[0] }, assignments: assignments[serviceId] ?? [] })
+    }
+    if (url === '/api/assignments/swap' && init?.method === 'POST') {
+      const result = routes.assignmentChange?.(url, init)
+      return result?.status && result.status >= 400 ? reply(result.status, result.body ?? { error: 'x' }) : reply(200, { swapped: [] })
+    }
+    if (url.startsWith('/api/assignments/')) {
+      const result = routes.assignmentChange?.(url, init)
+      if (result?.status && result.status >= 400) return reply(result.status, result.body ?? { error: 'x' })
+      const id = decodeURIComponent(url.split('/').pop() ?? '')
+      for (const key of Object.keys(assignments)) {
+        assignments[key] = init?.method === 'DELETE' ? assignments[key].filter((row) => row.id !== id)
+          : assignments[key].map((row) => (row.id === id ? { ...row, person: directoryPeople().find((person) => person.id === JSON.parse(String(init?.body)).personId)!, pending: null, source: 'MANUAL' } : row))
+      }
+      return init?.method === 'DELETE' ? new Response(null, { status: 204 }) : reply(200, {})
+    }
+    if (url.startsWith('/api/role-turns')) return reply(200, routes.turns ?? [])
     if (url === '/api/people' && init?.method === 'POST') {
       const result = routes.createPerson?.(url, init)
       return reply(result?.status ?? 201, result?.body ?? detail({ id: 'new', ...JSON.parse(String(init.body)) }))

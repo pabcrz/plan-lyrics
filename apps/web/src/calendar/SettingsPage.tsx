@@ -1,9 +1,20 @@
 import { useState } from 'react'
-import { Button, Field, Notice, Sheet, Switch, TextField, TimeWheel, Toast, format12h, from24h, inputClass, to24h, type Time12 } from '../ui'
+import { useNavigate } from 'react-router'
+import { Button, Field, Icon, Notice, Sheet, Switch, TextField, TimeWheel, Toast, format12h, from24h, inputClass, to24h, type Time12 } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from './ChurchGate'
 import { ApiError, useSaveChurch } from './api'
 import type { Church, ChurchSettings, Slot } from './model'
 import { RolesSettings } from './RolesSettings'
+
+/** Entrada a las participaciones habituales y la rotación de cada rol (las configura quien edita servicios). */
+function ParticipationsLink() {
+  const navigate = useNavigate()
+  return (
+    <Button variant="secondary" block onClick={() => void navigate('/participaciones')}>
+      Participaciones y rotación<Icon name="right" />
+    </Button>
+  )
+}
 
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const DAY_NAMES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
@@ -63,6 +74,7 @@ function ReadOnly({ church }: { church: Church }) {
       <PageHeader title="Ajustes de la iglesia" />
       <div className="grid gap-5 p-4">
         <Notice title="Solo lectura">Cambiar los ajustes requiere ser administrador de tu iglesia.</Notice>
+        <ParticipationsLink />
         <RolesSettings editable={false} />
       </div>
     </main>
@@ -187,6 +199,7 @@ function Settings({ church }: { church: Church }) {
         <Switch checked={form.usesPreaching} onCheckedChange={(on) => change((prev) => ({ ...prev, usesPreaching: on }))} label="Usa predicación"
           description="Solo se guarda: la sección de predicación llegará más adelante." />
 
+        <ParticipationsLink />
         <RolesSettings editable />
 
         <p className="m-0 text-[0.8125rem] text-text-3">Guardar no cambia los servicios ya creados; solo lo que se precarga a partir de ahora.</p>

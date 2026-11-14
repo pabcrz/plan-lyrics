@@ -24,7 +24,8 @@ export function useRoleActions() {
   const api = useApiFetch()
   const client = useQueryClient()
   // Quitar un rol también quita sus restricciones, así que ambas listas se vuelven a leer siempre.
-  const refresh = useCallback(() => Promise.all([client.invalidateQueries({ queryKey: ['roles'] }), client.invalidateQueries({ queryKey: ['role-restrictions'] })]), [client])
+  // Y sus participaciones y asignaciones: un rol quitado deja pendientes los servicios que lo tenían.
+  const refresh = useCallback(() => Promise.all(['roles', 'role-restrictions', 'participations', 'assignments'].map((key) => client.invalidateQueries({ queryKey: [key] }))), [client])
   const run = useCallback(async <T,>(request: () => Promise<T>) => {
     try {
       return await request()
@@ -34,7 +35,8 @@ export function useRoleActions() {
   }, [refresh])
   return {
     createRole: useCallback((name: string) => run(() => api<MusicalRole>('/api/roles', { method: 'POST', body: { name } })), [api, run]),
-    removeRole: useCallback((id: string) => run(() => api<void>(`/api/roles/${encodeURIComponent(id)}`, { method: 'DELETE' })), [api, run]),
+    /** Con `confirmed` procede aunque haya asignaciones en servicios futuros (el servidor avisa con `Future assignments`). */
+    removeRole: useCallback((id: string, confirmed = false) => run(() => api<void>(`/api/roles/${encodeURIComponent(id)}${confirmed ? '?confirm=future-assignments' : ''}`, { method: 'DELETE' })), [api, run]),
     addRestriction: useCallback((first: string, second: string) => run(() => api<RoleRestriction>('/api/role-restrictions', { method: 'POST', body: { first, second } })), [api, run]),
     removeRestriction: useCallback((id: string) => run(() => api<void>(`/api/role-restrictions/${encodeURIComponent(id)}`, { method: 'DELETE' })), [api, run]),
   }
