@@ -16,6 +16,8 @@ export const batchBody = z.strictObject({
     title: z.string().trim().min(1).max(120),
     time: z.string().regex(hhmm),
     directorId: id,
+    // Optional preacher of the date: a directory person, who may also be its director.
+    preacherId: id.optional(),
   })).min(1).max(40),
 })
 export type BatchBody = z.infer<typeof batchBody>
@@ -64,7 +66,7 @@ export function batchEntries(input: {
   return entries
 }
 
-export type PlannedEntry = { date: string; slot: SlotName; title: string; time: string; directorId: string }
+export type PlannedEntry = { date: string; slot: SlotName; title: string; time: string; directorId: string; preacherId?: string }
 
 /** Validates a reviewed batch and resolves each slot with the same rule as an individual service. */
 export function checkBatch(body: BatchBody, context: { today: string; sundayDouble: boolean }):
@@ -76,7 +78,7 @@ export function checkBatch(body: BatchBody, context: { today: string; sundayDoub
     if (!item.date.startsWith(body.month)) return { error: 'Invalid request' }
     const plan = planSlot({ date: item.date, sundayDouble: context.sundayDouble, slot: item.slot, time: item.time })
     if ('error' in plan) return { error: plan.error }
-    planned.push({ date: item.date, slot: plan.slot, title: item.title, time: item.time, directorId: item.directorId })
+    planned.push({ date: item.date, slot: plan.slot, title: item.title, time: item.time, directorId: item.directorId, ...(item.preacherId ? { preacherId: item.preacherId } : {}) })
   }
   const keys = planned.map(item => `${item.date}/${item.slot}`)
   if (new Set(keys).size !== keys.length) return { error: 'Invalid request' }

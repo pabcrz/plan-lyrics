@@ -7,7 +7,7 @@ import { monthQuery, todayInZone, type SlotName } from './service-rules.js'
 import type { SessionEnvironment } from './session.js'
 
 // Only what the batch needs of the active church; the church always comes from the caller's access.
-type Church = { churchId: string; sundayDouble: boolean; canEdit: boolean }
+type Church = { churchId: string; sundayDouble: boolean; usesPreaching: boolean; canEdit: boolean }
 type Http = Context<SessionEnvironment>
 
 const monthRange = (month: string) => {
@@ -58,12 +58,16 @@ export async function createBatch(c: Http, db: PrismaClient, church: Church, now
   const checked = checkBatch(body.data, { today: todayInZone(now), sundayDouble: church.sundayDouble })
   if ('error' in checked) return c.json({ error: checked.error }, 400)
   const { entries } = checked
+  // A preacher in the batch is a preaching write: refused while the church does not use preaching.
+  const preachers = new Set(entries.flatMap(entry => entry.preacherId ? [entry.preacherId] : []))
+  if (preachers.size > 0 && !church.usesPreaching) return c.json({ error: 'Preaching disabled' }, 409)
   const outcome = await db.$transaction(async tx => {
     // Same per-church lock as individual creation: the checks below cannot race another request.
     await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
     const wanted = new Set([...body.data.directorIds, ...entries.map(entry => entry.directorId)])
     const links = await tx.churchPerson.count({ where: { churchId: church.churchId, removedAt: null, personId: { in: [...wanted] } } })
     if (links !== wanted.size) return { error: 'Invalid request' as const }
+    if (preachers.size > 0 && await tx.churchPerson.count({ where: { churchId: church.churchId, removedAt: null, personId: { in: [...preachers] } } }) !== preachers.size) return { error: 'Invalid request' as const }
     const dates = [...new Set(entries.map(entry => entry.date))].map(date => new Date(`${date}T00:00:00Z`))
     const [closed, existing] = await Promise.all([
       tx.closedDate.findMany({ where: { churchId: church.churchId, date: { in: dates } }, select: { date: true } }),
@@ -83,6 +87,10 @@ export async function createBatch(c: Http, db: PrismaClient, church: Church, now
         select: serviceSelect,
       }))
     }
+    // Preachers chosen in the review: each date gets its preaching section, under the same lock as its service.
+    const withPreacher: { serviceId: string; churchId: string; preacherId: string }[] = []
+    for (const [index, entry] of entries.entries()) if (entry.preacherId) withPreacher.push({ serviceId: created[index].id, churchId: church.churchId, preacherId: entry.preacherId })
+    if (withPreacher.length > 0) await tx.servicePreaching.createMany({ data: withPreacher })
     // Habitual people and rotation turns, in date order so the sequences continue from where the last batch left them.
     await generateForServices(tx, church.churchId, created.map((row, index) => ({ id: row.id, date: entries[index].date, slot: entries[index].slot, directorId: entries[index].directorId })))
     const state = { directorIds: body.data.directorIds, lastDirectorId: lastDirectorOf(entries) }
