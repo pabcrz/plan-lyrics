@@ -54,3 +54,13 @@ Producto no define lo siguiente; se aplicó el criterio más restrictivo y queda
 - **Contenido vivo:** el enlace muestra lo que hay en ese momento en su rango; solo su vigencia queda fija.
 - **Alcance máximo** de un rango: 366 días.
 - **Sin edición de la biblioteca** por quien comparte: la vista pública solo lee.
+
+## Interfaz web
+
+- **Entrada:** el botón de compartir del encabezado del calendario (solo para quien administra o edita servicios). Un integrante que abre `/compartir` ve un aviso y la API nunca recibe la petición.
+- `/compartir` (diseño `compartir.html`): «Crear → Enlace para el ministerio» y la lista de enlaces con su estado (`Activo hasta …`, `Venció el …`, `Revocado a mano`). Tocar uno abre una hoja: activo, con la dirección completa, «Copiar enlace», «Compartir» (solo si el navegador ofrece el menú de compartir) y «Revocar enlace» con confirmación; desactivado, «Reactivar por 30 días» o, si ya se reactivó, el aviso de que debe crearse uno nuevo.
+- `/compartir/enlace`: alcance (un servicio de los próximos, o un rango de fechas; por omisión desde hoy hasta fin de mes), versión, bloques y un aviso con el número de servicios y la fecha hasta la que estaría activo. La predicación y las notas solo se ofrecen si la iglesia usa predicación; los tonos no se ofrecen en la versión de predicación ni las notas en la de alabanza. Al crear se abre la hoja «Enlace creado» para copiarlo o compartirlo. La estimación de vigencia es solo una ayuda: la API la calcula de nuevo.
+- `/m/:token` (**pública**, sin Clerk ni sesión): la vista de solo lectura. Muestra por fecha el horario (completo), quién dirige, el setlist numerado con autor (y tonalidad si el enlace la lleva), y la predicación con predicador, tema, citas y notas con su formato mínimo, siempre como texto. Las fechas «No hay culto» salen con la leyenda. Un enlace inexistente, vencido o revocado se ve igual («Este enlace no está disponible»); `429` y los fallos de conexión se distinguen y ofrecen reintentar. La propia página pide no ser indexada (`<meta name="robots">`) ni citar su origen (`referrer`) mientras está abierta, además de las cabeceras de la API.
+- La dirección completa se arma con el origen de la página; la API solo entrega la ruta `/m/<token>`.
+
+Verificado a 390 px con un arnés temporal no versionado (doble de Clerk, `fetch` simulado): sin desbordamiento horizontal en la lista, el formulario, las hojas ni la vista pública. Los documentos (imagen del setlist, lista mensual de dirección y PDF de predicaciones) y la vista de congregantes llegan en la siguiente entrega.
