@@ -12,6 +12,7 @@ Lectura recomendada: primero el producto; consulta las demás guías según tu t
 | [Roles musicales y restricciones (API)](roles-musicales.md) | Catálogo de roles por iglesia, combinaciones no permitidas y `combinationAllowed`. | Al tocar roles, restricciones o participaciones. |
 | [Participaciones y rotación (API)](participaciones.md) | Participaciones habituales, rotación, generación de asignaciones, reemplazo e intercambio. | Al tocar asignaciones, rotación o la generación al crear servicios. |
 | [Predicación (API)](predicacion.md) | Sección de predicación por servicio, notas internas, asignación, cambio e intercambio, y el interruptor de la iglesia. | Al tocar predicación o sus permisos. |
+| [Compartir servicios (API e interfaz)](compartir.md) | Enlaces del ministerio con vigencia, revocación y reactivación, su vista pública y decisiones pendientes. | Al tocar enlaces, documentos compartibles o la vista de congregantes. |
 | [Backend](propuestas/backend.md) | Propuesta de casos de uso, dominio y validación incremental. | Antes de construir la API y la persistencia. |
 | [Entrega integral](propuestas/entrega-integral.md) | Secuencia que conecta diseño, backend y verificación. | Para avanzar por resultados completos, no por capas aisladas. |
 | [Guía ChordPro](guia-chordpro.md) | Convenciones de formato musical. | Al trabajar con ChordPro o sus vistas. |
