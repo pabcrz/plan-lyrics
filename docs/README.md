@@ -13,6 +13,7 @@ Lectura recomendada: primero el producto; consulta las demás guías según tu t
 | [Participaciones y rotación (API)](participaciones.md) | Participaciones habituales, rotación, generación de asignaciones, reemplazo e intercambio. | Al tocar asignaciones, rotación o la generación al crear servicios. |
 | [Predicación (API)](predicacion.md) | Sección de predicación por servicio, notas internas, asignación, cambio e intercambio, y el interruptor de la iglesia. | Al tocar predicación o sus permisos. |
 | [Compartir servicios (API e interfaz)](compartir.md) | Enlaces del ministerio con vigencia, revocación y reactivación, su vista pública y decisiones pendientes. | Al tocar enlaces, documentos compartibles o la vista de congregantes. |
+| [Gestión de accesos (API e interfaz)](accesos.md) | Cuentas, invitaciones por el puerto `IdentityProvider`, vínculo persona-cuenta, membresías por iglesia, decisiones restrictivas y lo no verificado. | Al tocar permisos, cuentas, invitaciones o la pantalla de accesos. |
 | [Backend](propuestas/backend.md) | Propuesta de casos de uso, dominio y validación incremental. | Antes de construir la API y la persistencia. |
 | [Entrega integral](propuestas/entrega-integral.md) | Secuencia que conecta diseño, backend y verificación. | Para avanzar por resultados completos, no por capas aisladas. |
 | [Guía ChordPro](guia-chordpro.md) | Convenciones de formato musical. | Al trabajar con ChordPro o sus vistas. |

@@ -117,9 +117,9 @@ La administración de una iglesia y la edición de la biblioteca compartida son 
 - La aplicación gestiona usuarios y permisos; Clerk se mantiene como proveedor de autenticación. Iniciar sesión no concede membresías ni permisos por sí solo.
 - Dar de alta una persona sin cuenta en el directorio es distinto de crear un usuario: esta decisión no elimina la gestión de personas del administrador de iglesia ni resuelve los permisos pendientes del editor de servicios.
 
-Esta política está acordada, no implementada: todavía falta aplicar y comprobar la restricción de altas en el proveedor y en los futuros flujos de servidor. No implica que el registro público ya esté deshabilitado en la configuración actual de Clerk.
+Estado: el servidor ya aplica esta política (crear cuentas, invitar, vincular y desvincular solo el superadministrador y los gestores de cuentas; el administrador de iglesia solo gestiona membresías de su iglesia) y existe la pantalla correspondiente; ver [gestión de accesos](accesos.md). Sigue pendiente comprobar el envío real de invitaciones con Clerk y cerrar el registro público en su panel (modo Invite-only): no está comprobado que el registro público esté deshabilitado en la configuración actual.
 
-El acceso público mediante enlace no requiere cuenta y se limita al setlist y las letras publicables. Estos accesos no crean bibliotecas separadas por iglesia ni adelantan letras o acordes a la primera etapa. Queda pendiente definir quién otorga el acceso de editor de biblioteca y completar las capacidades no especificadas.
+El acceso público mediante enlace no requiere cuenta y se limita al setlist y las letras publicables. Estos accesos no crean bibliotecas separadas por iglesia ni adelantan letras o acordes a la primera etapa. Queda pendiente definir quién otorga el acceso de editor de biblioteca (de forma provisional y restrictiva, solo el superadministrador; ver [accesos](accesos.md#decisiones-con-criterio-restrictivo)) y completar las capacidades no especificadas.
 
 ### Etapa 2 — letras
 
