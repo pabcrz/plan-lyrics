@@ -40,3 +40,10 @@ Guardar la configuración (`PUT`) no cambia servicios ya creados. La rotación *
 - Varias personas habituales en cualquier rol (el producto solo lo exige para voces); la interfaz no limita.
 - El director del servicio no se reasigna ni se compara por prioridad: ante un choque con dirigir queda pendiente el rol que lo causaría.
 - Pendiente de producto: prioridad real entre dos propuestas en conflicto, servicios creados fuera de orden, cancelaciones y qué hacer con servicios ya generados al cambiar el orden.
+
+## Interfaz web
+
+- `/participaciones` (botón «Participaciones y rotación» en Ajustes, también para quien solo lee): roles en orden alfabético con su resumen (habitual, rotación por día o entre todos, «Sin configurar») y «Agregar rol» para el administrador. `/participaciones/:roleId` sigue el diseño aprobado: habituales (varios), interruptor «Rotar turnos», modalidad «Por día»/«Entre todos» con una tarjeta por día de servicio de la iglesia (o una sola), fecha «Primer turno desde», orden con subir/bajar, vista previa «Próximos servicios» y «Eliminar rol». El selector de personas no ofrece a quien ya está en la otra lista del mismo rol. Cada cambio se guarda al momento; quien no edita lo ve en solo lectura.
+- Eliminar un rol con servicios futuros que lo usan muestra primero el aviso («N servicios próximos tienen asignaciones…») y solo tras confirmarlo las deja pendientes.
+- En el detalle de un servicio, «Participaciones» lista cada rol con su persona o un marcador «Pendiente» con su explicación. Quien edita toca una fila: «Solo este servicio» (predeterminado, «Reemplazar solo aquí») o «Intercambiar turnos», que muestra ambas fechas y personas antes de «Confirmar intercambio». También puede quitar la participación, agregar otra o abrir la rotación del rol con la fecha del servicio como inicio. Los servicios pasados se ven sin controles.
+- Fuera de alcance, anotado: el filtro por rol y los roles de cada fila en el directorio de personas.
