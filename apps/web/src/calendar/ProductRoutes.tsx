@@ -6,6 +6,8 @@ import { SettingsPage } from './SettingsPage'
 import { ServiceFormPage } from './ServiceFormPage'
 import { NewPersonPage } from '../people/NewPersonPage'
 import { PeoplePage } from '../people/PeoplePage'
+import { NewLinkPage } from '../share/NewLinkPage'
+import { SharePage } from '../share/SharePage'
 import { SetlistPage } from '../setlist/SetlistPage'
 import { PersonPage } from '../people/PersonPage'
 
@@ -18,6 +20,8 @@ export function ProductRoutes() {
       <Route path="/personas" element={<PeoplePage />} />
       <Route path="/personas/nueva" element={<NewPersonPage />} />
       <Route path="/personas/:personId" element={<PersonPage />} />
+      <Route path="/compartir" element={<SharePage />} />
+      <Route path="/compartir/enlace" element={<NewLinkPage />} />
       <Route path="/ajustes" element={<SettingsPage />} />
       <Route path="/participaciones" element={<ParticipationsPage />} />
       <Route path="/participaciones/:roleId" element={<RoleParticipationPage />} />

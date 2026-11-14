@@ -6,7 +6,7 @@ import { ApiError, useChurch } from './api'
 import type { Church } from './model'
 
 /** Encabezado común: iglesia activa y cuenta. */
-export function TopBar({ name, settings }: { name?: string; settings?: boolean }) {
+export function TopBar({ name, settings, share }: { name?: string; settings?: boolean; share?: boolean }) {
   const navigate = useNavigate()
   return (
     <div className="flex min-h-14 items-center gap-3 border-b border-line px-4">
@@ -14,6 +14,7 @@ export function TopBar({ name, settings }: { name?: string; settings?: boolean }
         {name?.charAt(0).toUpperCase() ?? ''}
       </span>
       <span className="flex-1 font-semibold">{name ?? 'Plan & Lyrics'}</span>
+      {share && <Button variant="quiet" icon aria-label="Compartir" onClick={() => void navigate('/compartir')}><Icon name="share" /></Button>}
       {settings && <Button variant="quiet" onClick={() => void navigate('/ajustes')}>Ajustes</Button>}
       <UserButton />
     </div>
