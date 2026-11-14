@@ -4,7 +4,7 @@ export type Slot = 'SINGLE' | 'MORNING' | 'AFTERNOON'
 export type Status = 'DRAFT' | 'PUBLISHED' | 'COMPLETED' | 'CANCELLED'
 export type HabitualDay = { weekday: number; slot: Slot; time: string; title: string }
 export type Church = {
-  id: string; name: string; sundayDouble: boolean; usesPreaching: boolean; canEdit: boolean; canConfigure: boolean
+  id: string; name: string; sundayDouble: boolean; usesPreaching: boolean; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean
   timeZone: string; days: HabitualDay[]
 }
 export type ChurchSettings = Pick<Church, 'name' | 'sundayDouble' | 'usesPreaching' | 'days'>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Button, Field, Notice, Segmented, Switch, TextField, inputClass } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, useServices } from '../calendar/api'
@@ -7,9 +7,7 @@ import { formatDay, monthOf, shiftMonth, todayIn } from '../calendar/dates'
 import type { Church } from '../calendar/model'
 import { CreatedSheet } from './LinkSheets'
 import { useShareLinkActions } from './share-api'
-import { estimate, formatFull, monthsBetween, versionHelp, versionLabel, type Blocks, type NewLink, type ShareLink, type Version } from './share-model'
-
-const lastDayOfMonth = (month: string) => `${month}-${String(new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0)).getUTCDate()).padStart(2, '0')}`
+import { estimate, formatFull, lastDateOf, monthsBetween, versionHelp, versionLabel, type Blocks, type NewLink, type ShareLink, type Version } from './share-model'
 
 const failureText = (error: unknown) => {
   const code = error instanceof ApiError ? error.code : ''
@@ -34,11 +32,13 @@ export function NewLinkPage() {
 
 function Form({ church }: { church: Church }) {
   const navigate = useNavigate()
+  // «Enlace para congregantes»: la misma pantalla con una versión fija y sin bloques que elegir.
+  const congregation = useSearchParams()[0].get('para') === 'congregantes'
   const { create } = useShareLinkActions()
   const today = todayIn()
   const [kind, setKind] = useState<'range' | 'service'>('range')
   const [from, setFrom] = useState(today)
-  const [to, setTo] = useState(lastDayOfMonth(monthOf(today)))
+  const [to, setTo] = useState(lastDateOf(monthOf(today)))
   const [serviceId, setServiceId] = useState('')
   const [version, setVersion] = useState<Version>(church.usesPreaching ? 'FULL' : 'PRAISE')
   // Nada se comparte de más: tonos apagados; notas encendidas como en el diseño aprobado.
@@ -63,7 +63,9 @@ function Form({ church }: { church: Church }) {
     setSending(true)
     setFailure('')
     try {
-      setCreated(await create({ version, scope, blocks: { keys: showKeys && blocks.keys, notes: showNotes && blocks.notes, people: blocks.people } }))
+      setCreated(await create(congregation
+        ? { version: 'CONGREGATION', scope, blocks: { keys: false, notes: false, people: false } }
+        : { version, scope, blocks: { keys: showKeys && blocks.keys, notes: showNotes && blocks.notes, people: blocks.people } }))
     } catch (caught) { setFailure(failureText(caught)) } finally { setSending(false) }
   }
 
@@ -71,9 +73,9 @@ function Form({ church }: { church: Church }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
-      <PageHeader title="Enlace del ministerio" back="/compartir" backLabel="Volver a compartir" />
+      <PageHeader title={congregation ? 'Enlace para congregantes' : 'Enlace del ministerio'} back="/compartir" backLabel="Volver a compartir" />
       <form onSubmit={(event) => { event.preventDefault(); if (summary) void submit() }} noValidate className="grid flex-1 content-start gap-5 p-4">
-        <p className="m-0 text-text-2">Solo lectura. Lo ve quien lo reciba, sin iniciar sesión.</p>
+        <p className="m-0 text-text-2">{congregation ? 'Solo lectura, sin iniciar sesión. Para compartir con toda la congregación.' : 'Solo lectura. Lo ve quien lo reciba, sin iniciar sesión.'}</p>
 
         <fieldset className="m-0 grid gap-3 border-0 p-0">
           <legend className="mb-1.5 text-sm font-semibold">Qué cubre</legend>
@@ -95,7 +97,14 @@ function Form({ church }: { church: Church }) {
           )}
         </fieldset>
 
-        <fieldset className="m-0 grid gap-2 border-0 p-0">
+        {congregation && (
+          <Notice title="Qué ve la congregación">
+            El setlist de cada fecha con sus canciones y autores. Nunca directores, equipos, notas ni citas.
+            {church.usesPreaching && (church.congregationShowsPreacher ? ' También el predicador y el tema de cada servicio.' : ' No muestra predicador ni tema: se activa desde Compartir.')}
+          </Notice>
+        )}
+
+        {!congregation && <fieldset className="m-0 grid gap-2 border-0 p-0">
           <legend className="mb-1.5 text-sm font-semibold">Versión</legend>
           <div role="radiogroup" aria-label="Versión" className="grid gap-2">
             {versions.map((item) => (
@@ -106,21 +115,23 @@ function Form({ church }: { church: Church }) {
               </button>
             ))}
           </div>
-        </fieldset>
+        </fieldset>}
 
-        <fieldset className="m-0 grid gap-3 border-0 p-0">
+        {!congregation && <fieldset className="m-0 grid gap-3 border-0 p-0">
           <legend className="mb-1.5 text-sm font-semibold">Qué incluye</legend>
           {showKeys && <Switch checked={blocks.keys} onCheckedChange={(on) => set('keys', on)} label="Tonos y BPM" description="Por defecto no se muestran; actívalos, por ejemplo, para un músico." />}
           {showNotes && <Switch checked={blocks.notes} onCheckedChange={(on) => set('notes', on)} label="Notas de predicación" description="Los puntos a considerar de cada tema." />}
           <Switch checked={blocks.people} onCheckedChange={(on) => set('people', on)} label="Quién dirige y predica" description="Los nombres de cada fecha." />
-        </fieldset>
+        </fieldset>}
 
         <div aria-live="polite" className="grid gap-3">
           {loading && !reversed && <p role="status" className="m-0 text-text-2">Buscando servicios…</p>}
           {!loading && error && <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>}
           {!loading && !error && summary && (
             <Notice title={`${summary.count} ${summary.count === 1 ? 'servicio' : 'servicios'} · activo hasta ${formatFull(summary.activeUntil)}`}>
-              30 días después del último servicio que incluye. Quien lo tenga ve los nombres{showNotes && blocks.notes ? ' y las notas' : ''}: compártelo solo con quien corresponde.
+              {congregation
+                ? '30 días después del último servicio que incluye. Cualquiera que tenga el enlace puede verlo.'
+                : `30 días después del último servicio que incluye. Quien lo tenga ve los nombres${showNotes && blocks.notes ? ' y las notas' : ''}: compártelo solo con quien corresponde.`}
             </Notice>
           )}
           {!loading && !error && !summary && !reversed && <Notice tone="warn" icon="alert" title="No hay servicios en estas fechas">Elige otro rango.</Notice>}

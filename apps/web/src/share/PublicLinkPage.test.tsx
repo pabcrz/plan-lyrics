@@ -131,3 +131,22 @@ test('an empty link says there is nothing yet', async () => {
   open()
   expect(await screen.findByText('Sin servicios por ahora')).toBeTruthy()
 })
+
+test('the congregation view is headed «Setlist» and shows only the setlist and, when sent, the preacher and the topic', async () => {
+  serve(200, view({
+    version: 'CONGREGATION', blocks: { keys: false, notes: false, people: false },
+    services: [
+      { date: '2026-12-04', slot: 'SINGLE', setlist: [{ kind: 'SONG', title: 'Canción de ejemplo', author: 'Autora Uno' }], preaching: { preacher: 'Luis Herrera', topic: 'La fe' } },
+      { date: '2026-12-11', slot: 'SINGLE', setlist: [], preaching: null },
+    ],
+  }))
+  open()
+  expect(await screen.findByRole('heading', { name: 'Setlist' })).toBeTruthy()
+  expect(document.title).toBe('Setlist · Betel')
+  const first = screen.getByRole('heading', { name: /viernes,? 4 de diciembre/ }).closest('li')!
+  expect(first.textContent).toContain('Canción de ejemplo (Autora Uno)')
+  expect(first.textContent).toContain('Predica: Luis Herrera')
+  expect(first.textContent).toContain('La fe')
+  expect(first.textContent).not.toMatch(/Dirige|Citas|Puntos a considerar/)
+  expect(screen.getByText('Predicador por confirmar.')).toBeTruthy()
+})

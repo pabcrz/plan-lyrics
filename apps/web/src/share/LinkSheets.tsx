@@ -78,7 +78,7 @@ function LinkBody({ link, onClose, onDone }: { link: ShareLink; onClose: () => v
     <div className="grid gap-3">
       <p className="m-0 text-text-2">
         {active
-          ? `${expiryNote(link)}. Quien lo tenga ve nombres${link.blocks.notes ? ' y notas' : ''}.`
+          ? `${expiryNote(link)}. ${link.version === 'CONGREGATION' ? 'Quien lo tenga ve el setlist.' : `Quien lo tenga ve nombres${link.blocks.notes ? ' y notas' : ''}.`}`
           : `${expiryNote(link)}. ${link.canReactivate ? 'Puedes reactivarlo por otros 30 días, solo para consulta.' : 'Ya se reactivó una vez: crea un enlace nuevo si hace falta.'}`}
       </p>
       {active && url && <Address url={url} />}
