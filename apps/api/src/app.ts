@@ -1,8 +1,11 @@
 import { Hono } from 'hono'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 import type { PrismaClient } from './generated/prisma/client.ts'
+import { accountRoutes } from './accounts.js'
 import { readChurch } from './church-access.js'
 import { safeErrorCode } from './errors.js'
+import type { IdentityProvider } from './identity-provider.js'
+import { memberRoutes } from './members.js'
 import { participationRoutes } from './participations.js'
 import { preachingRoutes } from './preaching.js'
 import { roleRoutes } from './roles.js'
@@ -14,8 +17,11 @@ import { publicShareRoutes } from './share-view.js'
 import { songRoutes } from './songs.js'
 import { accountManagerBody, createUser, newUserBody, setAccountManager, userCapability } from './users.js'
 
-/** `shareSecret` derives the tokens of ministry links (`SHARE_LINK_SECRET`); `publicLimiter` throttles the public view. */
-export type AppOptions = { shareSecret?: string; publicLimiter?: Limiter }
+/**
+ * `shareSecret` derives the tokens of ministry links (`SHARE_LINK_SECRET`); `publicLimiter` throttles the public view;
+ * `identity` is the authentication provider port used to create accounts and send invitations (absent: those routes answer 503).
+ */
+export type AppOptions = { shareSecret?: string; publicLimiter?: Limiter; identity?: IdentityProvider }
 
 export function createApp(config: SessionConfig = {}, database?: PrismaClient, now: () => Date = () => new Date(), options: AppOptions = {}) {
   const app = new Hono<SessionEnvironment>()
@@ -60,6 +66,8 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
       return c.json({ error: 'Access unavailable' }, 503)
     }
   })
+  app.route('/', accountRoutes(config, database, options.identity))
+  app.route('/', memberRoutes(config, database))
   app.route('/', serviceRoutes(config, database, now))
   app.route('/', roleRoutes(config, database, now))
   app.route('/', participationRoutes(config, database, now))

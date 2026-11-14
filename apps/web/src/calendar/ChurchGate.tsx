@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { UserButton } from '@clerk/react'
 import { Button, Icon, Notice, Sheet, Tabbar } from '../ui'
+import { AccountsLink } from '../access/AccessLinks'
 import { ApiError, useChurch } from './api'
 import type { Church } from './model'
 
@@ -69,6 +70,7 @@ export function ChurchGate({ children }: { children: (church: Church) => ReactNo
       <div className="grid gap-4 p-4">
         {church.isPending && <p role="status">Cargando tu iglesia…</p>}
         {status === 404 && <Notice title="Sin iglesia asignada">Tu cuenta todavía no pertenece a ninguna iglesia. Pide acceso a quien la administra.</Notice>}
+        {status === 404 && <AccountsLink />}
         {status === 409 && <Notice title="Varias iglesias">Tu cuenta pertenece a más de una iglesia y elegir la activa aún no está disponible.</Notice>}
         {church.isError && status !== 404 && status !== 409 && (
           <>

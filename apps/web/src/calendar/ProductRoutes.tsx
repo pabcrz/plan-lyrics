@@ -1,4 +1,6 @@
 import { Route, Routes } from 'react-router'
+import { AccessPage } from '../access/AccessPage'
+import { AccountsPage } from '../access/AccountsPage'
 import { BatchPage } from './BatchPage'
 import { CalendarPage } from './CalendarPage'
 import { ParticipationsPage, RoleParticipationPage } from './ParticipationsPage'
@@ -25,6 +27,8 @@ export function ProductRoutes() {
       <Route path="/compartir/enlace" element={<NewLinkPage />} />
       <Route path="/compartir/documento/:kind" element={<DocumentPage />} />
       <Route path="/ajustes" element={<SettingsPage />} />
+      <Route path="/accesos" element={<AccessPage />} />
+      <Route path="/cuentas" element={<AccountsPage />} />
       <Route path="/participaciones" element={<ParticipationsPage />} />
       <Route path="/participaciones/:roleId" element={<RoleParticipationPage />} />
       <Route path="*" element={<CalendarPage />} />
