@@ -26,6 +26,7 @@ const reset = async () => {
   await db.service.deleteMany()
   await db.closedDate.deleteMany()
   await db.song.deleteMany()
+  await db.church.updateMany({ data: { congregationShowsPreacher: false } })
   await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: true } })
 }
 beforeEach(reset)
@@ -333,4 +334,60 @@ test('deleting a service removes the link of that service only', async () => {
   await create('editor')
   await db.service.delete({ where: { id: first.id } })
   expect(await db.shareLink.count()).toBe(1)
+})
+
+test('the congregation view shows the setlist with authors and nothing that is internal or about people', async () => {
+  await fullService()
+  await db.church.update({ where: { id: 'church-a' }, data: { congregationShowsPreacher: false } })
+  const link = await json(await create('editor', { version: 'CONGREGATION' }))
+  expect(link).toMatchObject({ version: 'CONGREGATION', blocks: { keys: false, notes: false, people: false }, status: 'ACTIVE', activeUntil: '2026-12-13' })
+  const view = await json(await open(link.path))
+  expect(view).toEqual({
+    version: 'CONGREGATION', church: 'Fixture Church A', activeUntil: '2026-12-13', blocks: { keys: false, notes: false, people: false }, closedDates: [],
+    services: [{
+      date: '2026-11-13', slot: 'SINGLE',
+      setlist: [{ kind: 'SONG', title: 'Canción ficticia uno', author: 'Autora Uno' }, { kind: 'MOMENT', name: 'Ofrenda' }, { kind: 'SONG', title: 'Canción ficticia dos', author: 'Autor Dos' }],
+    }],
+  })
+  // No director, no preacher, no topic, no notes, no passages, no tones, no time, no reference links.
+  for (const leaked of ['Director person-a', 'Luis Ficticio', 'La fe', 'Nota interna', 'Hebreos', 'youtube', '19:30', '"key"']) expect(JSON.stringify(view)).not.toContain(leaked)
+})
+
+test('when the church turns it on, the congregation view adds only the preacher and the topic of each service', async () => {
+  await fullService()
+  await service('2026-11-20')
+  const link = await json(await create('editor', { version: 'CONGREGATION' }))
+  expect((await json(await open(link.path))).services.every((item: object) => !('preaching' in item))).toBe(true)
+  await db.church.update({ where: { id: 'church-a' }, data: { congregationShowsPreacher: true } })
+  const view = await json(await open(link.path))
+  expect(view.services.map((item: { preaching: unknown }) => item.preaching)).toEqual([{ preacher: 'Luis Ficticio', topic: 'La fe' }, null])
+  for (const leaked of ['Nota interna', 'Hebreos', 'Director person-a']) expect(JSON.stringify(view)).not.toContain(leaked)
+  // With preaching off for the whole church the switch changes nothing: nothing of it is shown.
+  await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: false } })
+  expect(JSON.stringify(await json(await open(link.path)))).not.toMatch(/Luis Ficticio|La fe|preaching/)
+})
+
+test('the congregation link takes no blocks, and follows the same validity, revocation and reactivation', async () => {
+  await service('2026-11-13')
+  for (const blocks of [{ keys: true }, { notes: true }, { people: true }]) expect((await create('editor', { version: 'CONGREGATION', blocks })).status).toBe(400)
+  expect((await create('editor', { version: 'CONGREGATION', blocks: { people: false } })).status).toBe(201)
+  const link = (await json(await call('editor', 'GET', '/api/share-links')))[0]
+  expect((await call('editor', 'POST', `/api/share-links/${link.id}/revoke`)).status).toBe(200)
+  expect((await open(link.path)).status).toBe(404)
+  expect((await call('editor', 'POST', `/api/share-links/${link.id}/reactivate`)).status).toBe(200)
+  expect((await open(link.path)).status).toBe(200)
+  // The database itself refuses a congregation link with an optional block on.
+  await expect(db.shareLink.create({ data: {
+    churchId: 'church-a', nonce: 'n2', tokenHash: 'h-congregation', version: 'CONGREGATION', fromDate: at('2026-11-13'), toDate: at('2026-11-13'), activeUntil: at('2026-12-13'), showPeople: true,
+  } })).rejects.toThrow()
+})
+
+test('the congregation view of one church never shows another church, with the switch on in both', async () => {
+  await service('2026-11-13')
+  await db.service.create({ data: { churchId: 'church-b', directorId: 'person-b', title: 'Secreto de B', date: at('2026-11-14') } })
+  await db.church.updateMany({ data: { congregationShowsPreacher: true } })
+  const a = await json(await create('editor', { version: 'CONGREGATION' }))
+  const view = await json(await open(a.path))
+  expect(view.services).toHaveLength(1)
+  expect(JSON.stringify(view)).not.toMatch(/Secreto|Fixture Church B/)
 })

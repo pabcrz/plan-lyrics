@@ -216,3 +216,83 @@ test('the calendar offers «Compartir» to whoever edits and not to members', as
   await screen.findByRole('heading', { level: 1 })
   expect(screen.queryByRole('button', { name: 'Compartir' })).toBeNull()
 })
+
+const putBody = (calls: ReturnType<typeof stubShare>['base']) => JSON.parse(String(calls.find((call) => call.init?.method === 'PUT')?.init?.body))
+
+test('the home offers the three documents, and the preaching PDF only when the church uses preaching', async () => {
+  stubShare({ links: [] })
+  home()
+  expect(await screen.findByRole('button', { name: /Setlist en imagen/ })).toBeTruthy()
+  expect(screen.getByRole('button', { name: /Lista mensual de dirección/ })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: /PDF de predicaciones/ })).toBeNull()
+  cleanup()
+  stubShare({ links: [], church: { usesPreaching: true } })
+  home()
+  expect(await screen.findByRole('button', { name: /PDF de predicaciones/ })).toBeTruthy()
+})
+
+test('the congregation switch saves the church setting with the rest of the settings unchanged', async () => {
+  const { base } = stubShare({ links: [], church: { usesPreaching: true, canConfigure: true } })
+  home()
+  const toggle = await screen.findByRole('switch', { name: 'Mostrar predicador y tema' })
+  expect(toggle.getAttribute('aria-checked')).toBe('false')
+  fireEvent.click(toggle)
+  expect(await screen.findByText('Los congregantes verán predicador y tema')).toBeTruthy()
+  expect(putBody(base)).toEqual({
+    name: 'Betel', sundayDouble: false, usesPreaching: true, congregationShowsPreacher: true,
+    days: [{ weekday: 5, slot: 'SINGLE', time: '19:30', title: 'Servicio de viernes' }, { weekday: 0, slot: 'SINGLE', time: '10:00', title: 'Servicio dominical' }],
+  })
+  await waitFor(() => expect(screen.getByRole('switch', { name: 'Mostrar predicador y tema' }).getAttribute('aria-checked')).toBe('true'))
+  fireEvent.click(screen.getByRole('switch', { name: 'Mostrar predicador y tema' }))
+  expect(await screen.findByText('Los congregantes ya no ven predicador ni tema')).toBeTruthy()
+})
+
+test('an editor who is not the administrator sees the switch but cannot change it', async () => {
+  const { base } = stubShare({ links: [], church: { usesPreaching: true, canConfigure: false } })
+  home()
+  const toggle = await screen.findByRole('switch', { name: 'Mostrar predicador y tema' }) as HTMLButtonElement
+  expect(toggle.disabled).toBe(true)
+  expect(screen.getByText('Solo quien administra la iglesia puede cambiarlo.')).toBeTruthy()
+  fireEvent.click(toggle)
+  expect(base.filter((call) => call.init?.method === 'PUT')).toHaveLength(0)
+})
+
+test('a refused switch change is explained and the switch keeps what the server has', async () => {
+  stubShare({ links: [], church: { usesPreaching: true, canConfigure: true } })
+  type Fetch = (url: string, init?: RequestInit) => Promise<Response>
+  const calls = globalThis.fetch as unknown as { getMockImplementation: () => Fetch; mockImplementation: (impl: Fetch) => void }
+  const original = calls.getMockImplementation()
+  calls.mockImplementation(async (url: string, init?: RequestInit) => (url === '/api/active-church' && init?.method === 'PUT' ? new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 }) : original(url, init)))
+  home()
+  fireEvent.click(await screen.findByRole('switch', { name: 'Mostrar predicador y tema' }))
+  expect((await screen.findByRole('alert')).textContent).toContain('Solo quien administra la iglesia puede cambiarlo.')
+  expect(screen.getByRole('switch', { name: 'Mostrar predicador y tema' }).getAttribute('aria-checked')).toBe('false')
+})
+
+test('without preaching the congregation view says it only shows the setlist, and there is no switch', async () => {
+  stubShare({ links: [] })
+  home()
+  expect(await screen.findByText(/solo muestra el setlist/)).toBeTruthy()
+  expect(screen.queryByRole('switch', { name: 'Mostrar predicador y tema' })).toBeNull()
+})
+
+test('a link for the congregation has a fixed version and no blocks, and sends exactly that', async () => {
+  const { calls } = stubShare({ services, church: { usesPreaching: true, congregationShowsPreacher: true } })
+  mount(<Routes><Route path="/compartir/enlace" element={<NewLinkPage />} /></Routes>, '/compartir/enlace?para=congregantes')
+  expect(await screen.findByRole('heading', { name: 'Enlace para congregantes' })).toBeTruthy()
+  expect(screen.queryByRole('radio')).toBeNull()
+  expect(screen.queryByRole('switch')).toBeNull()
+  expect(screen.getByText(/También el predicador y el tema de cada servicio/)).toBeTruthy()
+  await screen.findByText(/servicios? · activo hasta/)
+  expect(screen.getByText(/Cualquiera que tenga el enlace puede verlo/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Crear enlace' }))
+  await screen.findByText('Enlace creado')
+  expect(requests(calls, 'POST')[0]?.body).toMatchObject({ version: 'CONGREGATION', blocks: { keys: false, notes: false, people: false } })
+})
+
+test('the list names a congregation link and its sheet says what whoever has it sees', async () => {
+  stubShare({ links: [link({ version: 'CONGREGATION', blocks: { keys: false, notes: false, people: false } })] })
+  home()
+  fireEvent.click(await screen.findByRole('button', { name: /^Congregantes ·/ }))
+  expect((await screen.findByRole('dialog')).textContent).toContain('Quien lo tenga ve el setlist.')
+})

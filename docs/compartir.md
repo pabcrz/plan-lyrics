@@ -4,7 +4,7 @@ Parte de la etapa 1 (ver [Compartir servicios](producto.md#compartir-servicios) 
 
 ## Enlaces del ministerio
 
-Un enlace de solo lectura, sin iniciar sesión, por **un servicio** o por un **rango de fechas** (hasta 366 días), con tres versiones: `PRAISE` (alabanza: fechas, quién dirige y setlists), `PREACHING` (predicación: fechas, predicador, tema, citas y, si se pide, notas) y `FULL` (ambas, con horario y orden de los cantos).
+Un enlace de solo lectura, sin iniciar sesión, por **un servicio** o por un **rango de fechas** (hasta 366 días), con tres versiones del ministerio: `PRAISE` (alabanza: fechas, quién dirige y setlists), `PREACHING` (predicación: fechas, predicador, tema, citas y, si se pide, notas) y `FULL` (ambas, con horario y orden de los cantos). Una cuarta, `CONGREGATION`, es la [vista de congregantes](#vista-de-congregantes).
 
 ### Rutas
 
@@ -44,9 +44,42 @@ Errores al crear: `400 Invalid request` (cuerpo con campos de más, rango invert
 
 256 bits, 43 caracteres URL-safe. La base guarda un `nonce` aleatorio y el **hash SHA-256** del token, nunca el token. El token es el HMAC del `nonce` con el secreto del servidor (`SHARE_LINK_SECRET`, al menos 32 caracteres), de modo que quien gestiona enlaces puede volver a copiar uno existente (el diseño aprobado lo pide) y una copia de la base por sí sola no revela ningún enlace. Rotar el secreto invalida todos los enlaces. Sin el secreto la API sigue sirviendo y revocando enlaces, pero no los crea. En local se define en `apps/api/.env.local` (ignorado por Git) con una cadena aleatoria propia; nunca se versiona.
 
+## Vista de congregantes
+
+La versión `CONGREGATION` de un enlace (se crea con `POST /api/share-links` como las demás, con `{version:"CONGREGATION", scope}`) es la vista pública del setlist para la iglesia:
+
+- **Muestra** por fecha: la fecha, su franja, y el setlist con título y autor de cada canción (y los momentos). **Nunca** muestra directores, equipos ni listas de personas, horario, tonalidades, BPM, enlaces de referencia, citas ni notas. Aún no hay letras: no existen en esta etapa.
+- **Sin bloques:** no admite ninguno (`400` si se pide alguno en `true`); la base lo repite con una restricción `CHECK`. Lo único opcional lo decide la iglesia, no el enlace.
+- **Interruptor de la iglesia** `Church.congregationShowsPreacher` (apagado por defecto): encendido, y solo con la predicación en uso, cada servicio añade `preaching: {preacher?, topic?}` (o `null` si no tiene) y nada más. Se lee al responder, así que apagarlo lo quita de inmediato de los enlaces ya compartidos. Lo expone `GET /api/active-church` como `congregationShowsPreacher` y lo edita `PUT /api/active-church` (campo **opcional**: si se omite, el valor guardado no cambia, así que la pantalla de ajustes no lo altera). Como todo ajuste de la iglesia, solo lo cambia quien la administra.
+- **Reglas del enlace:** las mismas que las del ministerio (vigencia de 30 días tras el último servicio, revocación, una reactivación). Producto dice que la vista de congregantes «sigue sus propias reglas» pero no las define.
+
+## Datos de los documentos
+
+La imagen del setlist y la lista mensual de dirección usan datos que ya entregan las rutas de servicios, setlist y «No hay culto». Para el PDF de predicaciones hay una ruta nueva:
+
+| Ruta | Quién | Resultado |
+| --- | --- | --- |
+| `GET /api/preaching-document?from=&to=` | Administrador o editor | `{church, from, to, services:[{date, slot, preacher, topic, passages, notes}], closedDates:[{date, reason}]}` con las secciones de predicación del rango (servicios cancelados no) y sus notas. `403` para integrantes (las notas son internas), `409 Preaching disabled` con la predicación apagada, `400` con fechas inválidas, invertidas o de más de un año. Nunca incluye otra iglesia. |
+
+## Documentos compartibles (interfaz)
+
+`/compartir/documento/:kind` con `imagen`, `rol` y `predicaciones`, solo para quien edita. Cada pantalla tiene sus opciones, una **vista previa** y las acciones fijas abajo. Los documentos son **siempre claros**, como impresos, aunque la app esté en modo oscuro.
+
+- **Setlist en imagen:** elige un servicio (del mes anterior al segundo mes siguiente, sin cancelados; por omisión el próximo). La imagen lleva «Setlist · fecha», la iglesia y las canciones numeradas, cada una con su autor entre paréntesis. Los momentos («Ofrenda») no son canciones y no salen; tampoco la tonalidad ni el enlace de referencia. Sin canciones, aviso y descarga deshabilitada.
+- **Lista mensual de dirección:** formato imagen o PDF, rango de fechas (por omisión el mes actual), mensaje o versículo opcional al pie (hasta 200 caracteres). Título «Rol alabanza», el mes (o las dos fechas si cruza meses), una línea por fecha con su director (un domingo doble, una por franja) y «No hay culto · motivo» en su lugar.
+- **PDF de predicaciones:** tabla con fecha, quién predica, tema y citas, y los puntos a considerar con su formato mínimo; «No hay culto» en su lugar. Solo con la predicación en uso.
+
+### Cómo se generan (y por qué)
+
+- **Imagen: canvas 2D en el cliente.** `documents.ts` coloca cada línea (ajuste de texto por palabras, columna de fechas, alto según el contenido) y dibuja un PNG de 1080 px de ancho con `toBlob`; sin dependencias. Se descartó el SVG a PNG: depende de cómo cada navegador rasteriza texto dentro de un SVG y complica las fuentes; el canvas da el mismo resultado en todos y se prueba con la capa pura de posicionamiento. «Descargar» crea el archivo en el navegador; «Compartir» usa el menú del sistema con el archivo si el navegador lo permite (si no, lo dice y sugiere descargarlo).
+- **PDF: la impresión del navegador** con una hoja de estilo dedicada (`@media print` en `styles.css`: página A4 con márgenes, todo lo que no es la hoja lleva `no-print`). Se pone el nombre del documento como título mientras se imprime para que «Guardar como PDF» lo use. Se descartó una librería de PDF: añade decenas de kilobytes para un documento de una tabla, y la impresión ya da texto seleccionable y paginado. Límite: no hay archivo que compartir desde la aplicación; el PDF se guarda desde el cuadro de impresión.
+
 ## Decisiones tomadas y pendientes
 
 Producto no define lo siguiente; se aplicó el criterio más restrictivo y queda pendiente de decisión:
+
+- **Congregantes:** su enlace caduca y se revoca como los del ministerio; no muestra horario; la vista previa de la imagen es HTML y el PNG se dibuja aparte con los mismos datos.
+- **Quién ve los documentos:** igual que los enlaces, solo quien administra o edita servicios; el PDF de predicaciones incluye notas, por eso no se ofrece a integrantes.
 
 - **Reactivaciones:** un enlace se reactiva **una sola vez**. Producto deja abierto si uno reactivado puede reactivarse de nuevo.
 - **Quién ve los enlaces:** quien administra o edita servicios (el listado trae enlaces que funcionan); los integrantes no.
@@ -54,6 +87,7 @@ Producto no define lo siguiente; se aplicó el criterio más restrictivo y queda
 - **Contenido vivo:** el enlace muestra lo que hay en ese momento en su rango; solo su vigencia queda fija.
 - **Alcance máximo** de un rango: 366 días.
 - **Sin edición de la biblioteca** por quien comparte: la vista pública solo lee.
+- **Sin ajuste de «cuántos días»:** los 30 días no se configuran por enlace.
 
 ## Interfaz web
 
@@ -63,4 +97,4 @@ Producto no define lo siguiente; se aplicó el criterio más restrictivo y queda
 - `/m/:token` (**pública**, sin Clerk ni sesión): la vista de solo lectura. Muestra por fecha el horario (completo), quién dirige, el setlist numerado con autor (y tonalidad si el enlace la lleva), y la predicación con predicador, tema, citas y notas con su formato mínimo, siempre como texto. Las fechas «No hay culto» salen con la leyenda. Un enlace inexistente, vencido o revocado se ve igual («Este enlace no está disponible»); `429` y los fallos de conexión se distinguen y ofrecen reintentar. La propia página pide no ser indexada (`<meta name="robots">`) ni citar su origen (`referrer`) mientras está abierta, además de las cabeceras de la API.
 - La dirección completa se arma con el origen de la página; la API solo entrega la ruta `/m/<token>`.
 
-Verificado a 390 px con un arnés temporal no versionado (doble de Clerk, `fetch` simulado): sin desbordamiento horizontal en la lista, el formulario, las hojas ni la vista pública. Los documentos (imagen del setlist, lista mensual de dirección y PDF de predicaciones) y la vista de congregantes llegan en la siguiente entrega.
+Verificado a 390 px con un arnés temporal no versionado (doble de Clerk, `fetch` simulado): sin desbordamiento horizontal en la lista, el formulario, las hojas ni la vista pública. 

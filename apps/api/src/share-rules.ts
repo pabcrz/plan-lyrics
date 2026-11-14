@@ -5,7 +5,7 @@ import { isoDate } from './service-rules.js'
 
 export const LINK_DAYS = 30
 export const RANGE_DAYS_MAX = 366
-export const versions = ['PRAISE', 'PREACHING', 'FULL'] as const
+export const versions = ['PRAISE', 'PREACHING', 'FULL', 'CONGREGATION'] as const
 export type ShareVersion = (typeof versions)[number]
 export type LinkStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED'
 export type Blocks = { keys: boolean; notes: boolean; people: boolean }
@@ -56,8 +56,11 @@ export type NewLinkBody = z.infer<typeof newLinkBody>
 /**
  * Tones and BPM are off by default, notes are off by default, and who directs or preaches is on. A block the
  * version cannot show (notes in «alabanza», tones in «predicación») is refused when asked for, never ignored.
+ * The congregation version takes none.
  */
 export function effectiveBlocks(version: ShareVersion, asked: z.infer<typeof blocksBody> | undefined): Blocks | null {
+  // The congregation view is fixed: nothing optional, so nothing can be asked for. Who preaches is a setting of the church.
+  if (version === 'CONGREGATION') return asked?.keys || asked?.notes || asked?.people ? null : { keys: false, notes: false, people: false }
   const blocks = { keys: asked?.keys ?? false, notes: asked?.notes ?? false, people: asked?.people ?? true }
   if ((version === 'PRAISE' && blocks.notes) || (version === 'PREACHING' && blocks.keys)) return null
   return blocks

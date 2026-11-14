@@ -49,8 +49,13 @@ describe('new link body', () => {
     expect(newLinkBody.safeParse(body({ version: 'PREACHING' })).success).toBe(true)
   })
 
+  test('the congregation version is accepted for a range or one service', () => {
+    expect(newLinkBody.safeParse(body({ version: 'CONGREGATION' })).success).toBe(true)
+    expect(newLinkBody.safeParse(body({ version: 'CONGREGATION', scope: { kind: 'service', serviceId: 's1' } })).success).toBe(true)
+  })
+
   test('rejects a church, unknown versions and any extra field', () => {
-    for (const over of [{ churchId: 'church-b' }, { version: 'ALL' }, { version: 'CONGREGATION' }, { token: 'x' }, { scope: { ...range, churchId: 'b' } }]) {
+    for (const over of [{ churchId: 'church-b' }, { version: 'ALL' }, { token: 'x' }, { scope: { ...range, churchId: 'b' } }]) {
       expect(newLinkBody.safeParse(body(over)).success).toBe(false)
     }
   })
@@ -76,6 +81,12 @@ describe('blocks', () => {
     expect(effectiveBlocks('PRAISE', { keys: true })).toEqual({ keys: true, notes: false, people: true })
     expect(effectiveBlocks('PREACHING', { notes: true, people: false })).toEqual({ keys: false, notes: true, people: false })
     expect(effectiveBlocks('FULL', { keys: true, notes: true, people: true })).toEqual({ keys: true, notes: true, people: true })
+  })
+
+  test('the congregation version has no blocks at all: what it shows is fixed, so asking for one is refused', () => {
+    expect(effectiveBlocks('CONGREGATION', undefined)).toEqual({ keys: false, notes: false, people: false })
+    expect(effectiveBlocks('CONGREGATION', { keys: false, notes: false, people: false })).toEqual({ keys: false, notes: false, people: false })
+    for (const asked of [{ keys: true }, { notes: true }, { people: true }]) expect(effectiveBlocks('CONGREGATION', asked)).toBeNull()
   })
 
   test('a block the version cannot show is rejected, never ignored', () => {

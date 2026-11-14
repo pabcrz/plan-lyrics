@@ -43,11 +43,13 @@ enum PendingReason {
   ROLE_REMOVED
 }
 
-// What a ministry link shows: the praise side, the preaching side, or both with schedule and song order.
+// What a link shows: the praise side, the preaching side, both with schedule and song order, or the congregation view.
 enum ShareVersion {
   PRAISE
   PREACHING
   FULL
+  // The public view for the congregation: the praise side only, with no people and no internal data.
+  CONGREGATION
 }
 
 enum ChurchRole {
@@ -96,6 +98,8 @@ model Church {
   sundayDouble Boolean @default(false)
   // Opt-in per church: when off the API rejects every preaching read and write; stored data is kept.
   usesPreaching Boolean @default(false)
+  // Opt-in per church: the congregation view then shows each service's preacher and topic (never notes or passages).
+  congregationShowsPreacher Boolean @default(false)
   // Set once the default musical roles and restriction were created; deleting every role never re-seeds them.
   rolesSeeded Boolean @default(false)
   people ChurchPerson[]

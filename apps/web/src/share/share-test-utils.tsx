@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 import { church as baseChurch, stubApi } from '../calendar/test-utils'
-import type { Church, Service } from '../calendar/model'
+import type { Church, ClosedDate, Service } from '../calendar/model'
 import type { ShareLink } from './share-model'
 
 export const link = (over: Partial<ShareLink> = {}): ShareLink => ({
@@ -11,18 +11,22 @@ export const link = (over: Partial<ShareLink> = {}): ShareLink => ({
 
 type Reply = { status?: number; body?: unknown }
 type Options = {
-  church?: Partial<Church>; services?: Service[]; links?: ShareLink[] | number
+  church?: Partial<Church>; services?: Service[]; closed?: ClosedDate[]; links?: ShareLink[] | number
+  /** Cualquier otra ruta (setlist, documento de predicaciones…), antes que el servidor de calendario. */
+  extra?: (url: string, init?: RequestInit) => Reply | undefined
   create?: (body: Record<string, unknown>) => Reply | undefined; revoke?: (id: string) => Reply | undefined; reactivate?: (id: string) => Reply | undefined
 }
 
 /** Servidor ficticio de enlaces sobre el de calendario: lista viva, y creación, revocación y reactivación que la cambian. */
 export function stubShare(options: Options = {}) {
   const links = typeof options.links === 'number' ? [] : [...(options.links ?? [])]
-  const base = stubApi({ church: { ...baseChurch, ...options.church }, services: options.services })
+  const base = stubApi({ church: { ...baseChurch, ...options.church }, services: options.services, closed: options.closed })
   const calendar = globalThis.fetch as unknown as (url: string, init?: RequestInit) => Promise<Response>
   const calls: Array<{ url: string; method: string; body?: Record<string, unknown> }> = []
   const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status })
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    const other = options.extra?.(url, init)
+    if (other) return reply(other.status ?? 200, other.body)
     if (!url.startsWith('/api/share-links')) return calendar(url, init)
     const method = init?.method ?? 'GET'
     calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : undefined })

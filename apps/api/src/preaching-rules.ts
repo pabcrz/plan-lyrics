@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isoDate } from './service-rules.js'
 
 /** Pure rules of the preaching section; the routes only add access and persistence around them. */
 
@@ -66,3 +67,7 @@ export const isEmptyPreaching = (body: PreachingBody) =>
 export function canSeeNotes(viewer: { canEdit: boolean; personId: string | null }, preacherId: string | null) {
   return viewer.canEdit || (viewer.personId !== null && viewer.personId === preacherId)
 }
+
+/** Range of the printable document: real dates in order, at most a year (the same cap as a shared link). */
+export const documentRange = z.strictObject({ from: isoDate, to: isoDate })
+  .refine(range => range.from <= range.to && (Date.parse(range.to) - Date.parse(range.from)) / 86_400_000 < 366)

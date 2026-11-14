@@ -1,2 +1,9 @@
 @import 'tailwindcss';
 @import './ui/tokens.css';
+
+/* Impresión: solo la hoja del documento (`.print-area`); todo lo demás lleva `.no-print`. */
+@media print {
+  @page { size: A4; margin: 16mm; }
+  html, body { background: #fff !important; }
+  .no-print { display: none !important; }
+}

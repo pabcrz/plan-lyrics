@@ -4,14 +4,15 @@ import { safeErrorCode } from './errors.js'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { createLimiter, type Limiter } from './rate-limit.js'
 import { todayInZone } from './service-rules.js'
-import { linkStatus } from './share-rules.js'
+import { linkStatus, type ShareVersion } from './share-rules.js'
 import { hashToken, isTokenShape } from './share-token.js'
 
 const day = (date: Date) => date.toISOString().slice(0, 10)
 
 type Link = {
-  churchId: string; version: 'PRAISE' | 'PREACHING' | 'FULL'; fromDate: Date; toDate: Date; serviceId: string | null
-  showKeys: boolean; showNotes: boolean; showPeople: boolean; activeUntil: Date; church: { name: string; usesPreaching: boolean }
+  churchId: string; version: ShareVersion; fromDate: Date; toDate: Date; serviceId: string | null
+  showKeys: boolean; showNotes: boolean; showPeople: boolean; activeUntil: Date
+  church: { name: string; usesPreaching: boolean; congregationShowsPreacher: boolean }
 }
 type Row = {
   date: Date; slot: string; time?: string | null
@@ -28,8 +29,11 @@ type Row = {
  */
 export async function buildView(db: PrismaClient, link: Link) {
   const praise = link.version !== 'PREACHING'
-  const preaching = link.version !== 'PRAISE' && link.church.usesPreaching
+  const preaching = (link.version === 'PREACHING' || link.version === 'FULL') && link.church.usesPreaching
   const full = link.version === 'FULL'
+  // The congregation view: the praise side only, and, when the church turns it on, just the preacher and the topic.
+  const congregation = link.version === 'CONGREGATION'
+  const preacherAndTopic = congregation && link.church.usesPreaching && link.church.congregationShowsPreacher
   const rows = await db.service.findMany({
     where: { churchId: link.churchId, status: { not: 'CANCELLED' }, ...(link.serviceId ? { id: link.serviceId } : { date: { gte: link.fromDate, lte: link.toDate } }) },
     orderBy: [{ date: 'asc' }, { slot: 'asc' }],
@@ -43,6 +47,7 @@ export async function buildView(db: PrismaClient, link: Link) {
         ...(link.showNotes ? { notes: true } : {}),
         ...(link.showPeople ? { preacher: { select: { person: { select: { name: true } } } } } : {}),
       } } } : {}),
+      ...(preacherAndTopic ? { preaching: { select: { topic: true, preacher: { select: { person: { select: { name: true } } } } } } } : {}),
     },
   }) as unknown as Row[]
   // «No hay culto» belongs to every range, not to a single service.
@@ -59,6 +64,10 @@ export async function buildView(db: PrismaClient, link: Link) {
       ...(row.setlist ? { setlist: row.setlist.map(entry => entry.song
         ? { kind: 'SONG', title: entry.song.title, author: entry.song.author, ...(link.showKeys ? { key: entry.key ?? null } : {}) }
         : { kind: 'MOMENT', name: entry.moment }) } : {}),
+      ...(preacherAndTopic ? { preaching: row.preaching ? {
+        ...(row.preaching.preacher ? { preacher: row.preaching.preacher.person.name } : {}),
+        ...(row.preaching.topic ? { topic: row.preaching.topic } : {}),
+      } : null } : {}),
       ...(preaching ? { preaching: row.preaching ? {
         topic: row.preaching.topic, passages: row.preaching.passages,
         ...(row.preaching.preacher ? { preacher: row.preaching.preacher.person.name } : {}),
@@ -92,7 +101,7 @@ export function publicShareRoutes(db: PrismaClient | undefined, now: () => Date,
     try {
       const link = await db.shareLink.findUnique({ where: { tokenHash: hashToken(token) }, select: {
         churchId: true, version: true, fromDate: true, toDate: true, serviceId: true, showKeys: true, showNotes: true, showPeople: true,
-        activeUntil: true, revokedAt: true, church: { select: { name: true, usesPreaching: true } },
+        activeUntil: true, revokedAt: true, church: { select: { name: true, usesPreaching: true, congregationShowsPreacher: true } },
       } })
       if (!link || linkStatus({ revoked: link.revokedAt !== null, activeUntil: day(link.activeUntil) }, todayInZone(now())) !== 'ACTIVE') return c.json({ error: 'Not found' }, 404)
       return c.json(await buildView(db, link))

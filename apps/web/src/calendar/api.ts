@@ -46,7 +46,7 @@ export function useChurch() {
 export function useSaveChurch() {
   const api = useApiFetch()
   const client = useQueryClient()
-  return useCallback(async (settings: ChurchSettings) => {
+  return useCallback(async (settings: ChurchSettings & { congregationShowsPreacher?: boolean }) => {
     const saved = await api<Church>('/api/active-church', { method: 'PUT', body: settings })
     client.setQueryData(['church'], saved)
     return saved

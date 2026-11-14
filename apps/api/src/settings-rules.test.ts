@@ -17,6 +17,13 @@ describe('configuración de la iglesia', () => {
     expect(result).toEqual({ data: { ...valid, name: 'Betel' } })
   })
 
+  test('el interruptor de congregantes es opcional y debe ser booleano', () => {
+    expect(checkSettings({ ...valid, congregationShowsPreacher: true })).toEqual({ data: { ...valid, congregationShowsPreacher: true } })
+    expect(checkSettings({ ...valid, congregationShowsPreacher: false })).toEqual({ data: { ...valid, congregationShowsPreacher: false } })
+    expect(checkSettings(valid)).toEqual({ data: valid })
+    expect(issues({ ...valid, congregationShowsPreacher: 'sí' })).toEqual(['body'])
+  })
+
   test('exige nombre', () => { expect(issues({ ...valid, name: '   ' })).toEqual(['name']) })
   test('exige al menos un día de servicio', () => { expect(issues(withDays([]))).toEqual(['days']) })
   test('exige título por servicio, indicando cuál', () => {

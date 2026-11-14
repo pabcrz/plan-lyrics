@@ -4,9 +4,11 @@ import { useQuery } from '@tanstack/react-query'
 import { Button, Icon, Notice, format12h, from24h } from '../ui'
 import { formatLongDay } from '../calendar/dates'
 import { Notes } from '../calendar/PreachingSection'
-import { fetchPublicLink, PublicLinkError, type PublicService } from './share-api'
+import { fetchPublicLink, PublicLinkError, type PublicService, type PublicView } from './share-api'
 import { formatFull, versionLabel } from './share-model'
 
+/** Lo que se lee en el encabezado: la congregación ve «Setlist», no el nombre interno de la versión. */
+const heading = (version: PublicView['version']) => (version === 'CONGREGATION' ? 'Setlist' : versionLabel[version])
 const slotText = { SINGLE: '', MORNING: 'Mañana', AFTERNOON: 'Tarde' } as const
 
 /** Esta página no se indexa ni cita su origen: se pide a los buscadores y al navegador desde la propia página. */
@@ -25,7 +27,7 @@ function useDiscreet(title: string) {
   }, [title])
 }
 
-function ServiceCard({ service }: { service: PublicService }) {
+function ServiceCard({ service, congregation }: { service: PublicService; congregation: boolean }) {
   const showSetlist = service.setlist !== undefined
   const preaching = service.preaching
   return (
@@ -53,13 +55,13 @@ function ServiceCard({ service }: { service: PublicService }) {
         ))}
       {preaching !== undefined && (
         <section aria-label="Predicación" className="grid gap-1.5 border-t border-line pt-3">
-          {preaching === null || (!preaching.topic && !preaching.preacher && preaching.passages.length === 0 && !preaching.notes)
-            ? <p className="m-0 text-[0.9375rem] text-text-2">Sin predicación asignada.</p>
+          {preaching === null || (!preaching.topic && !preaching.preacher && !preaching.passages?.length && !preaching.notes)
+            ? <p className="m-0 text-[0.9375rem] text-text-2">{congregation ? 'Predicador por confirmar.' : 'Sin predicación asignada.'}</p>
             : (
               <>
                 {preaching.preacher && <p className="m-0 text-[0.9375rem]"><span className="text-text-2">Predica: </span><b>{preaching.preacher}</b></p>}
                 {preaching.topic && <p className="m-0 font-semibold">{preaching.topic}</p>}
-                {preaching.passages.length > 0 && (
+                {!!preaching.passages?.length && (
                   <ul aria-label="Citas" className="m-0 flex list-none flex-wrap gap-1.5 p-0">
                     {preaching.passages.map((passage) => <li key={passage} className="rounded-full border border-line-strong bg-surface-2 px-2.5 py-0.5 text-[0.8125rem]">{passage}</li>)}
                   </ul>
@@ -87,11 +89,11 @@ export function PublicLinkPage() {
   const { token = '' } = useParams()
   const view = useQuery({ queryKey: ['public-link', token], queryFn: ({ signal }) => fetchPublicLink(token, signal), retry: false })
   const data = view.data
-  useDiscreet(data ? `${versionLabel[data.version]} · ${data.church}` : 'Servicios compartidos')
+  useDiscreet(data ? `${heading(data.version)} · ${data.church}` : 'Servicios compartidos')
   const status = view.error instanceof PublicLinkError ? view.error.status : 0
 
   const rows = data
-    ? [...data.services.map((service) => ({ date: service.date, slot: service.slot, node: <ServiceCard key={`${service.date}-${service.slot}`} service={service} /> })),
+    ? [...data.services.map((service) => ({ date: service.date, slot: service.slot, node: <ServiceCard key={`${service.date}-${service.slot}`} service={service} congregation={data.version === 'CONGREGATION'} /> })),
       ...data.closedDates.map((item) => ({ date: item.date, slot: 'SINGLE', node: <Closed key={`closed-${item.date}`} date={item.date} reason={item.reason} /> }))]
       .sort((a, b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot))
     : []
@@ -116,7 +118,7 @@ export function PublicLinkPage() {
         <div className="grid gap-4">
           <header>
             <p className="m-0 text-sm font-semibold text-text-2">{data.church}</p>
-            <h1 className="m-0 font-display text-2xl leading-tight font-bold tracking-tight">{versionLabel[data.version]}</h1>
+            <h1 className="m-0 font-display text-2xl leading-tight font-bold tracking-tight">{heading(data.version)}</h1>
             <p className="m-0 mt-1 text-[0.8125rem] text-text-3">Solo lectura · disponible hasta el {formatFull(data.activeUntil)}</p>
           </header>
           {rows.length === 0

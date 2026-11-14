@@ -1,6 +1,6 @@
 import { addDays, formatDay, monthTitle } from '../calendar/dates'
 
-export type Version = 'PRAISE' | 'PREACHING' | 'FULL'
+export type Version = 'PRAISE' | 'PREACHING' | 'FULL' | 'CONGREGATION'
 export type Blocks = { keys: boolean; notes: boolean; people: boolean }
 export type LinkStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED'
 export type Scope = { kind: 'service'; serviceId: string; date: string } | { kind: 'range'; from: string; to: string }
@@ -14,11 +14,12 @@ export type NewLink = { version: Version; scope: { kind: 'service'; serviceId: s
 /** Cuántos días dura un enlace después de su último servicio; la API es quien decide, esto solo lo anticipa. */
 export const LINK_DAYS = 30
 
-export const versionLabel: Record<Version, string> = { PRAISE: 'Alabanza', PREACHING: 'Predicación', FULL: 'Servicio completo' }
+export const versionLabel: Record<Version, string> = { PRAISE: 'Alabanza', PREACHING: 'Predicación', FULL: 'Servicio completo', CONGREGATION: 'Congregantes' }
 export const versionHelp: Record<Version, string> = {
   PRAISE: 'Fechas, quién dirige y setlists.',
   PREACHING: 'Fechas, predicador, tema, citas y notas.',
   FULL: 'Ambas, con horario y orden de los cantos.',
+  CONGREGATION: 'El setlist de la alabanza, sin directores ni equipos.',
 }
 
 /** «3 dic 2026». */
@@ -27,6 +28,9 @@ export function formatFull(date: string) {
 }
 
 const lastDayOf = (month: string) => new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0)).getUTCDate()
+
+/** Último día de un mes `YYYY-MM`, como `YYYY-MM-DD`. */
+export const lastDateOf = (month: string) => `${month}-${String(lastDayOf(month)).padStart(2, '0')}`
 
 /** Un mes completo se nombra por el mes; cualquier otro rango, por sus dos fechas. */
 export function scopeLabel(scope: Scope): string {

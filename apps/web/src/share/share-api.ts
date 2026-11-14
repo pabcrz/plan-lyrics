@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApiFetch } from '../calendar/api'
-import type { NewLink, ShareLink } from './share-model'
+import type { NewLink, ShareLink, Version } from './share-model'
 
 export function useShareLinks(enabled: boolean) {
   const api = useApiFetch()
@@ -37,10 +37,11 @@ export type PublicMoment = { kind: 'MOMENT'; name: string | null }
 export type PublicService = {
   date: string; slot: 'SINGLE' | 'MORNING' | 'AFTERNOON'; time?: string | null; director?: string
   setlist?: Array<PublicSong | PublicMoment>
-  preaching?: { topic: string; passages: string[]; preacher?: string; notes?: string } | null
+  // La vista de congregantes solo trae predicador y tema; la de predicación, también citas y (si el enlace las lleva) notas.
+  preaching?: { topic?: string; passages?: string[]; preacher?: string; notes?: string } | null
 }
 export type PublicView = {
-  version: 'PRAISE' | 'PREACHING' | 'FULL'; church: string; activeUntil: string
+  version: Version; church: string; activeUntil: string
   blocks: { keys: boolean; notes: boolean; people: boolean }
   services: PublicService[]; closedDates: Array<{ date: string; reason: string | null }>
 }
@@ -54,4 +55,20 @@ export async function fetchPublicLink(token: string, signal?: AbortSignal): Prom
   const response = await fetch(`/api/public/links/${encodeURIComponent(token)}`, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal })
   if (!response.ok) throw new PublicLinkError(response.status)
   return (await response.json()) as PublicView
+}
+
+/** Sección de predicación de una fecha en el documento imprimible (con notas: solo lo pide quien edita). */
+export type PreachingDocument = {
+  church: string; from: string; to: string
+  services: Array<{ date: string; slot: 'SINGLE' | 'MORNING' | 'AFTERNOON'; preacher: string | null; topic: string; passages: string[]; notes: string }>
+  closedDates: Array<{ date: string; reason: string | null }>
+}
+
+export function usePreachingDocument(from: string, to: string, enabled: boolean) {
+  const api = useApiFetch()
+  return useQuery({
+    queryKey: ['preaching-document', from, to],
+    queryFn: () => api<PreachingDocument>(`/api/preaching-document?from=${from}&to=${to}`),
+    enabled: enabled && /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to) && from <= to, retry: false,
+  })
 }

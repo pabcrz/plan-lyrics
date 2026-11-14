@@ -9,7 +9,7 @@ import type { Preaching, PreachingTurn } from './preaching-api'
 import type { MusicalRole, RoleRestriction } from './roles-api'
 
 export const church: Church = {
-  id: 'church-a', name: 'Betel', sundayDouble: false, usesPreaching: false, canEdit: true, canConfigure: true, timeZone: 'America/Mexico_City',
+  id: 'church-a', name: 'Betel', sundayDouble: false, usesPreaching: false, congregationShowsPreacher: false, canEdit: true, canConfigure: true, timeZone: 'America/Mexico_City',
   days: [
     { weekday: 5, slot: 'SINGLE', time: '19:30', title: 'Servicio de viernes' },
     { weekday: 0, slot: 'SINGLE', time: '10:00', title: 'Servicio dominical' },

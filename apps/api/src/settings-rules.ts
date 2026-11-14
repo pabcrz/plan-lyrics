@@ -7,6 +7,8 @@ const settingsBody = z.strictObject({
   name: z.string().trim().min(1).max(120),
   sundayDouble: z.boolean(),
   usesPreaching: z.boolean(),
+  // Optional: left out, the saved value stays. When on, the congregation view shows each service's preacher and topic.
+  congregationShowsPreacher: z.boolean().optional(),
   days: z.array(z.strictObject({
     weekday: z.number().int().min(0).max(6),
     slot: z.enum(['SINGLE', 'MORNING', 'AFTERNOON']),

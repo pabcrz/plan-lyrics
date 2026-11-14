@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { canSeeNotes, cleanNotes, cleanPassages, isEmptyPreaching, preachingBody, singleLine, swapPreachingBody } from './preaching-rules.js'
+import { canSeeNotes, cleanNotes, documentRange, cleanPassages, isEmptyPreaching, preachingBody, singleLine, swapPreachingBody } from './preaching-rules.js'
 
 const body = (over: Record<string, unknown> = {}) => ({ preacherId: 'p1', topic: 'La fe', passages: ['Hebreos 11:1'], notes: '- Punto uno', ...over })
 
@@ -75,5 +75,16 @@ describe('who reads the notes', () => {
     expect(canSeeNotes({ canEdit: false, personId: null }, 'p1')).toBe(false)
     expect(canSeeNotes({ canEdit: false, personId: null }, null)).toBe(false)
     expect(canSeeNotes({ canEdit: false, personId: 'p1' }, null)).toBe(false)
+  })
+})
+
+describe('document range', () => {
+  test('needs real dates in order and at most a year', () => {
+    expect(documentRange.safeParse({ from: '2026-12-01', to: '2026-12-31' }).success).toBe(true)
+    expect(documentRange.safeParse({ from: '2026-12-01', to: '2026-12-01' }).success).toBe(true)
+    for (const range of [
+      { from: '2026-12-31', to: '2026-12-01' }, { from: '2026-02-30', to: '2026-03-01' }, { from: '2026-01-01', to: '2027-01-02' },
+      { from: undefined, to: '2026-12-01' }, { from: '2026-12-01', to: '2026-12-31', churchId: 'x' },
+    ]) expect(documentRange.safeParse(range).success).toBe(false)
   })
 })

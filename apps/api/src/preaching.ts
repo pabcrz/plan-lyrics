@@ -1,7 +1,7 @@
 import { Hono, type Context } from 'hono'
 import { guarded } from './active-guard.js'
 import { lockChurch, type Tx } from './participation-generation.js'
-import { canSeeNotes, isEmptyPreaching, preachingBody, swapPreachingBody } from './preaching-rules.js'
+import { canSeeNotes, documentRange, isEmptyPreaching, preachingBody, swapPreachingBody } from './preaching-rules.js'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { isoDate, todayInZone } from './service-rules.js'
 import type { Active } from './services.js'
@@ -40,7 +40,7 @@ const activePerson = (tx: Tx, churchId: string, personId: string) =>
  */
 export function preachingRoutes(config: SessionConfig, db?: PrismaClient, now: () => Date = () => new Date()) {
   const routes = new Hono<SessionEnvironment>()
-  for (const path of ['/api/services/:serviceId/preaching', '/api/preaching/*', '/api/preaching-turns']) {
+  for (const path of ['/api/services/:serviceId/preaching', '/api/preaching/*', '/api/preaching-turns', '/api/preaching-document']) {
     routes.use(path, requireSession(config))
     routes.use(path, async (c, next) => { await next(); c.header('Cache-Control', 'no-store') })
   }
@@ -118,6 +118,29 @@ export function preachingRoutes(config: SessionConfig, db?: PrismaClient, now: (
       select: { serviceId: true, preacher: { select: { person: { select: { id: true, name: true } } } }, service: { select: { date: true, slot: true, title: true } } },
     })
     return c.json(rows.flatMap(row => row.preacher ? [{ serviceId: row.serviceId, date: day(row.service.date), slot: row.service.slot, title: row.service.title, person: row.preacher.person }] : []))
+  }))
+
+  // Data of the printable «PDF de predicaciones»: the sections of a date range with their notes, so only for whoever
+  // edits (notes are internal), plus the «No hay culto» dates, which every shared document shows.
+  routes.get('/api/preaching-document', guarded(db, 'preaching_document_failed', async (c, db, church) => {
+    if (!church.canEdit) return c.json({ error: 'Forbidden' }, 403)
+    if (!church.usesPreaching) return off(c)
+    const range = documentRange.safeParse({ from: c.req.query('from'), to: c.req.query('to') })
+    if (!range.success) return c.json({ error: 'Invalid request' }, 400)
+    const [from, to] = [new Date(`${range.data.from}T00:00:00Z`), new Date(`${range.data.to}T00:00:00Z`)]
+    const [rows, closed] = await Promise.all([
+      db.servicePreaching.findMany({
+        where: { churchId: church.churchId, service: { status: { not: 'CANCELLED' }, date: { gte: from, lte: to } } },
+        orderBy: [{ service: { date: 'asc' } }, { service: { slot: 'asc' } }],
+        select: { topic: true, passages: true, notes: true, preacher: { select: { person: { select: { name: true } } } }, service: { select: { date: true, slot: true } } },
+      }),
+      db.closedDate.findMany({ where: { churchId: church.churchId, date: { gte: from, lte: to } }, orderBy: { date: 'asc' }, select: { date: true, reason: true } }),
+    ])
+    return c.json({
+      church: church.name, from: range.data.from, to: range.data.to,
+      services: rows.map(row => ({ date: day(row.service.date), slot: row.service.slot, preacher: row.preacher?.person.name ?? null, topic: row.topic, passages: row.passages, notes: row.notes })),
+      closedDates: closed.map(row => ({ date: day(row.date), reason: row.reason })),
+    })
   }))
   return routes
 }

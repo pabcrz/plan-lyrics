@@ -10,7 +10,7 @@ import { requireSession, type SessionConfig, type SessionEnvironment } from './s
 
 export const timeZone = 'America/Mexico_City'
 
-export type Active = { churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; canEdit: boolean; canConfigure: boolean }
+export type Active = { churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean }
 
 /**
  * The active church is derived from the caller's memberships, never from the request.
@@ -19,7 +19,7 @@ export type Active = { churchId: string; name: string; sundayDouble: boolean; us
 export async function activeChurch(db: PrismaClient, subject: string): Promise<Active | 'none' | 'ambiguous'> {
   const memberships = await db.membership.findMany({
     where: { user: { clerkSubject: subject } },
-    select: { role: true, church: { select: { id: true, name: true, sundayDouble: true, usesPreaching: true } } },
+    select: { role: true, church: { select: { id: true, name: true, sundayDouble: true, usesPreaching: true, congregationShowsPreacher: true } } },
   })
   if (memberships.length === 0) return 'none'
   if (memberships.length > 1) return 'ambiguous'
@@ -27,7 +27,7 @@ export async function activeChurch(db: PrismaClient, subject: string): Promise<A
   // Church settings: the church administrator or the platform owner (who still needs an active church).
   const owner = role === 'ADMIN' ? null : await db.platformOwner.findFirst({ where: { user: { clerkSubject: subject } }, select: { id: true } })
   return {
-    churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching,
+    churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, congregationShowsPreacher: church.congregationShowsPreacher,
     canEdit: role === 'ADMIN' || role === 'EDITOR', canConfigure: role === 'ADMIN' || Boolean(owner),
   }
 }
@@ -83,7 +83,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       select: { weekday: true, slot: true, time: true, title: true },
     })
     return {
-      id: church.churchId, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching,
+      id: church.churchId, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, congregationShowsPreacher: church.congregationShowsPreacher,
       canEdit: church.canEdit, canConfigure: church.canConfigure, timeZone, days,
     }
   }
