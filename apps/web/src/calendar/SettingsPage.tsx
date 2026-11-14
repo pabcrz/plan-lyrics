@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Button, Field, Icon, Notice, Sheet, Switch, TextField, TimeWheel, Toast, format12h, from24h, inputClass, to24h, type Time12 } from '../ui'
+import { AccessLink, AccountsLink } from '../access/AccessLinks'
 import { ChurchGate, PageHeader, TopBar } from './ChurchGate'
 import { ApiError, useSaveChurch } from './api'
 import type { Church, ChurchSettings, Slot } from './model'
@@ -75,6 +76,7 @@ function ReadOnly({ church }: { church: Church }) {
       <div className="grid gap-5 p-4">
         <Notice title="Solo lectura">Cambiar los ajustes requiere ser administrador de tu iglesia.</Notice>
         <ParticipationsLink />
+        <AccountsLink />
         <RolesSettings editable={false} />
       </div>
     </main>
@@ -200,6 +202,8 @@ function Settings({ church }: { church: Church }) {
           description={form.usesPreaching ? 'El servicio y el lote mensual muestran la predicación: predicador, tema, citas y notas.' : 'Sin predicación: la sección se oculta en el servicio y en el lote, y la API no acepta cambios.'} />
 
         <ParticipationsLink />
+        <AccessLink />
+        <AccountsLink />
         <RolesSettings editable />
 
         <p className="m-0 text-[0.8125rem] text-text-3">Guardar no cambia los servicios ya creados; solo lo que se precarga a partir de ahora.</p>
