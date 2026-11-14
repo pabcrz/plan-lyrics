@@ -15,7 +15,7 @@ const original = [
 ]
 const reset = async () => {
   await db.service.deleteMany()
-  await db.church.update({ where: { id: 'church-a' }, data: { name: 'Fixture Church A', sundayDouble: false, usesPreaching: false } })
+  await db.church.update({ where: { id: 'church-a' }, data: { name: 'Fixture Church A', sundayDouble: false, usesPreaching: false, congregationShowsPreacher: false } })
   await db.serviceDay.deleteMany({ where: { churchId: 'church-a' } })
   await db.serviceDay.createMany({ data: original.map(day => ({ ...day, churchId: 'church-a' })) })
 }
@@ -100,4 +100,17 @@ test('saving does not modify services already created', async () => {
   expect((await save('admin', { ...valid, days: [{ weekday: 5, slot: 'SINGLE', time: '20:00', title: 'Otro título' }] })).status).toBe(200)
   const kept = await db.service.findFirstOrThrow()
   expect({ title: kept.title, time: kept.time, slot: kept.slot }).toEqual({ title: 'Servicio de viernes', time: '19:30', slot: 'SINGLE' })
+})
+
+test('the congregation switch is saved with the settings, kept when a save leaves it out, and only the administrator changes it', async () => {
+  expect(await (await call('member', 'GET', '/api/active-church')).json()).toMatchObject({ congregationShowsPreacher: false })
+  const on = await save('admin', { ...valid, congregationShowsPreacher: true })
+  expect(on.status).toBe(200)
+  expect(await on.json()).toMatchObject({ congregationShowsPreacher: true, name: 'Betel' })
+  // A save that does not mention it (the settings screen) changes nothing about it.
+  expect(await (await save('admin', { ...valid, name: 'Otro nombre' })).json()).toMatchObject({ congregationShowsPreacher: true, name: 'Otro nombre' })
+  expect((await save('editor', { ...valid, congregationShowsPreacher: false })).status).toBe(403)
+  expect((await save('admin', { ...valid, congregationShowsPreacher: 'si' })).status).toBe(400)
+  expect(await (await call('member', 'GET', '/api/active-church')).json()).toMatchObject({ congregationShowsPreacher: true })
+  expect(await (await save('admin', { ...valid, congregationShowsPreacher: false })).json()).toMatchObject({ congregationShowsPreacher: false })
 })

@@ -271,3 +271,49 @@ test('a batch with preachers is all or nothing: another church\'s person, a remo
   const plain = { ...body(luis), entries: [{ date: '2026-11-13', title: 'Viernes', time: '19:30', directorId: 'person-a' }] }
   expect((await call('editor', 'POST', '/api/service-batches', plain)).status).toBe(201)
 })
+
+const documentOf = (subject: string | undefined, query = 'from=2026-11-01&to=2026-12-31') => call(subject, 'GET', `/api/preaching-document?${query}`)
+
+test('the printable document lists the sections of the range with notes, for whoever edits only', async () => {
+  const first = await create('2026-11-13')
+  const second = await create('2026-11-20')
+  await create('2026-11-27')
+  await create('2027-01-08')
+  await save('editor', first, section())
+  await save('editor', second, section({ preacherId: null, topic: 'Sin predicador', passages: [], notes: '' }))
+  await db.closedDate.create({ data: { churchId: 'church-a', date: new Date('2026-12-25T00:00:00Z'), reason: 'Navidad' } })
+  await db.closedDate.create({ data: { churchId: 'church-b', date: new Date('2026-12-24T00:00:00Z'), reason: 'De otra iglesia' } })
+  expect((await documentOf(undefined)).status).toBe(401)
+  for (const subject of ['member', 'combined']) expect((await documentOf(subject)).status).toBe(403)
+  for (const subject of ['editor', 'admin']) {
+    const response = await documentOf(subject)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(await json(response)).toEqual({
+      church: 'Fixture Church A', from: '2026-11-01', to: '2026-12-31',
+      services: [
+        { date: '2026-11-13', slot: 'SINGLE', preacher: 'Luis', topic: 'La fe', passages: ['Hebreos 11:1', 'Romanos 10:17'], notes: '- Punto uno\n- Punto **dos**' },
+        { date: '2026-11-20', slot: 'SINGLE', preacher: null, topic: 'Sin predicador', passages: [], notes: '' },
+      ],
+      closedDates: [{ date: '2026-12-25', reason: 'Navidad' }],
+    })
+  }
+  await db.closedDate.deleteMany()
+})
+
+test('the printable document validates its range, other churches never appear, and it follows the switch', async () => {
+  const mine = await create('2026-11-13')
+  await save('editor', mine, section())
+  const other = await db.service.create({ data: { churchId: 'church-b', directorId: 'person-b', title: 'Otra', date: new Date('2026-11-14T00:00:00Z') } })
+  await db.servicePreaching.create({ data: { serviceId: other.id, churchId: 'church-b', topic: 'Secreto de B', passages: [], notes: 'Nota de B' } })
+  for (const query of ['', 'from=2026-11-01', 'from=2026-12-01&to=2026-11-01', 'from=2026-02-30&to=2026-03-01', 'from=2026-01-01&to=2027-01-02']) expect((await documentOf('editor', query)).status, query).toBe(400)
+  // The church never comes from the request: an extra query parameter is ignored and shows nothing of church B.
+  expect((await documentOf('editor', 'from=2026-11-01&to=2026-11-30&churchId=church-b')).status).toBe(200)
+  const text = JSON.stringify(await json(await documentOf('editor', 'from=2026-11-01&to=2026-11-30')))
+  expect(text).toContain('La fe')
+  expect(text).not.toMatch(/Secreto de B|Nota de B/)
+  await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: false } })
+  expect(await json(await documentOf('editor'))).toEqual({ error: 'Preaching disabled' })
+  await db.servicePreaching.deleteMany({ where: { churchId: 'church-b' } })
+  await db.service.delete({ where: { id: other.id } })
+})
