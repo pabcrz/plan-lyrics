@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import { BatchPage } from './BatchPage'
 import { CalendarPage } from './CalendarPage'
+import { ParticipationsPage, RoleParticipationPage } from './ParticipationsPage'
 import { SettingsPage } from './SettingsPage'
 import { ServiceFormPage } from './ServiceFormPage'
 import { NewPersonPage } from '../people/NewPersonPage'
@@ -18,6 +19,8 @@ export function ProductRoutes() {
       <Route path="/personas/nueva" element={<NewPersonPage />} />
       <Route path="/personas/:personId" element={<PersonPage />} />
       <Route path="/ajustes" element={<SettingsPage />} />
+      <Route path="/participaciones" element={<ParticipationsPage />} />
+      <Route path="/participaciones/:roleId" element={<RoleParticipationPage />} />
       <Route path="*" element={<CalendarPage />} />
     </Routes>
   )
