@@ -1,4 +1,4 @@
-# Predicación (API)
+# Predicación (API e interfaz)
 
 Parte de la etapa 1, opcional por iglesia (ver [Predicación](producto.md#predicación) en el plan de producto). Misma regla de iglesia que [servicios y calendario](servicios-calendario.md#iglesia-activa): la iglesia sale siempre del acceso de la sesión y nunca del cliente (`400` si el cuerpo trae `churchId`; los ids de otra iglesia no existen: `404`, o `400` si van como persona).
 
@@ -26,6 +26,15 @@ Errores: `400 {"error":"Date in the past"}` (los servicios de fechas pasadas son
 - **Saneamiento:** se eliminan caracteres de control, marcas invisibles y anulaciones de dirección del texto; el tema es una sola línea (espacios colapsados); las citas son una por línea (las vacías se descartan, se conserva el orden y se guardan sin interpretar); las notas recortan cada línea y reducen las líneas vacías seguidas a una. Límites, **sin truncar en silencio** (excederlos es `400`): tema 160 caracteres, 20 citas de hasta 80, notas 4 000 caracteres y 100 líneas. La base de datos repite esos límites con restricciones `CHECK`.
 - **Integridad:** `ServicePreaching` (una fila por servicio) apunta al servicio junto con su iglesia y al predicador junto con la iglesia, así que una fila no puede cruzar iglesias aunque el código falle. Se borra con el servicio.
 
+## Interfaz web
+
+Todo depende de `usesPreaching`: apagado, la interfaz no muestra la sección ni pide nada a la API.
+
+- **Detalle del servicio** (hoja del calendario, tras «Participaciones»): predicador, tema, citas como etiquetas de texto y, solo si la API entrega `notes`, «Notas internas» con viñetas, negritas y subrayado. Las notas se dibujan como texto (nunca como HTML: `<b>` se ve literal) y un marcador sin pareja se muestra tal cual.
+- **Quien edita** (y solo en fechas de hoy en adelante): «Agregar predicación»/«Editar predicación» abre una hoja con predicador (lista del directorio o «Dejar sin predicador»), tema, citas (una por línea) y notas, con los límites avisados junto al campo antes de enviar. «Intercambiar predicador con otra fecha» lista las próximas fechas con otro predicador y muestra ambas fechas y personas antes de «Confirmar intercambio».
+- **Lote mensual:** con predicación, un paso opcional «Predicadores» entre directores y revisión (`1/4`…`4/4`; sin ella el lote conserva sus tres pasos). Es la misma lógica de reparto que los directores (`assignmentFor`, `swapDirectors` y `changeDirector` de `batch.ts`): lista ordenada, «Repetir la lista hasta cubrir todas las fechas», y en la revisión cambio por fecha, intercambio entre dos fechas (mostrando ambas) y quitar o asignar predicador. A diferencia de los directores, la lista admite a la misma persona varias veces, también seguidas. Quitar una fecha del lote descarta también su predicador. «Revisar sin predicadores» omite todo el paso.
+- La lista de predicadores del lote no se guarda ni se continúa en el lote siguiente (ver decisiones).
+
 ## Decisiones tomadas y pendientes
 
 Producto no define lo siguiente; se aplicó el criterio más restrictivo y queda pendiente de decisión:
@@ -36,4 +45,4 @@ Producto no define lo siguiente; se aplicó el criterio más restrictivo y queda
 - Tema, citas y predicador los leen todos los miembros (como la dirección); solo las notas son internas.
 - La lista de predicadores de un lote **no se guarda** para continuarla en el lote siguiente (la continuidad desde el lote anterior es una regla de la dirección que producto no repite para la predicación).
 - Las fechas pasadas no se modifican (mismo criterio que las participaciones).
-- Fuera de alcance de este corte: compartir, PDF de predicaciones, vista de congregantes y la predicación en el formulario de «Nuevo servicio».
+- Fuera de alcance de este corte: compartir, PDF de predicaciones, vista de congregantes, la predicación en el formulario de «Nuevo servicio» (se agrega después desde el detalle) y avisar de turnos de predicación al dar de baja a una persona del directorio.
