@@ -10,8 +10,8 @@ La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la 
 
 | Ruta | Quién | Resultado |
 | --- | --- | --- |
-| `GET /api/active-church` | Cualquier miembro | `{id, name, sundayDouble, usesPreaching, canEdit, canConfigure, timeZone:"America/Mexico_City", days:[{weekday (0=domingo), slot, time, title}]}`. Los días solo precargan el formulario. |
-| `PUT /api/active-church` | Administrador de la iglesia o superadministrador | Reemplaza los ajustes: `{name, sundayDouble, usesPreaching, days:[{weekday, slot, time, title}]}` y responde como el `GET`. Guardar no modifica servicios ya creados. |
+| `GET /api/active-church` | Cualquier miembro | `{id, name, sundayDouble, usesPreaching, congregationShowsPreacher, canEdit, canConfigure, timeZone:"America/Mexico_City", days:[{weekday (0=domingo), slot, time, title}]}`. Los días solo precargan el formulario. |
+| `PUT /api/active-church` | Administrador de la iglesia o superadministrador | Reemplaza los ajustes: `{name, sundayDouble, usesPreaching, days:[{weekday, slot, time, title}]}` (y, opcional, `congregationShowsPreacher`: si se omite no cambia; ver [compartir](compartir.md#vista-de-congregantes)) y responde como el `GET`. Guardar no modifica servicios ya creados. |
 | `GET /api/people` | Cualquier miembro | Personas de la iglesia activa `[{id, name}]`, para elegir director. |
 | `GET /api/services?month=YYYY-MM` | Cualquier miembro | Servicios del mes `[{id, title, date, slot, time, status, director}]`. |
 | `POST /api/services` | Administrador o editor | `201` con el servicio. Cuerpo: `title`, `date` (`YYYY-MM-DD`), `status` (`DRAFT`/`PUBLISHED`), `directorId`, `time` (`HH:mm`, opcional), `slot` (`MORNING`/`AFTERNOON`, solo domingo doble). |
