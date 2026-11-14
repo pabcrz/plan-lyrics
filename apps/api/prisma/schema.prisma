@@ -87,7 +87,7 @@ model Church {
   name String
   // Opt-in per church: Sunday may then hold a morning (before 12:00) and an afternoon service.
   sundayDouble Boolean @default(false)
-  // Opt-in per church: only stored and exposed for now; the preaching section does not exist yet.
+  // Opt-in per church: when off the API rejects every preaching read and write; stored data is kept.
   usesPreaching Boolean @default(false)
   // Set once the default musical roles and restriction were created; deleting every role never re-seeds them.
   rolesSeeded Boolean @default(false)
@@ -96,6 +96,7 @@ model Church {
   roleRestrictions RoleRestriction[]
   rolePlans RolePlan[]
   assignments Assignment[]
+  preachings ServicePreaching[]
   memberships Membership[]
   services Service[]
   serviceDays ServiceDay[]
@@ -124,6 +125,7 @@ model ChurchPerson {
   person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
   directedServices Service[]
   assignments Assignment[]
+  preachings ServicePreaching[]
   // Removed from this church's directory: hidden from lists and pickers, kept for past services.
   removedAt DateTime?
   createdAt DateTime @default(now())
@@ -162,10 +164,34 @@ model Service {
   // The director must belong to the same church: composite key, not just a Person id.
   director ChurchPerson @relation(fields: [churchId, directorId], references: [churchId, personId], onDelete: Restrict)
   assignments Assignment[]
+  preaching ServicePreaching?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([churchId, date, slot])
+  // Lets dependent rows point at the service together with its church, so they cannot cross churches.
+  @@unique([id, churchId])
   @@index([churchId, date])
+}
+
+// Preaching section of one service: it is not a musical role and grants no permission. The row exists only
+// while something is filled in. The preacher is a directory person (no account required) of the same church;
+// a person may direct and preach the same service. Notes are internal: never part of a public view.
+model ServicePreaching {
+  serviceId String @id
+  churchId String
+  preacherId String?
+  topic String @default("")
+  // Bible references, one per entry; plain text that is never interpreted.
+  passages String[]
+  // Internal notes in the minimal format of preaching-rules.ts (`- ` bullets, **bold**, __underline__).
+  notes String @default("")
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId, churchId], references: [id, churchId], onDelete: Cascade)
+  preacher ChurchPerson? @relation(fields: [churchId, preacherId], references: [churchId, personId], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([serviceId, churchId])
+  @@index([churchId, preacherId])
 }
 
 // «No hay culto»: a date without a meeting. It is not a service, nor a cancelled one.

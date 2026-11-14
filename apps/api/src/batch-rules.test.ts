@@ -111,6 +111,12 @@ describe('checkBatch', () => {
     const four = ['2026-11-13', '2026-11-14', '2026-11-16', '2026-11-17'].map(date => entry({ date }))
     expect(check({ entries: four })).toEqual({ error: 'Invalid request' })
   })
+  test('a date may carry a preacher, who can be its director too; without one the entry has no key', () => {
+    const result = check({ entries: [entry({ preacherId: 'p1' }), entry({ date: '2026-11-20' })] })
+    expect('entries' in result && result.entries.map(item => item.preacherId)).toEqual(['p1', undefined])
+    expect('entries' in result && 'preacherId' in result.entries[1]!).toBe(false)
+    expect(batchBody.safeParse(body({ entries: [entry({ preacherId: '' })] })).success).toBe(false)
+  })
   test('a double Sunday needs a slot consistent with its hour; other days take none', () => {
     const double = { today: '2026-11-12', sundayDouble: true }
     const sunday = { date: '2026-11-15' }
