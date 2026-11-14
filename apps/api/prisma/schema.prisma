@@ -23,6 +23,26 @@ enum ServiceSlot {
   AFTERNOON
 }
 
+// How a role's rotation advances: one sequence per weekday, or one shared by every service.
+enum RotationMode {
+  BY_DAY
+  SHARED
+}
+
+// Where an assignment came from: the role's habitual people, its rotation turn, or a manual change.
+enum AssignmentSource {
+  HABITUAL
+  ROTATION
+  MANUAL
+}
+
+// Why an assignment has no person: the proposals collided in a combination the church forbids,
+// or its role was deleted while the service was still ahead.
+enum PendingReason {
+  COMBINATION
+  ROLE_REMOVED
+}
+
 enum ChurchRole {
   ADMIN
   EDITOR
@@ -74,6 +94,8 @@ model Church {
   people ChurchPerson[]
   musicalRoles MusicalRole[]
   roleRestrictions RoleRestriction[]
+  rolePlans RolePlan[]
+  assignments Assignment[]
   memberships Membership[]
   services Service[]
   serviceDays ServiceDay[]
@@ -101,6 +123,7 @@ model ChurchPerson {
   church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
   person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
   directedServices Service[]
+  assignments Assignment[]
   // Removed from this church's directory: hidden from lists and pickers, kept for past services.
   removedAt DateTime?
   createdAt DateTime @default(now())
@@ -138,6 +161,7 @@ model Service {
   church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
   // The director must belong to the same church: composite key, not just a Person id.
   director ChurchPerson @relation(fields: [churchId, directorId], references: [churchId, personId], onDelete: Restrict)
+  assignments Assignment[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([churchId, date, slot])
@@ -164,6 +188,8 @@ model MusicalRole {
   // Case- and accent-insensitive form of the name: unique per church.
   nameKey String
   church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  plan RolePlan?
+  assignments Assignment[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([churchId, nameKey])
@@ -226,4 +252,61 @@ model SetlistEntry {
   // A song appears once per setlist (null songId, i.e. moments, never collide).
   @@unique([serviceId, songId])
   @@unique([serviceId, position])
+}
+
+// Habitual people and rotation of one role of one church; never a property of the person. Person ids are
+// not foreign keys: a person removed from the directory is filtered when read and when generating.
+model RolePlan {
+  roleId String @id
+  churchId String
+  // Habitual people in the order they were chosen.
+  habitualIds String[]
+  // Rotation switch and mode. Turning it off, or changing the mode, keeps every sequence so nothing is lost.
+  rotationOn Boolean @default(false)
+  mode RotationMode @default(BY_DAY)
+  // Reference date: services before it get no rotation turn.
+  startsOn DateTime? @db.Date
+  role MusicalRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  sequences RotationSequence[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// One ordered cycle of people. weekday 0-6 for BY_DAY, -1 for the one shared sequence. nextPersonId is the
+// cursor: whoever takes the next generated service, kept across batches and months.
+model RotationSequence {
+  roleId String
+  weekday Int
+  memberIds String[]
+  nextPersonId String?
+  plan RolePlan @relation(fields: [roleId], references: [roleId], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([roleId, weekday])
+}
+
+// A person (or a pending marker) in one role of one service. roleName is a snapshot so past services keep
+// their record after the role is deleted (roleId then becomes null); a future one becomes pending instead.
+model Assignment {
+  id String @id @default(cuid())
+  churchId String
+  serviceId String
+  roleId String?
+  roleName String
+  personId String?
+  source AssignmentSource
+  // Present exactly when there is no person (also enforced by a database check).
+  pending PendingReason?
+  // For a COMBINATION pending: who the role's proposal had picked.
+  proposedPersonId String?
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  role MusicalRole? @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  person ChurchPerson? @relation(fields: [churchId, personId], references: [churchId, personId], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([serviceId, roleId, personId])
+  @@index([churchId, roleId])
+  @@index([serviceId])
 }

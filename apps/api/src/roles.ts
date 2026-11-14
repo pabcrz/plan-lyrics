@@ -4,6 +4,7 @@ import { safeErrorCode } from './errors.js'
 import { nameKey } from './people-rules.js'
 import { DEFAULT_ROLES, DIRECTOR_KEY, newRestrictionBody, newRoleBody, roleNameTaken, sortedPair } from './role-rules.js'
 import { activeChurch, type Active } from './services.js'
+import { todayInZone } from './service-rules.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 
 type Tx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0]
@@ -28,7 +29,7 @@ async function seedDefaults(tx: Tx, churchId: string) {
   await tx.church.update({ where: { id: churchId }, data: { rolesSeeded: true } })
 }
 
-async function ensureSeeded(db: PrismaClient, churchId: string) {
+export async function ensureSeeded(db: PrismaClient, churchId: string) {
   const church = await db.church.findUniqueOrThrow({ where: { id: churchId }, select: { rolesSeeded: true } })
   if (!church.rolesSeeded) await db.$transaction(tx => seedDefaults(tx, churchId))
 }
@@ -36,7 +37,7 @@ async function ensureSeeded(db: PrismaClient, churchId: string) {
 /** Roles of the church in alphabetical order (Spanish collation, ignoring accents like the catalog's names do). */
 const sortRoles = <T extends { name: string }>(roles: T[]) => roles.sort((a, b) => a.name.localeCompare(b.name, 'es'))
 
-export function roleRoutes(config: SessionConfig, db?: PrismaClient) {
+export function roleRoutes(config: SessionConfig, db?: PrismaClient, now: () => Date = () => new Date()) {
   const routes = new Hono<SessionEnvironment>()
   for (const path of ['/api/roles', '/api/roles/*', '/api/role-restrictions', '/api/role-restrictions/*']) {
     routes.use(path, requireSession(config))
@@ -79,18 +80,28 @@ export function roleRoutes(config: SessionConfig, db?: PrismaClient) {
     return c.json(presentRole(result), 201)
   }))
 
-  // Deleting a role also drops the restrictions that mention it. Warning about future assignments
-  // arrives with participations: no assignment exists yet to be affected.
+  // Deleting a role also drops the restrictions that mention it. Past services keep their assignments as a
+  // record (the role name stays on them); a service still ahead with assignments of the role needs the caller to
+  // confirm first, and then those assignments stay as pending markers instead of naming a person.
   routes.delete('/api/roles/:roleId', guarded('role_removal_failed', async (c, db, church) => {
     if (!church.canConfigure) return c.json({ error: 'Forbidden' }, 403)
-    const roleId = c.req.param('roleId')
-    const removed = await db.$transaction(async tx => {
+    const roleId = c.req.param('roleId') ?? ''
+    const confirmed = c.req.query('confirm') === 'future-assignments'
+    const today = new Date(`${todayInZone(now())}T00:00:00Z`)
+    const result = await db.$transaction(async tx => {
       await seedDefaults(tx, church.churchId)
-      const { count } = await tx.musicalRole.deleteMany({ where: { id: roleId, churchId: church.churchId } })
-      if (count > 0) await tx.roleRestriction.deleteMany({ where: { churchId: church.churchId, OR: [{ first: roleId }, { second: roleId }] } })
-      return count
+      if (!await tx.musicalRole.findFirst({ where: { id: roleId, churchId: church.churchId }, select: { id: true } })) return 'missing' as const
+      const ahead = { churchId: church.churchId, roleId, service: { date: { gte: today } } }
+      const services = await tx.assignment.findMany({ where: ahead, distinct: ['serviceId'], select: { serviceId: true } })
+      if (services.length > 0 && !confirmed) return { services: services.length }
+      await tx.assignment.updateMany({ where: ahead, data: { roleId: null, personId: null, pending: 'ROLE_REMOVED', proposedPersonId: null } })
+      await tx.musicalRole.deleteMany({ where: { id: roleId, churchId: church.churchId } })
+      await tx.roleRestriction.deleteMany({ where: { churchId: church.churchId, OR: [{ first: roleId }, { second: roleId }] } })
+      return 'removed' as const
     })
-    return removed > 0 ? c.body(null, 204) : c.json({ error: 'Not found' }, 404)
+    if (result === 'missing') return c.json({ error: 'Not found' }, 404)
+    if (result === 'removed') return c.body(null, 204)
+    return c.json({ error: 'Future assignments', services: result.services }, 409)
   }))
 
   routes.get('/api/role-restrictions', guarded('role_restrictions_list_failed', async (c, db, church) => {
