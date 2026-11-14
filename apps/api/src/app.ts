@@ -7,11 +7,17 @@ import { participationRoutes } from './participations.js'
 import { preachingRoutes } from './preaching.js'
 import { roleRoutes } from './roles.js'
 import { serviceRoutes } from './services.js'
+import type { Limiter } from './rate-limit.js'
 import { setlistRoutes } from './setlist.js'
+import { shareLinkRoutes } from './share-links.js'
+import { publicShareRoutes } from './share-view.js'
 import { songRoutes } from './songs.js'
 import { accountManagerBody, createUser, newUserBody, setAccountManager, userCapability } from './users.js'
 
-export function createApp(config: SessionConfig = {}, database?: PrismaClient, now?: () => Date) {
+/** `shareSecret` derives the tokens of ministry links (`SHARE_LINK_SECRET`); `publicLimiter` throttles the public view. */
+export type AppOptions = { shareSecret?: string; publicLimiter?: Limiter }
+
+export function createApp(config: SessionConfig = {}, database?: PrismaClient, now: () => Date = () => new Date(), options: AppOptions = {}) {
   const app = new Hono<SessionEnvironment>()
   app.get('/api/health', (c) => c.json({ status: 'ok', service: 'plan-lyrics-api' }))
   app.get('/api/session', requireSession(config), (c) => c.json({ authenticated: true }))
@@ -60,6 +66,8 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
   app.route('/', preachingRoutes(config, database, now))
   app.route('/', songRoutes(config, database))
   app.route('/', setlistRoutes(config, database))
+  app.route('/', shareLinkRoutes(config, database, now, options.shareSecret))
+  app.route('/', publicShareRoutes(database, now, options.publicLimiter))
   return app
 }
 

@@ -15,7 +15,8 @@ const app = createApp({
   jwtKey: process.env.CLERK_JWT_KEY,
   issuer: process.env.CLERK_ISSUER,
   authorizedParty: process.env.CLERK_AUTHORIZED_PARTY,
-}, database)
+}, database, undefined, { shareSecret: process.env.SHARE_LINK_SECRET })
+if (!process.env.SHARE_LINK_SECRET) console.warn('SHARE_LINK_SECRET is not set: ministry links cannot be created')
 
 serve({ fetch: app.fetch, hostname: '127.0.0.1', port: 3001 })
 console.log('API local: http://127.0.0.1:3001')
