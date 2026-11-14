@@ -19,7 +19,7 @@ export function useBatchPeriod(month: string, weekdays: ReadonlyArray<number>, e
 export type NewBatch = {
   month: string
   directorIds: string[]
-  entries: Array<{ date: string; title: string; time: string; directorId: string; slot?: Exclude<Slot, 'SINGLE'> }>
+  entries: Array<{ date: string; title: string; time: string; directorId: string; preacherId?: string; slot?: Exclude<Slot, 'SINGLE'> }>
 }
 
 /** Crea el lote completo o nada; éxito o rechazo, las listas visibles se vuelven a pedir al servidor. */

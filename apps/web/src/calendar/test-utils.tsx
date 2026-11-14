@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
 import type { Church, ClosedDate, PersonDetail, Service } from './model'
 import type { Assignment, RoleParticipation, Turn } from './participations-api'
+import type { Preaching, PreachingTurn } from './preaching-api'
 import type { MusicalRole, RoleRestriction } from './roles-api'
 
 export const church: Church = {
@@ -44,6 +45,8 @@ export function stubApi(routes: {
   participations?: RoleParticipation[]; assignments?: Record<string, Assignment[]>; turns?: Turn[]; futureServices?: Record<string, number>
   /** Respuestas a guardar un rol, y a reemplazar, agregar, quitar e intercambiar asignaciones. */
   saveParticipation?: Handler; assignmentChange?: Handler
+  /** Predicación por servicio (por id), fechas con predicador para intercambiar y la respuesta a guardar o intercambiar. */
+  preaching?: Record<string, Preaching>; preachingTurns?: PreachingTurn[]; preachingChange?: Handler
 }) {
   const roles = [...(routes.roles ?? defaultRoles)]
   const restrictions = [...(routes.restrictions ?? defaultRestrictions)]
@@ -52,6 +55,7 @@ export function stubApi(routes: {
     roleId: role.id, name: role.name, habitual: [], rotation: { enabled: false, mode: 'BY_DAY', startsOn: null, sequences: [] }, preview: [],
   }))
   const assignments = { ...routes.assignments }
+  const preaching = { ...routes.preaching }
   const calls: Array<{ url: string; init?: RequestInit }> = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, init })
@@ -104,6 +108,22 @@ export function stubApi(routes: {
         rotation: { ...body.rotation, sequences: body.rotation.sequences.map((sequence) => ({ weekday: sequence.weekday, people: who(sequence.personIds) })) },
       }
       return reply(200, participations[index])
+    }
+    if (url.startsWith('/api/services/') && url.endsWith('/preaching')) {
+      const serviceId = decodeURIComponent(url.split('/')[3] ?? '')
+      if (init?.method === 'PUT') {
+        const result = routes.preachingChange?.(url, init)
+        if (result?.status && result.status >= 400) return reply(result.status, result.body ?? { error: 'x' })
+        const body = JSON.parse(String(init.body)) as { preacherId: string | null; topic: string; passages: string[]; notes: string }
+        preaching[serviceId] = { serviceId, preacher: directoryPeople().find((person) => person.id === body.preacherId) ?? null, topic: body.topic, passages: body.passages, canSeeNotes: true, notes: body.notes }
+        return reply(200, preaching[serviceId])
+      }
+      return reply(200, preaching[serviceId] ?? { serviceId, preacher: null, topic: '', passages: [], canSeeNotes: true, notes: '' })
+    }
+    if (url === '/api/preaching-turns') return reply(200, routes.preachingTurns ?? [])
+    if (url === '/api/preaching/swap' && init?.method === 'POST') {
+      const result = routes.preachingChange?.(url, init)
+      return result?.status && result.status >= 400 ? reply(result.status, result.body ?? { error: 'x' }) : reply(200, { swapped: [] })
     }
     if (url.startsWith('/api/services/') && url.endsWith('/assignments')) {
       const serviceId = decodeURIComponent(url.split('/')[3] ?? '')

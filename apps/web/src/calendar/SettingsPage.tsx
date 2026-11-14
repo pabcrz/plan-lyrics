@@ -197,7 +197,7 @@ function Settings({ church }: { church: Church }) {
         ))}
 
         <Switch checked={form.usesPreaching} onCheckedChange={(on) => change((prev) => ({ ...prev, usesPreaching: on }))} label="Usa predicación"
-          description="Solo se guarda: la sección de predicación llegará más adelante." />
+          description={form.usesPreaching ? 'El servicio y el lote mensual muestran la predicación: predicador, tema, citas y notas.' : 'Sin predicación: la sección se oculta en el servicio y en el lote, y la API no acepta cambios.'} />
 
         <ParticipationsLink />
         <RolesSettings editable />

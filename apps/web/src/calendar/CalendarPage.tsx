@@ -4,6 +4,7 @@ import { Avatar, Button, Icon, Notice, Sheet, StatusChip, TextField, Toast, form
 import { ChurchGate, MainTabbar, TopBar } from './ChurchGate'
 import { ApiError, useClosedDateActions, useClosedDates, useServices } from './api'
 import { formatDay, formatLongDay, monthCells, monthOf, monthTitle, shiftMonth, todayIn } from './dates'
+import { PreachingSection } from './PreachingSection'
 import { ServiceParticipations } from './ServiceParticipations'
 import type { Church, ClosedDate, Service, Status } from './model'
 
@@ -80,7 +81,7 @@ function Calendar({ church }: { church: Church }) {
       {toast !== '' && <div className="px-4 pb-2"><Toast message={toast} onDismiss={() => setToast('')} /></div>}
       <MainTabbar church={church} current="calendar" />
       <Sheet open={Boolean(open)} onClose={() => setOpenId(null)} title={open?.title ?? 'Servicio'}>
-        {open && <Detail service={open} canEdit={church.canEdit} />}
+        {open && <Detail service={open} canEdit={church.canEdit} usesPreaching={church.usesPreaching} />}
       </Sheet>
       <Sheet open={openDate !== null} onClose={() => setOpenDate(null)} title={openDate && closedOn(closed, openDate) ? 'No hay culto' : openDate ? formatLongDay(openDate) : 'Fecha'}>
         {openDate && <DaySheet key={openDate} date={openDate} item={closedOn(closed, openDate)} canEdit={church.canEdit}
@@ -236,7 +237,7 @@ function ClosedChipOrDate({ date, item }: { date: string; item: ClosedDate | und
   )
 }
 
-function Detail({ service, canEdit }: { service: Service; canEdit: boolean }) {
+function Detail({ service, canEdit, usesPreaching }: { service: Service; canEdit: boolean; usesPreaching: boolean }) {
   const navigate = useNavigate()
   return (
     <div className="grid gap-4">
@@ -250,6 +251,7 @@ function Detail({ service, canEdit }: { service: Service; canEdit: boolean }) {
         </div>
       </section>
       <ServiceParticipations service={service} canEdit={canEdit} />
+      {usesPreaching && <PreachingSection service={service} canEdit={canEdit} />}
       <Button variant={canEdit ? 'primary' : 'secondary'} block onClick={() => void navigate(`/servicios/${service.id}/setlist`)}>{canEdit ? 'Preparar setlist' : 'Ver setlist'}</Button>
     </div>
   )

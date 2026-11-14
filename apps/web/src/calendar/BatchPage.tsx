@@ -11,10 +11,12 @@ import { useBatchPeriod, useCreateBatch } from './batch-api'
 import { formatDay, formatLongDay, monthOf, monthTitle, shiftMonth, todayIn, weekdayOf } from './dates'
 import type { Church, Service } from './model'
 
-type Step = 'period' | 'directors' | 'review' | 'done'
+type Step = 'period' | 'directors' | 'preachers' | 'review' | 'done'
+/** Lo revisado: director y predicador por fecha (clave `entryKey`) y las fechas quitadas del lote. */
+type Review = { assignment: Assignment; removed: string[]; preachers: Assignment }
 type Panel =
-  | { kind: 'actions'; key: string; mode: 'menu' | 'pick' | 'confirm'; other?: string }
-  | { kind: 'picker'; target: 'add' | string } // `add`: al final de la lista; otro valor: la fecha (clave) a cambiar
+  | { kind: 'actions'; key: string; mode: 'menu' | 'pick' | 'confirm'; other?: string; role?: 'preacher' }
+  | { kind: 'picker'; target: 'add' | string; role?: 'preacher' } // `add`: al final de la lista; otro valor: la fecha (clave) a cambiar
   | { kind: 'partial' }
 
 const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
@@ -64,7 +66,10 @@ function Batch({ church }: { church: Church }) {
   const [list, setList] = useState<Person[] | null>(null) // null: todavía la del lote anterior
   const [repeat, setRepeat] = useState(true)
   const [continues, setContinues] = useState(true)
-  const [review, setReview] = useState<{ assignment: Assignment; removed: string[] }>({ assignment: {}, removed: [] })
+  const [review, setReview] = useState<Review>({ assignment: {}, removed: [], preachers: {} })
+  // Los turnos de predicación sí pueden repetir a una persona, también seguidos: la lista no exige personas distintas.
+  const [preachers, setPreachers] = useState<Person[]>([])
+  const [repeatPreachers, setRepeatPreachers] = useState(true)
   const [panel, setPanel] = useState<Panel | null>(null)
   const [query, setQuery] = useState('')
   const [personFailure, setPersonFailure] = useState('')
@@ -87,6 +92,9 @@ function Batch({ church }: { church: Church }) {
   const previousLast = continues && previous?.lastDirectorId ? previous.lastDirectorId : null
   const hasPrevious = Boolean(previous && previous.directorIds.length > 0)
   const plan = assignmentFor(entries, directors.map((person) => person.id), { repeat, previousLast })
+  const usesPreaching = church.usesPreaching
+  // Misma regla de reparto que la dirección, sin continuidad desde el lote anterior (producto no la define para predicación).
+  const preacherPlan = assignmentFor(entries, preachers.map((person) => person.id), { repeat: repeatPreachers, previousLast: null })
 
   const config = (weekday: number): DayConfig => configs[weekday] ?? defaultDayConfig(church, weekday)
   const double = (weekday: number) => church.sundayDouble && weekday === 0
@@ -118,14 +126,15 @@ function Batch({ church }: { church: Church }) {
     setStep('directors')
   }
   function toReview() {
-    setReview({ assignment: plan, removed: [] })
+    setReview({ assignment: plan, removed: [], preachers: usesPreaching ? preacherPlan : {} })
     setFailure('')
     setStep('review')
   }
   function restart() {
     setStep('period')
     setList(null)
-    setReview({ assignment: {}, removed: [] })
+    setReview({ assignment: {}, removed: [], preachers: {} })
+    setPreachers([])
     setCreated([])
     setFailure('')
     setAttempted(false)
@@ -146,7 +155,10 @@ function Batch({ church }: { church: Church }) {
   }
   function choose(person: Person) {
     if (panel?.kind === 'picker') {
-      if (panel.target === 'add') setList([...directors, person])
+      if (panel.role === 'preacher') {
+        if (panel.target === 'add') setPreachers([...preachers, person])
+        else setReview({ ...review, preachers: changeDirector(review.preachers, panel.target, person.id) })
+      } else if (panel.target === 'add') setList([...directors, person])
       else setReview({ ...review, assignment: changeDirector(review.assignment, panel.target, person.id) })
     }
     closePanel()
@@ -162,6 +174,12 @@ function Batch({ church }: { church: Church }) {
     setList(next)
   }
 
+  function movePreacherUp(index: number) {
+    const next = [...preachers]
+    ;[next[index - 1], next[index]] = [next[index]!, next[index - 1]!]
+    setPreachers(next)
+  }
+
   async function submit() {
     setSending(true)
     setFailure('')
@@ -170,6 +188,7 @@ function Batch({ church }: { church: Church }) {
         month, directorIds: directors.map((person) => person.id),
         entries: included.map((entry) => ({
           date: entry.date, title: config(weekdayOf(entry.date)).title.trim(), time: timeOf(entry), directorId: review.assignment[entryKey(entry)]!,
+          ...(usesPreaching && review.preachers[entryKey(entry)] ? { preacherId: review.preachers[entryKey(entry)]! } : {}),
           ...(entry.slot === 'SINGLE' ? {} : { slot: entry.slot }),
         })),
       })
@@ -191,13 +210,14 @@ function Batch({ church }: { church: Church }) {
     else void submit()
   }
 
-  const back = step === 'directors' ? () => setStep('period') : step === 'review' ? () => setStep('directors') : undefined
-  const stepNumber = step === 'period' ? '1/3' : step === 'directors' ? '2/3' : step === 'review' ? '3/3' : undefined
+  const total = usesPreaching ? 4 : 3
+  const back = step === 'directors' ? () => setStep('period') : step === 'preachers' ? () => setStep('directors') : step === 'review' ? () => setStep(usesPreaching ? 'preachers' : 'directors') : undefined
+  const stepNumber = step === 'period' ? `1/${total}` : step === 'directors' ? `2/${total}` : step === 'preachers' ? `3/${total}` : step === 'review' ? `${total}/${total}` : undefined
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
-      <Header title="Lote mensual" label={back ? (step === 'directors' ? 'Volver al período' : 'Volver a directores') : 'Volver al calendario'} step={stepNumber} onBack={back} />
+      <Header title="Lote mensual" label={back ? (step === 'directors' ? 'Volver al período' : step === 'preachers' ? 'Volver a directores' : usesPreaching ? 'Volver a predicadores' : 'Volver a directores') : 'Volver al calendario'} step={stepNumber} onBack={back} />
       <div className="grid flex-1 content-start gap-5 p-4">
         {step === 'period' && (
           <>
@@ -273,14 +293,55 @@ function Batch({ church }: { church: Church }) {
                 ))}
               </ul>
             </section>
-            <Button variant="primary" block disabled={Object.keys(plan).length === 0} onClick={toReview}>Revisar</Button>
+            <Button variant="primary" block disabled={Object.keys(plan).length === 0} onClick={usesPreaching ? () => setStep('preachers') : toReview}>{usesPreaching ? 'Continuar con predicadores' : 'Revisar'}</Button>
+          </>
+        )}
+
+        {step === 'preachers' && (
+          <>
+            <p className="m-0 text-[0.9375rem] text-text-2">
+              Opcional. {preachers.length > 0 ? `${Object.keys(preacherPlan).length} de ${free.length} ${free.length === 1 ? 'fecha con predicador' : 'fechas con predicador'}.` : 'Agrega predicadores o sigue sin ellos; la predicación se puede cargar después en cada servicio.'}
+            </p>
+            <section aria-label="Lista de predicadores, en orden" className="grid gap-2">
+              <h2 className="m-0 text-sm font-semibold">Turnos, en orden</h2>
+              {preachers.length > 0 ? (
+                <ol className="m-0 grid list-none overflow-hidden rounded-lg border border-line bg-surface p-0">
+                  {preachers.map((person, index) => (
+                    <li key={`${person.id}/${index}`} className="flex min-h-14 items-center gap-2 border-b border-line px-3 last:border-b-0">
+                      <span aria-hidden="true" className="w-5 font-mono text-xs text-text-3">{index + 1}</span>
+                      <Avatar name={person.name} />
+                      <span className="flex-1 font-semibold">{person.name}</span>
+                      {index > 0 && <Button variant="quiet" icon aria-label={`Subir el turno ${index + 1} de ${person.name}`} onClick={() => movePreacherUp(index)}><Icon name="down" className="rotate-180" /></Button>}
+                      <Button variant="quiet" icon aria-label={`Quitar el turno ${index + 1} de ${person.name}`} onClick={() => setPreachers(preachers.filter((_, position) => position !== index))}><Icon name="x" /></Button>
+                    </li>
+                  ))}
+                </ol>
+              ) : <p className="m-0 text-sm text-text-3">La lista está vacía.</p>}
+              <Button variant="secondary" block onClick={() => setPanel({ kind: 'picker', target: 'add', role: 'preacher' })}>Agregar predicador</Button>
+              <p className="m-0 text-[0.8125rem] text-text-3">Una persona puede tener varios turnos seguidos: agrégala las veces que haga falta. No se exige una rotación estricta.</p>
+            </section>
+            <div className="grid gap-4 rounded-lg border border-line bg-surface p-4">
+              <Switch checked={repeatPreachers} onCheckedChange={setRepeatPreachers} label="Repetir la lista de predicadores hasta cubrir todas las fechas"
+                description={preachers.length === 0 ? undefined : repeatPreachers
+                  ? (preachers.length < free.length ? `Con ${count(preachers.length, 'turno', 'turnos')} y ${free.length} fechas, la fecha ${preachers.length + 1} la toma ${nameOf(preacherPlan[entryKey(free[preachers.length]!)] ?? '')}.` : 'La lista alcanza para todas las fechas.')
+                  : (preachers.length < free.length ? `Solo se asignan las primeras ${preachers.length} fechas; el resto queda sin predicador.` : 'La lista alcanza para todas las fechas.')} />
+            </div>
+            <section aria-label="Predicadores por fecha" className="grid gap-2">
+              <h2 className="m-0 text-sm font-semibold">Así quedan las fechas</h2>
+              <ul className="m-0 grid list-none overflow-hidden rounded-lg border border-line bg-surface p-0">
+                {entries.map((entry) => (
+                  <Row key={entryKey(entry)} date={label(entry)} value={entry.lock ? <Locked entry={entry} /> : (preacherPlan[entryKey(entry)] ? nameOf(preacherPlan[entryKey(entry)]!) : 'Sin predicador')} muted={Boolean(entry.lock) || !preacherPlan[entryKey(entry)]} />
+                ))}
+              </ul>
+            </section>
+            <Button variant="primary" block onClick={toReview}>{preachers.length > 0 ? 'Revisar' : 'Revisar sin predicadores'}</Button>
           </>
         )}
 
         {step === 'review' && (
           <>
             <p className="m-0 text-[0.9375rem] text-text-2">{monthTitle(month)} · {joinWords(weekdays.map(plural))}</p>
-            <p className="m-0 text-[0.8125rem] text-text-3">Toca una fecha para cambiar su director, intercambiarla o quitarla.</p>
+            <p className="m-0 text-[0.8125rem] text-text-3">{usesPreaching ? 'Toca una fecha para cambiar su director o su predicador, intercambiarlos o quitarla.' : 'Toca una fecha para cambiar su director, intercambiarla o quitarla.'}</p>
             {included.length < free.length
               ? <Notice tone="warn" icon="info" role="status" title={`Se crearán ${included.length} de ${free.length} servicios`}>{pending.length > 0 && review.removed.length === 0 ? `En las primeras ${included.length} fechas, en el orden ingresado.` : 'Las demás fechas quedan sin programar.'}</Notice>
               : <Notice icon="check" role="status" title={`Se crearán ${included.length} de ${free.length} servicios`}>Uno por cada fecha disponible.</Notice>}
@@ -292,10 +353,13 @@ function Batch({ church }: { church: Church }) {
                 const removed = review.removed.includes(key)
                 return (
                   <li key={key} className="border-b border-line last:border-b-0">
-                    <button type="button" aria-label={`${longLabel(entry)}, ${removed ? 'quitada del lote' : nameOf(director)}. Opciones`} onClick={() => setPanel({ kind: 'actions', key, mode: 'menu' })}
+                    <button type="button" aria-label={`${longLabel(entry)}, ${removed ? 'quitada del lote' : nameOf(director)}${usesPreaching && !removed && review.preachers[key] ? `, predica ${nameOf(review.preachers[key]!)}` : ''}. Opciones`} onClick={() => setPanel({ kind: 'actions', key, mode: 'menu' })}
                       className={`flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent px-4 text-left ${removed ? 'text-text-3' : ''}`}>
                       <span className="min-w-0 flex-1 font-mono text-[0.8125rem]">{label(entry)}</span>
-                      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap font-semibold">{removed ? 'Quitada del lote' : nameOf(director)}<Icon name="more" /></span>
+                      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-right font-semibold">
+                        <span>{removed ? 'Quitada del lote' : nameOf(director)}{usesPreaching && !removed && review.preachers[key] && <small className="block font-normal text-text-3">Predica: {nameOf(review.preachers[key]!)}</small>}</span>
+                        <Icon name="more" />
+                      </span>
                     </button>
                   </li>
                 )
@@ -333,12 +397,12 @@ function Batch({ church }: { church: Church }) {
         )}
       </div>
 
-      <Sheet open={panel?.kind === 'picker'} onClose={closePanel} title={panel?.kind === 'picker' && panel.target !== 'add' ? 'Cambiar director' : 'Agregar director'}>
+      <Sheet open={panel?.kind === 'picker'} onClose={closePanel} title={panel?.kind === 'picker' ? `${panel.target !== 'add' ? 'Cambiar' : 'Agregar'} ${panel.role === 'preacher' ? 'predicador' : 'director'}` : 'Agregar director'}>
         {panel?.kind === 'picker' && (
           <div className="grid gap-3">
-            <p className="m-0 text-sm text-text-2">{panel.target === 'add' ? 'Se suma al final de la lista.' : 'Solo cambia esta fecha; las demás no cambian.'}</p>
+            <p className="m-0 text-sm text-text-2">{panel.target === 'add' ? 'Se suma al final de la lista.' : 'Solo cambia esta fecha; las demás no cambian.'}{panel.role === 'preacher' && panel.target === 'add' ? ' Puedes elegir a quien ya está: cada turno cuenta.' : ''}</p>
             <PersonPicker label="Buscar persona" query={query} onQueryChange={(next) => { setQuery(next); setPersonFailure('') }}
-              people={(people.data ?? []).filter((person) => (panel.target !== 'add' || !directors.some((item) => item.id === person.id)) && fold(person.name).includes(fold(query)))}
+              people={(people.data ?? []).filter((person) => (panel.role === 'preacher' || panel.target !== 'add' || !directors.some((item) => item.id === person.id)) && fold(person.name).includes(fold(query)))}
               onSelect={choose} onAddNew={(name) => void addPerson(name)}
               help="Elige a alguien del directorio o agrega a una persona nueva con su nombre completo (se guarda en el directorio)." />
             {personFailure && <Notice tone="warn" icon="alert" role="alert">{personFailure}</Notice>}
@@ -349,7 +413,7 @@ function Batch({ church }: { church: Church }) {
 
       <Sheet open={panel?.kind === 'actions'} onClose={closePanel} title={panel?.kind === 'actions' ? longLabel(free.find((entry) => entryKey(entry) === panel.key) ?? { date: panel.key.slice(0, 10), slot: 'SINGLE', lock: null }) : 'Fecha'}>
         {panel?.kind === 'actions' && (
-          <Actions panel={panel} free={free} review={review} nameOf={nameOf} label={label}
+          <Actions panel={panel} free={free} review={review} nameOf={nameOf} label={label} preaching={usesPreaching}
             onPanel={setPanel} onClose={closePanel}
             onReview={(next) => { setReview(next); closePanel() }} />
         )}
@@ -446,16 +510,22 @@ function DayFields({ weekday, double, value, issue, onChange }: { weekday: numbe
   )
 }
 
-/** Acciones de una fecha de la revisión: cambiar director, intercambiar (mostrando ambas) o quitar del lote. */
-function Actions({ panel, free, review, nameOf, label, onPanel, onClose, onReview }: {
-  panel: Extract<Panel, { kind: 'actions' }>; free: PeriodEntry[]; review: { assignment: Assignment; removed: string[] }
+/** Acciones de una fecha de la revisión: cambiar director o predicador, intercambiar (mostrando ambas) o quitar. */
+function Actions({ panel, free, review, nameOf, label, preaching, onPanel, onClose, onReview }: {
+  panel: Extract<Panel, { kind: 'actions' }>; free: PeriodEntry[]; review: Review; preaching: boolean
   nameOf: (id: string) => string; label: (entry: PeriodEntry) => string
-  onPanel: (panel: Panel) => void; onClose: () => void; onReview: (review: { assignment: Assignment; removed: string[] }) => void
+  onPanel: (panel: Panel) => void; onClose: () => void; onReview: (review: Review) => void
 }) {
   const entry = free.find((item) => entryKey(item) === panel.key)
   const director = review.assignment[panel.key]
   if (!entry || !director) return null
+  const preacher = panel.role === 'preacher'
   const removed = review.removed.includes(panel.key)
+  // Mismas acciones para ambos: lo que cambia es qué asignación se edita y cómo se llama la persona.
+  const noun = preacher ? 'predicador' : 'director'
+  const assigned = preacher ? review.preachers : review.assignment
+  const current = assigned[panel.key]
+  const apply = (next: Assignment) => onReview({ ...review, ...(preacher ? { preachers: next } : { assignment: next }) })
   const option = (text: string, hint: string, onClick: () => void) => (
     <button type="button" onClick={onClick} className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-line bg-transparent px-4 text-left last:border-b-0 hover:bg-surface-2">
       <span className="font-semibold">{text}<small className="block font-normal text-text-3">{hint}</small></span>
@@ -466,13 +536,20 @@ function Actions({ panel, free, review, nameOf, label, onPanel, onClose, onRevie
   if (panel.mode === 'menu') {
     return (
       <div className="grid gap-3">
-        <p className="m-0 text-sm text-text-2">{removed ? `Quitada del lote. Director anterior: ${nameOf(director)}.` : `Director: ${nameOf(director)}`}</p>
+        <p className="m-0 text-sm text-text-2">{preacher ? (current ? `Predicador: ${nameOf(current)}` : 'Sin predicador en esta fecha.') : removed ? `Quitada del lote. Director anterior: ${nameOf(director)}.` : `Director: ${nameOf(director)}`}</p>
         <div className="overflow-hidden rounded-lg border border-line">
-          {removed
+          {preacher ? (
+            <>
+              {option(current ? 'Cambiar predicador' : 'Asignar predicador', 'Solo en esta fecha; las demás no cambian.', () => onPanel({ kind: 'picker', target: panel.key, role: 'preacher' }))}
+              {current && option('Intercambiar con otra fecha', 'Se muestran ambas fechas antes de confirmar.', () => onPanel({ ...panel, mode: 'pick' }))}
+              {current && option('Quitar predicador', 'La fecha queda sin predicador.', () => apply(Object.fromEntries(Object.entries(assigned).filter(([key]) => key !== panel.key))))}
+            </>
+          ) : removed
             ? option('Volver a incluir en el lote', `Con ${nameOf(director)} como director.`, () => onReview({ ...review, removed: review.removed.filter((key) => key !== panel.key) }))
             : <>
               {option('Cambiar director', 'Solo en esta fecha; las demás no cambian.', () => onPanel({ kind: 'picker', target: panel.key }))}
               {option('Intercambiar con otra fecha', 'Se muestran ambas fechas antes de confirmar.', () => onPanel({ ...panel, mode: 'pick' }))}
+              {preaching && option('Predicación', current ? `Predica: ${nameOf(current)}` : 'Sin predicador', () => onPanel({ ...panel, role: 'preacher', mode: 'menu' }))}
               {option('Quitar de este lote', 'Queda sin programar.', () => onReview({ ...review, removed: [...review.removed, panel.key] }))}
             </>}
         </div>
@@ -480,34 +557,35 @@ function Actions({ panel, free, review, nameOf, label, onPanel, onClose, onRevie
       </div>
     )
   }
+  if (!current) return null
   const candidates = free.filter((item) => {
     const key = entryKey(item)
-    const other = review.assignment[key]
-    return key !== panel.key && other && !review.removed.includes(key) && other !== director
+    const other = assigned[key]
+    return key !== panel.key && other && !review.removed.includes(key) && other !== current
   })
   if (panel.mode === 'pick') {
     return (
       <div className="grid gap-3">
-        <p className="m-0 text-sm text-text-2">Elige la fecha con la que intercambiar a {nameOf(director)}.</p>
+        <p className="m-0 text-sm text-text-2">Elige la fecha con la que intercambiar a {nameOf(current)}.</p>
         {candidates.length > 0
-          ? <div className="overflow-hidden rounded-lg border border-line">{candidates.map((item) => option(label(item), nameOf(review.assignment[entryKey(item)]!), () => onPanel({ ...panel, mode: 'confirm', other: entryKey(item) })))}</div>
-          : <p className="m-0 text-sm text-text-3">No hay otra fecha con un director distinto.</p>}
+          ? <div className="overflow-hidden rounded-lg border border-line">{candidates.map((item) => option(label(item), nameOf(assigned[entryKey(item)]!), () => onPanel({ ...panel, mode: 'confirm', other: entryKey(item) })))}</div>
+          : <p className="m-0 text-sm text-text-3">No hay otra fecha con un {noun} distinto.</p>}
         <Button variant="quiet" block onClick={onClose}>Cancelar</Button>
       </div>
     )
   }
   const otherEntry = free.find((item) => entryKey(item) === panel.other)
-  const otherDirector = panel.other ? review.assignment[panel.other] : undefined
-  if (!otherEntry || !otherDirector) return null
+  const other = panel.other ? assigned[panel.other] : undefined
+  if (!otherEntry || !other) return null
   return (
     <div className="grid gap-3">
       <p className="m-0 text-sm text-text-2">Revisa los dos cambios antes de confirmar.</p>
       <ul className="m-0 grid list-none overflow-hidden rounded-lg border border-line p-0">
-        <Row date={label(entry)} value={`${nameOf(director)} → ${nameOf(otherDirector)}`} />
-        <Row date={label(otherEntry)} value={`${nameOf(otherDirector)} → ${nameOf(director)}`} />
+        <Row date={label(entry)} value={`${nameOf(current)} → ${nameOf(other)}`} />
+        <Row date={label(otherEntry)} value={`${nameOf(other)} → ${nameOf(current)}`} />
       </ul>
       <p className="m-0 text-[0.8125rem] text-text-3">Las fechas intermedias no cambian.</p>
-      <Button variant="primary" block onClick={() => onReview({ ...review, assignment: swapDirectors(review.assignment, panel.key, panel.other!) })}>Confirmar intercambio</Button>
+      <Button variant="primary" block onClick={() => apply(swapDirectors(assigned, panel.key, panel.other!))}>Confirmar intercambio</Button>
       <Button variant="quiet" block onClick={() => onPanel({ ...panel, mode: 'pick', other: undefined })}>Elegir otra fecha</Button>
     </div>
   )

@@ -25,6 +25,16 @@ test('shows the saved settings and keeps save disabled until something changes',
   expect(save().disabled).toBe(true)
 })
 
+test('the preaching switch says what it does now: it hides or shows the section and the API refuses changes', async () => {
+  stubApi({})
+  page()
+  const off = await screen.findByText(/Sin predicación: la sección se oculta en el servicio y en el lote/)
+  expect(off.textContent).toContain('la API no acepta cambios')
+  expect(screen.queryByText(/llegará más adelante|Solo se guarda/)).toBeNull()
+  fireEvent.click(screen.getByRole('switch', { name: 'Usa predicación' }))
+  expect(screen.getByText('El servicio y el lote mensual muestran la predicación: predicador, tema, citas y notas.')).toBeTruthy()
+})
+
 test('saves a name, a new day and the preaching switch, then confirms and discards nothing', async () => {
   const calls = stubApi({})
   page()
