@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { absoluteUrl, estimate, expiryNote, monthsBetween, scopeLabel, versionLabel, type ShareLink } from './share-model'
+import { absoluteUrl, estimate, expiryNote, lastDateOf, monthsBetween, scopeLabel, versionLabel, type ShareLink } from './share-model'
 
 const link = (over: Partial<ShareLink> = {}): ShareLink => ({
   id: 'l1', version: 'FULL', scope: { kind: 'range', from: '2026-12-01', to: '2026-12-31' }, blocks: { keys: false, notes: true, people: true },
@@ -8,7 +8,7 @@ const link = (over: Partial<ShareLink> = {}): ShareLink => ({
 
 describe('labels', () => {
   test('versions use the product names', () => {
-    expect([versionLabel.PRAISE, versionLabel.PREACHING, versionLabel.FULL]).toEqual(['Alabanza', 'Predicación', 'Servicio completo'])
+    expect([versionLabel.PRAISE, versionLabel.PREACHING, versionLabel.FULL, versionLabel.CONGREGATION]).toEqual(['Alabanza', 'Predicación', 'Servicio completo', 'Congregantes'])
   })
 
   test('a whole month is named by the month; any other range by its two dates; one service by its date', () => {
@@ -52,6 +52,10 @@ describe('helpers', () => {
     expect(monthsBetween('2026-12-31', '2026-12-01')).toEqual([])
     expect(monthsBetween('', '2026-12-01')).toEqual([])
     expect(monthsBetween('2026-01-01', '2030-01-01')).toHaveLength(13)
+  })
+
+  test('the last date of a month knows leap years', () => {
+    expect([lastDateOf('2026-11'), lastDateOf('2028-02'), lastDateOf('2026-02')]).toEqual(['2026-11-30', '2028-02-29', '2026-02-28'])
   })
 
   test('the address is built with the origin of the page, never from the API', () => {
