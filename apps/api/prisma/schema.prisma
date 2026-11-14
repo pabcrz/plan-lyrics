@@ -43,6 +43,13 @@ enum PendingReason {
   ROLE_REMOVED
 }
 
+// What a ministry link shows: the praise side, the preaching side, or both with schedule and song order.
+enum ShareVersion {
+  PRAISE
+  PREACHING
+  FULL
+}
+
 enum ChurchRole {
   ADMIN
   EDITOR
@@ -101,6 +108,7 @@ model Church {
   services Service[]
   serviceDays ServiceDay[]
   closedDates ClosedDate[]
+  shareLinks ShareLink[]
   batchDirectors BatchDirectors?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -165,6 +173,7 @@ model Service {
   director ChurchPerson @relation(fields: [churchId, directorId], references: [churchId, personId], onDelete: Restrict)
   assignments Assignment[]
   preaching ServicePreaching?
+  shareLinks ShareLink[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([churchId, date, slot])
@@ -204,6 +213,35 @@ model ClosedDate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@id([churchId, date])
+}
+
+// Read-only ministry link, by one service or by a date range. The token is never stored: `nonce` plus the server
+// secret derive it (see share-token.ts) and `tokenHash` finds the link. The content is read live, so the link
+// follows later changes to the services it covers; only its validity is fixed (`activeUntil`).
+model ShareLink {
+  id String @id @default(cuid())
+  churchId String
+  nonce String
+  tokenHash String @unique
+  version ShareVersion
+  fromDate DateTime @db.Date
+  toDate DateTime @db.Date
+  // Set when the link covers one service (then fromDate = toDate = its date).
+  serviceId String?
+  // Optional blocks chosen by whoever creates the link; tones/BPM and notes are off unless asked for.
+  showKeys Boolean @default(false)
+  showNotes Boolean @default(false)
+  showPeople Boolean @default(true)
+  // Last day (inclusive, America/Mexico_City) the link answers: 30 days after the last service it covers.
+  activeUntil DateTime @db.Date
+  revokedAt DateTime?
+  // A deactivated link can be reactivated once; the strictest reading of an open product decision.
+  reactivatedAt DateTime?
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  service Service? @relation(fields: [serviceId, churchId], references: [id, churchId], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([churchId, createdAt])
 }
 
 // Musical role catalog of one church. «Dirigir» is a fixed service role and is not stored here.
