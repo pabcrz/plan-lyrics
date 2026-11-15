@@ -4,7 +4,7 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { ChurchGate } from '../calendar/ChurchGate'
 import { mount } from '../calendar/test-utils'
 import { AccountsPage } from './AccountsPage'
-import { stubAccess } from './test-utils'
+import { account, stubAccess } from './test-utils'
 
 vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-ficticio' }), UserButton: () => <button>Cuenta</button> }))
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
@@ -50,6 +50,13 @@ test('says when the server has no identity provider configured', async () => {
   fireEvent.change(await screen.findByLabelText('Correo electrónico'), { target: { value: 'ana@example.com' } })
   fireEvent.click(screen.getByRole('button', { name: 'Enviar invitación' }))
   expect((await screen.findByRole('alert')).textContent).toMatch(/todavía no está configurado/)
+})
+
+test('an account with neither e-mail nor person is titled by what it lacks, not «Cuenta de Cuenta…»', async () => {
+  stubAccess({ access: manager, accounts: { viewer: { owner: false }, accounts: [account({ id: 'a3', email: null, person: null })], people: [] } })
+  app()
+  fireEvent.click(await screen.findByRole('button', { name: /Cuenta sin correo/ }))
+  expect(await screen.findByRole('dialog', { name: 'Cuenta sin correo' })).toBeTruthy()
 })
 
 test('an account manager links and unlinks a person, but cannot change capabilities or touch the owner account', async () => {

@@ -54,7 +54,7 @@ function Manager() {
               const body = (
                 <>
                   <Avatar name={labelOf(account)} />
-                  <span className="grid flex-1 gap-0.5">
+                  <span className="grid min-w-0 flex-1 gap-0.5 [overflow-wrap:anywhere]">
                     <b className="text-[0.9375rem] font-semibold">{labelOf(account)}</b>
                     <small className="text-[0.8125rem] text-text-3">{account.person ? (account.email ?? 'Sin correo') : 'Sin persona vinculada'}</small>
                     {(account.owner || account.accountManager || account.libraryEditor) && (
@@ -83,7 +83,7 @@ function Manager() {
         )}
       </section>
       {toast !== '' && <div className="sticky bottom-0"><Toast message={toast} onDismiss={() => setToast('')} /></div>}
-      <Sheet open={open !== null} onClose={() => setOpen(null)} title={open ? `Cuenta de ${labelOf(open)}` : 'Cuenta'}>
+      <Sheet open={open !== null} onClose={() => setOpen(null)} title={open ? ((open.person?.name ?? open.email) ? `Cuenta de ${labelOf(open)}` : labelOf(open)) : 'Cuenta'}>
         {open && accounts.data && (
           <AccountForm key={open.id} account={accounts.data.accounts.find((item) => item.id === open.id) ?? open} data={accounts.data}
             onDone={(message) => { setOpen(null); setToast(message) }} />
@@ -178,7 +178,7 @@ function AccountForm({ account, data, onDone }: { account: Account; data: Accoun
   }
   return (
     <div className="grid gap-5">
-      <p className="m-0 text-[0.9375rem]"><span className="text-text-3">Correo: </span><b>{account.email ?? 'Sin correo'}</b></p>
+      <p className="m-0 text-[0.9375rem]"><span className="text-text-3">Correo: </span><b className="[overflow-wrap:anywhere]">{account.email ?? 'Sin correo'}</b></p>
 
       <section className="grid gap-3" aria-labelledby="person-link">
         <h3 id="person-link" className="m-0 font-display text-base font-bold">Persona</h3>
