@@ -435,7 +435,7 @@ function Batch({ church }: { church: Church }) {
 function Row({ date, value, muted }: { date: string; value: ReactNode; muted?: boolean }) {
   return (
     <li className={`flex min-h-12 items-center justify-between gap-3 border-b border-line px-4 py-2 last:border-b-0 ${muted ? 'text-text-3' : ''}`}>
-      <span className="min-w-0 flex-1 font-mono text-[0.8125rem]">{date}</span>
+      <span className="min-w-0 flex-1 font-mono text-[0.8125rem]">{date.replace(/(\d{1,2}:\d{2}) ([ap]\.m\.)/, '$1\u00a0$2')}</span>
       <span className="max-w-[55%] shrink-0 text-right font-semibold">{value}</span>
     </li>
   )
@@ -549,7 +549,7 @@ function Actions({ panel, free, review, nameOf, label, preaching, onPanel, onClo
             : <>
               {option('Cambiar director', 'Solo en esta fecha; las demás no cambian.', () => onPanel({ kind: 'picker', target: panel.key }))}
               {option('Intercambiar con otra fecha', 'Se muestran ambas fechas antes de confirmar.', () => onPanel({ ...panel, mode: 'pick' }))}
-              {preaching && option('Predicación', current ? `Predica: ${nameOf(current)}` : 'Sin predicador', () => onPanel({ ...panel, role: 'preacher', mode: 'menu' }))}
+              {preaching && option('Predicación', review.preachers[panel.key] ? `Predica: ${nameOf(review.preachers[panel.key]!)}` : 'Sin predicador', () => onPanel({ ...panel, role: 'preacher', mode: 'menu' }))}
               {option('Quitar de este lote', 'Queda sin programar.', () => onReview({ ...review, removed: [...review.removed, panel.key] }))}
             </>}
         </div>
