@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Button, Icon, Notice, Segmented, Sheet } from '../ui'
 import { ApiError, usePeople } from './api'
-import { formatDay, formatLongDay, todayIn } from './dates'
+import { formatDaySlot, formatLongDay, todayIn } from './dates'
 import type { Person, Service } from './model'
 import { PersonList } from './PeopleSheet'
 import { useAssignmentActions, useAssignments, useRoleTurns, type Assignment } from './participations-api'
@@ -144,7 +144,7 @@ function ChangeBody({ row, service, onClose, onDone }: { row: Assignment; servic
             <li key={item.id}>
               <button type="button" aria-pressed={item.id === turnId} onClick={() => { setTurnId(item.id); setFailure('') }}
                 className="flex min-h-14 w-full cursor-pointer items-center gap-3 border-0 border-b border-line bg-transparent px-3 text-left hover:bg-surface-2 aria-pressed:bg-accent-soft">
-                <span className="font-semibold">{formatDay(item.date)}</span><span>{item.person.name}</span>
+                <span className="shrink-0 font-semibold whitespace-nowrap">{formatDaySlot(item.date, item.slot)}</span><span>{item.person.name}</span>
               </button>
             </li>
           ))}
@@ -152,7 +152,7 @@ function ChangeBody({ row, service, onClose, onDone }: { row: Assignment; servic
       )}
       {mode === 'swap' && turn && row.person && (
         <Notice icon="info" title={`${row.person.name} ↔ ${turn.person.name}`}>
-          {formatDay(service.date)} pasa a {turn.person.name} · {formatDay(turn.date)} pasa a {row.person.name}. Los demás turnos no cambian.
+          {formatDaySlot(service.date, service.slot)} pasa a {turn.person.name} · {formatDaySlot(turn.date, turn.slot)} pasa a {row.person.name}. Los demás turnos no cambian.
         </Notice>
       )}
       {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}

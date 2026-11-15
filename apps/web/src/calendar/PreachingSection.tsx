@@ -1,7 +1,7 @@
 import { useState, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import { Avatar, Button, Field, Icon, Notice, Sheet, TextField, inputClass } from '../ui'
 import { ApiError, usePeople } from './api'
-import { formatDay, todayIn } from './dates'
+import { formatDaySlot, todayIn } from './dates'
 import type { Service } from './model'
 import { PersonList } from './PeopleSheet'
 import { formIssues, LIMITS, parseNotes, passagesText, textPassages, type NoteBlock, type PreachingForm } from './preaching'
@@ -186,7 +186,7 @@ function SwapBody({ service, current, onClose, onDone }: { service: Service; cur
 
   return (
     <div className="grid gap-3">
-      <p className="m-0 text-sm text-text-2">Ahora: {current.name} · {formatDay(service.date)}. Solo se intercambian los predicadores: cada fecha conserva su tema, citas y notas.</p>
+      <p className="m-0 text-sm text-text-2">Ahora: {current.name} · {formatDaySlot(service.date, service.slot)}. Solo se intercambian los predicadores: cada fecha conserva su tema, citas y notas.</p>
       {turns.isPending ? <p role="status" className="m-0 text-[0.8125rem] text-text-3">Cargando fechas…</p>
         : turns.error ? <Notice tone="warn" icon="alert" role="alert">No se pudieron cargar las fechas.</Notice>
           : others.length === 0 ? <p className="m-0 text-[0.8125rem] text-text-3">No hay otras fechas próximas con un predicador distinto.</p>
@@ -196,7 +196,7 @@ function SwapBody({ service, current, onClose, onDone }: { service: Service; cur
                   <li key={item.serviceId}>
                     <button type="button" aria-pressed={item.serviceId === serviceId} onClick={() => { setServiceId(item.serviceId); setFailure('') }}
                       className="flex min-h-14 w-full cursor-pointer items-center gap-3 border-0 border-b border-line bg-transparent px-3 text-left hover:bg-surface-2 aria-pressed:bg-accent-soft">
-                      <span className="font-semibold">{formatDay(item.date)}</span><span>{item.person.name}</span>
+                      <span className="shrink-0 font-semibold whitespace-nowrap">{formatDaySlot(item.date, item.slot)}</span><span>{item.person.name}</span>
                     </button>
                   </li>
                 ))}
@@ -204,7 +204,7 @@ function SwapBody({ service, current, onClose, onDone }: { service: Service; cur
             )}
       {turn && (
         <Notice icon="info" title={`${current.name} ↔ ${turn.person.name}`}>
-          {formatDay(service.date)} pasa a {turn.person.name} · {formatDay(turn.date)} pasa a {current.name}. Las demás fechas no cambian.
+          {formatDaySlot(service.date, service.slot)} pasa a {turn.person.name} · {formatDaySlot(turn.date, turn.slot)} pasa a {current.name}. Las demás fechas no cambian.
         </Notice>
       )}
       {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}

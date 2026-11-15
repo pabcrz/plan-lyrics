@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { formatDay, monthCells, monthTitle, shiftMonth, todayIn, weekdayOf } from './dates'
+import { formatDay, formatDaySlot, monthCells, monthTitle, shiftMonth, todayIn, weekdayOf } from './dates'
 
 describe('dates', () => {
   test('today is the Mexico City calendar day, not the UTC one', () => {
@@ -25,5 +25,10 @@ describe('dates', () => {
     expect(monthTitle('2026-11')).toBe('Noviembre 2026')
     expect(formatDay('2026-11-13')).toBe('vie 13 nov')
     expect(weekdayOf('2026-11-15')).toBe(0)
+  })
+  test('names the slot only for the two services of a double Sunday', () => {
+    expect(formatDaySlot('2026-11-15', 'MORNING')).toBe('dom 15 nov · mañana')
+    expect(formatDaySlot('2026-11-15', 'AFTERNOON')).toBe('dom 15 nov · tarde')
+    expect(formatDaySlot('2026-11-13', 'SINGLE')).toBe('vie 13 nov')
   })
 })

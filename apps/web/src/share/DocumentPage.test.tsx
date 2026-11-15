@@ -143,6 +143,16 @@ const preachingData = {
   closedDates: [{ date: '2026-11-25', reason: 'Feriado' }],
 }
 
+test('the preaching PDF lists the morning service before the afternoon one', async () => {
+  const day = { preacher: null, topic: 'Por definir', passages: [], notes: '' }
+  stubShare({ church: { usesPreaching: true }, extra: (url) => (url.startsWith('/api/preaching-document')
+    ? { body: { ...preachingData, services: [{ ...day, date: '2026-11-22', slot: 'AFTERNOON' }, { ...day, date: '2026-11-22', slot: 'MORNING' }], closedDates: [] } } : undefined) })
+  open('predicaciones')
+  const paper = await screen.findByRole('region', { name: 'Vista previa del documento' })
+  await waitFor(() => expect(within(paper).getAllByRole('row').length).toBe(3))
+  expect(within(paper).getAllByRole('row').slice(1).map((row) => row.firstElementChild?.textContent)).toEqual(['dom 22 nov · mañana', 'dom 22 nov · tarde'])
+})
+
 test('the preaching PDF lists date, preacher, topic, passages and the points, with «No hay culto», and prints', async () => {
   const print = vi.fn()
   vi.stubGlobal('print', print)

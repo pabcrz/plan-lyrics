@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { Button, Field, Notice, Segmented, Switch, TextField, inputClass } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, useServices } from '../calendar/api'
-import { formatDay, monthOf, shiftMonth, todayIn } from '../calendar/dates'
-import type { Church } from '../calendar/model'
+import { formatDaySlot, monthOf, shiftMonth, todayIn } from '../calendar/dates'
+import { compareSlots, type Church } from '../calendar/model'
 import { CreatedSheet } from './LinkSheets'
 import { useShareLinkActions } from './share-api'
 import { estimate, formatFull, lastDateOf, monthsBetween, versionHelp, versionLabel, type Blocks, type NewLink, type ShareLink, type Version } from './share-model'
@@ -49,7 +49,7 @@ function Form({ church }: { church: Church }) {
 
   const months = kind === 'range' ? monthsBetween(from, to) : [monthOf(today), shiftMonth(monthOf(today), 1), shiftMonth(monthOf(today), 2)]
   const { services, loading, error } = useServices(months)
-  const options = services.filter((service) => service.status !== 'CANCELLED' && service.date >= today).sort((a, b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot))
+  const options = services.filter((service) => service.status !== 'CANCELLED' && service.date >= today).sort((a, b) => a.date.localeCompare(b.date) || compareSlots(a.slot, b.slot))
   const chosen = options.find((service) => service.id === serviceId) ?? options[0]
   const scope: NewLink['scope'] = kind === 'service' ? { kind: 'service', serviceId: chosen?.id ?? '' } : { kind: 'range', from, to }
   const reversed = kind === 'range' && from > to
@@ -85,7 +85,7 @@ function Form({ church }: { church: Church }) {
             <Field label="Servicio" error={!loading && !error && options.length === 0 ? 'No hay servicios próximos.' : undefined}>
               {(control) => (
                 <select {...control} className={inputClass} value={chosen?.id ?? ''} onChange={(event) => { setServiceId(event.target.value); setFailure('') }} disabled={options.length === 0}>
-                  {options.map((service) => <option key={service.id} value={service.id}>{formatDay(service.date)} · {service.title}</option>)}
+                  {options.map((service) => <option key={service.id} value={service.id}>{formatDaySlot(service.date, service.slot)} · {service.title}</option>)}
                 </select>
               )}
             </Field>

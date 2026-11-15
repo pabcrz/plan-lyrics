@@ -150,6 +150,20 @@ test('swapping shows both dates and people first and sends nothing until confirm
   expect(await screen.findByText('Predicadores intercambiados')).toBeTruthy()
 })
 
+test('the dates of a double Sunday are told apart by their slot when swapping', async () => {
+  const sunday = [
+    { serviceId: 's4', date: '2026-11-15', slot: 'MORNING', title: 'Servicio dominical', person: pedro },
+    { serviceId: 's5', date: '2026-11-15', slot: 'AFTERNOON', title: 'Servicio dominical', person: ana },
+  ]
+  const { sheet } = await openService({ preachingTurns: [turns[0]!, ...sunday] })
+  fireEvent.click(sheet.getByRole('button', { name: 'Intercambiar predicador con otra fecha' }))
+  const dialog = within(await screen.findByRole('dialog', { name: 'Intercambiar predicador' }))
+  const options = within(await dialog.findByRole('list', { name: 'Fechas con predicador' })).getAllByRole('button').map((button) => button.textContent)
+  expect(options).toEqual(['dom 15 nov · mañanaPedro Castillo', 'dom 15 nov · tardeAna Ramírez'])
+  fireEvent.click(dialog.getByRole('button', { name: /tarde/ }))
+  expect(dialog.getByText(/vie 13 nov pasa a Ana Ramírez · dom 15 nov · tarde pasa a Luis Herrera/)).toBeTruthy()
+})
+
 test('with no other date to trade with there is nothing to confirm', async () => {
   const { sheet } = await openService({ preachingTurns: [turns[0]] })
   fireEvent.click(sheet.getByRole('button', { name: 'Intercambiar predicador con otra fecha' }))
