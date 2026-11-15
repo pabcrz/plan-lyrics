@@ -21,6 +21,11 @@ export type PersonDetail = Person & { phone: string | null; sharedWithOtherChurc
 /** Fecha «No hay culto»: no es un servicio; `reason` es un motivo breve opcional. */
 export type ClosedDate = { date: string; reason: string | null }
 
+const SLOT_RANK: Record<Slot, number> = { SINGLE: 0, MORNING: 1, AFTERNOON: 2 }
+
+/** Orden de las franjas dentro de un día: la mañana va antes que la tarde (no el orden alfabético de sus nombres). */
+export const compareSlots = (a: Slot, b: Slot) => SLOT_RANK[a] - SLOT_RANK[b]
+
 const isDoubleDay = (church: Pick<Church, 'sundayDouble'>, date: string) => church.sundayDouble && weekdayOf(date) === 0
 
 /** Franjas que aún se pueden crear en la fecha; vacío = fecha completa (la API lo vuelve a comprobar). */

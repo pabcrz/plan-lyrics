@@ -3,6 +3,7 @@ import { useParams } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Icon, Notice, format12h, from24h } from '../ui'
 import { formatLongDay } from '../calendar/dates'
+import { compareSlots } from '../calendar/model'
 import { Notes } from '../calendar/PreachingSection'
 import { fetchPublicLink, PublicLinkError, type PublicService, type PublicView } from './share-api'
 import { formatFull, versionLabel } from './share-model'
@@ -94,8 +95,8 @@ export function PublicLinkPage() {
 
   const rows = data
     ? [...data.services.map((service) => ({ date: service.date, slot: service.slot, node: <ServiceCard key={`${service.date}-${service.slot}`} service={service} congregation={data.version === 'CONGREGATION'} /> })),
-      ...data.closedDates.map((item) => ({ date: item.date, slot: 'SINGLE', node: <Closed key={`closed-${item.date}`} date={item.date} reason={item.reason} /> }))]
-      .sort((a, b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot))
+      ...data.closedDates.map((item) => ({ date: item.date, slot: 'SINGLE' as const, node: <Closed key={`closed-${item.date}`} date={item.date} reason={item.reason} /> }))]
+      .sort((a, b) => a.date.localeCompare(b.date) || compareSlots(a.slot, b.slot))
     : []
   return (
     <main className="mx-auto min-h-dvh max-w-[480px] px-4 pt-6 pb-10">

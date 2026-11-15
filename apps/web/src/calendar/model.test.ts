@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { freeSlots, habitualFor, upcomingDates, type Church, type Service } from './model'
+import { compareSlots, freeSlots, habitualFor, upcomingDates, type Church, type Service } from './model'
 
 const church: Church = {
   id: 'c', name: 'Betel', sundayDouble: true, usesPreaching: false, congregationShowsPreacher: false, canEdit: true, canConfigure: true, timeZone: 'America/Mexico_City',
@@ -35,6 +35,10 @@ test('habitual time and title exist only for configured days and slots', () => {
   expect(habitualFor(church, '2026-11-13', 'SINGLE')).toMatchObject({ time: '19:30', title: 'Viernes' })
   expect(habitualFor(church, '2026-11-15', 'AFTERNOON')).toMatchObject({ time: '17:00' })
   expect(habitualFor(church, '2026-11-17', 'SINGLE')).toBeUndefined()
+})
+
+test('slots sort the morning before the afternoon, unlike the alphabetical order of their names', () => {
+  expect((['AFTERNOON', 'SINGLE', 'MORNING'] as const).toSorted(compareSlots)).toEqual(['SINGLE', 'MORNING', 'AFTERNOON'])
 })
 
 test('upcoming dates follow the configured weekdays and start tomorrow', () => {

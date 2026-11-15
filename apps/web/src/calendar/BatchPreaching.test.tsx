@@ -116,6 +116,20 @@ test('the review shows each preacher and the batch sends them, also when the pre
   expect(sent(calls).entries.map((entry) => [entry.date, entry.directorId, entry.preacherId])).toEqual([['2026-11-13', 'p3', 'p3'], ['2026-11-20', 'p3', 'p2']])
 })
 
+test('the row menu names the date preacher, not its director, or says there is none', async () => {
+  stubApi({ church: preachingChurch, period: period(fridays('13', '20')), directory: people, batch: echo })
+  page()
+  await toPreachers('Luis')
+  fireEvent.click(screen.getByRole('switch', { name: 'Repetir la lista de predicadores hasta cubrir todas las fechas' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Revisar' }))
+  await screen.findByLabelText('Paso 4/4')
+  fireEvent.click(rowOf('13'))
+  expect((await screen.findByRole('button', { name: /Predicación/ })).textContent).toBe('PredicaciónPredica: Luis Herrera')
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+  fireEvent.click(rowOf('20'))
+  expect((await screen.findByRole('button', { name: /Predicación/ })).textContent).toBe('PredicaciónSin predicador')
+})
+
 test('in the review a preacher is changed for one date only, and can be removed', async () => {
   const calls = stubApi({ church: preachingChurch, period: period(fridays('13', '20')), directory: people, batch: echo })
   page()

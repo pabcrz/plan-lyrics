@@ -46,5 +46,10 @@ export function monthTitle(month: string): string {
 /** «vie 13 nov». */
 export const formatDay = (date: string) => format(date, { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '').replace(' de ', ' ')
 
+const SLOT_WORD: Record<string, string> = { MORNING: 'mañana', AFTERNOON: 'tarde' }
+
+/** «dom 15 nov · tarde»: la franja solo aparece cuando la fecha tiene dos servicios. */
+export const formatDaySlot = (date: string, slot: string) => `${formatDay(date)}${SLOT_WORD[slot] ? ` · ${SLOT_WORD[slot]}` : ''}`
+
 /** «viernes 13 de noviembre». */
 export const formatLongDay = (date: string) => format(date, { weekday: 'long', day: 'numeric', month: 'long' })

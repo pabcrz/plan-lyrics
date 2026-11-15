@@ -4,7 +4,7 @@ import { Button, Field, Icon, Notice, Segmented, TextField, inputClass } from '.
 import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { useClosedDates, useServices } from '../calendar/api'
 import { formatDay, monthOf, shiftMonth, todayIn } from '../calendar/dates'
-import type { Church, Service } from '../calendar/model'
+import { compareSlots, type Church, type Service, type Slot } from '../calendar/model'
 import { Notes } from '../calendar/PreachingSection'
 import { useSetlist } from '../setlist/setlist-api'
 import { docToPng, downloadBlob, fileName, periodLabel, rotaDoc, setlistDoc, type PaperDoc } from './documents'
@@ -131,7 +131,7 @@ function SetlistImage({ church }: { church: Church }) {
   const base = monthOf(today)
   const { services, loading, error } = useServices([shiftMonth(base, -1), base, shiftMonth(base, 1), shiftMonth(base, 2)])
   const [pick, setPick] = useState('')
-  const options = services.filter((service) => service.status !== 'CANCELLED').sort((a, b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot))
+  const options = services.filter((service) => service.status !== 'CANCELLED').sort((a, b) => a.date.localeCompare(b.date) || compareSlots(a.slot, b.slot))
   const chosen = options.find((service) => service.id === pick) ?? options.find((service) => service.date >= today) ?? options.at(-1)
   const select = (
     <Field label="Servicio" error={!loading && !error && options.length === 0 ? 'No hay servicios recientes ni próximos.' : undefined}>
@@ -204,10 +204,10 @@ function PreachingPdf({ church }: { church: Church }) {
   const [from, setFrom] = useState(`${monthOf(today)}-01`)
   const [to, setTo] = useState(lastDateOf(monthOf(today)))
   const data = usePreachingDocument(from, to, church.usesPreaching)
-  type Row = { kind: 'service'; date: string; order: string; item: PreachingDocument['services'][number] } | { kind: 'closed'; date: string; order: string; closed: PreachingDocument['closedDates'][number] }
+  type Row = { kind: 'service'; date: string; order: Slot; item: PreachingDocument['services'][number] } | { kind: 'closed'; date: string; order: Slot; closed: PreachingDocument['closedDates'][number] }
   const rows: Row[] = data.data
-    ? [...data.data.services.map((item): Row => ({ kind: 'service', date: item.date, order: item.slot, item })), ...data.data.closedDates.map((closed): Row => ({ kind: 'closed', date: closed.date, order: 'SINGLE', closed }))]
-      .sort((a, b) => a.date.localeCompare(b.date) || a.order.localeCompare(b.order))
+    ? [...data.data.services.map((item): Row => ({ kind: 'service', date: item.date, order: item.slot, item })), ...data.data.closedDates.map((closed): Row => ({ kind: 'closed', date: closed.date, order: 'SINGLE' as const, closed }))]
+      .sort((a, b) => a.date.localeCompare(b.date) || compareSlots(a.order, b.order))
     : []
   const ready = from <= to && rows.length > 0
   return (

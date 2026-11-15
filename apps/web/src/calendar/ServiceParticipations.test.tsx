@@ -22,6 +22,8 @@ const turns: Turn[] = [
   { id: 't-last', serviceId: 's3', date: '2026-11-27', slot: 'SINGLE', person: juan },
 ]
 const friday = service({ id: 's1', date: '2026-11-13', title: 'Servicio de viernes' })
+// Sin la franja, los dos turnos de un domingo doble se verían idénticos.
+const doubleSunday: Turn[] = [{ ...turns[1]!, serviceId: 's4', date: '2026-11-15', slot: 'MORNING', id: 't-am' }, { ...turns[2]!, serviceId: 's5', date: '2026-11-15', slot: 'AFTERNOON', id: 't-pm' }]
 const base = {
   services: [friday], directory,
   assignments: { s1: [row('a-voices', 'Voces', luis, { source: 'ROTATION' }), row('a-guitar', 'Guitarra', ana)] },
@@ -72,6 +74,17 @@ test('replacing is the default change, changes one service only and swaps nothin
   expect([put.init?.method, put.url, JSON.parse(String(put.init?.body))]).toEqual(['PUT', '/api/assignments/a-voices', { personId: 'p4' }])
   expect(calls.some((call) => call.url === '/api/assignments/swap')).toBe(false)
   expect(await screen.findByText('Participación reemplazada solo en este servicio')).toBeTruthy()
+})
+
+test('the turns of a double Sunday are told apart by their slot', async () => {
+  const { sheet } = await openService({ turns: doubleSunday })
+  fireEvent.click(sheet.getByRole('button', { name: 'Voces: Luis Herrera. Cambiar' }))
+  const change = within(screen.getByRole('dialog', { name: 'Voces' }))
+  fireEvent.click(change.getByRole('button', { name: 'Intercambiar turnos' }))
+  const options = within(await change.findByRole('list', { name: 'Turnos del mismo rol' })).getAllByRole('button').map((button) => button.textContent)
+  expect(options).toEqual(['dom 15 nov · mañanaPedro Castillo', 'dom 15 nov · tardeJuan Pérez'])
+  fireEvent.click(change.getByRole('button', { name: /tarde/ }))
+  expect(change.getByText(/vie 13 nov pasa a Juan Pérez · dom 15 nov · tarde pasa a Luis Herrera/)).toBeTruthy()
 })
 
 test('swapping shows both dates and people before confirming, and nothing is sent until then', async () => {

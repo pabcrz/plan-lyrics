@@ -86,6 +86,16 @@ test('a praise link shows no preaching and a preaching link no setlist, because 
   expect(screen.getByText('Sin predicación asignada.')).toBeTruthy()
 })
 
+test('the morning service of a date is listed before the afternoon one', async () => {
+  const service = (slot: 'MORNING' | 'AFTERNOON'): PublicView['services'][number] => ({ date: '2026-12-06', slot, director: 'Ana Ramírez', setlist: [] })
+  serve(200, view({ services: [service('AFTERNOON'), service('MORNING')] }))
+  open()
+  await screen.findByRole('heading', { name: 'Servicio completo' })
+  const cards = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.closest('li')?.textContent)
+  expect(cards[0]).toContain('Mañana')
+  expect(cards[1]).toContain('Tarde')
+})
+
 test('«No hay culto» dates are listed in their place with the reason', async () => {
   serve(200, view({ closedDates: [{ date: '2026-12-01', reason: 'Feriado' }, { date: '2026-12-25', reason: null }] }))
   open()

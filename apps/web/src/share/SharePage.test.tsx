@@ -175,6 +175,16 @@ test('one service is chosen from the upcoming ones, never a cancelled one', asyn
   expect(requests(calls, 'POST')[0]?.body).toMatchObject({ scope: { kind: 'service', serviceId: 's2' } })
 })
 
+test('the two services of a double Sunday are told apart and listed morning first', async () => {
+  const sunday = (id: string, slot: 'MORNING' | 'AFTERNOON') => calendarService({ id, date: '2026-11-15', slot, title: 'Servicio dominical' })
+  stubShare({ services: [sunday('s-tarde', 'AFTERNOON'), sunday('s-manana', 'MORNING')] })
+  create()
+  fireEvent.click(await screen.findByRole('button', { name: 'Un servicio' }))
+  const select = await screen.findByLabelText('Servicio') as HTMLSelectElement
+  await waitFor(() => expect(select.options.length).toBe(2))
+  expect([...select.options].map((option) => option.textContent)).toEqual(['dom 15 nov · mañana · Servicio dominical', 'dom 15 nov · tarde · Servicio dominical'])
+})
+
 test('a range without services warns and cannot be created; a reversed one says why', async () => {
   const { calls } = stubShare({ services })
   create()
