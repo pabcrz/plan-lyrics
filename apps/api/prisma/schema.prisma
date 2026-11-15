@@ -297,9 +297,47 @@ model Song {
   titleKey String
   authorKey String
   entries SetlistEntry[]
+  lyrics SongLyrics?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([titleKey, authorKey])
+}
+
+enum LyricsSectionKind {
+  INTRO
+  VERSE
+  CHORUS
+  BRIDGE
+  OUTRO
+  CLOSING
+}
+
+// The single lyrics of a library song (plain text in ordered sections; no chords yet). `version` guards concurrent
+// edits and is bumped by every replacement. Only editors of the library write it; `published` is the only thing
+// the public share view may reveal, and it is false until an editor says otherwise.
+model SongLyrics {
+  id String @id @default(cuid())
+  songId String @unique
+  version Int @default(1)
+  published Boolean @default(false)
+  song Song @relation(fields: [songId], references: [id], onDelete: Restrict)
+  sections LyricsSection[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// One section of a lyrics. The position order is the order of the song; `repeat` sings the same section several times.
+model LyricsSection {
+  id String @id @default(cuid())
+  lyricsId String
+  // 0-based and gapless; every replacement rewrites all sections.
+  position Int
+  kind LyricsSectionKind
+  label String?
+  text String
+  repeat Int @default(1)
+  lyrics SongLyrics @relation(fields: [lyricsId], references: [id], onDelete: Cascade)
+  @@unique([lyricsId, position])
 }
 
 // One line of a service setlist: a library song or a free-form moment (exactly one of songId / moment).

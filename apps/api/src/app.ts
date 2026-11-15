@@ -14,6 +14,7 @@ import type { Limiter } from './rate-limit.js'
 import { setlistRoutes } from './setlist.js'
 import { shareLinkRoutes } from './share-links.js'
 import { publicShareRoutes } from './share-view.js'
+import { lyricsRoutes } from './lyrics.js'
 import { songRoutes } from './songs.js'
 import { accountManagerBody, createUser, newUserBody, setAccountManager, userCapability } from './users.js'
 
@@ -73,6 +74,7 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
   app.route('/', participationRoutes(config, database, now))
   app.route('/', preachingRoutes(config, database, now))
   app.route('/', songRoutes(config, database))
+  app.route('/', lyricsRoutes(config, database))
   app.route('/', setlistRoutes(config, database))
   app.route('/', shareLinkRoutes(config, database, now, options.shareSecret))
   app.route('/', publicShareRoutes(database, now, options.publicLimiter))
