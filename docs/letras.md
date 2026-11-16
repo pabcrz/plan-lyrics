@@ -1,6 +1,6 @@
-# Letras de la biblioteca (API)
+# Letras de la biblioteca (API y pantallas)
 
-Primera rebanada de la [etapa 2 del producto](producto.md#etapa-2--letras): modelo, reglas y rutas. **No hay pantallas todavía** (irán en otra entrega) y **no hay letras reales** en el repositorio: las pruebas usan solo textos inventados. No incluye acordes (etapa 3) ni ChordPro.
+Primeras rebanadas de la [etapa 2 del producto](producto.md#etapa-2--letras): modelo, reglas y rutas (API) y las [pantallas móviles](#pantallas) para ver y editar la letra. **No hay letras reales** en el repositorio: las pruebas usan solo textos inventados. No incluye acordes (etapa 3) ni ChordPro.
 
 ## Qué hay
 
@@ -28,7 +28,7 @@ El producto no las resuelve; cada una se puede relajar con una decisión explíc
 
 1. **Quién escribe:** solo superadministrador y editores de biblioteca (el producto lo fija); quien administre una iglesia o edite servicios, no.
 2. **Quién lee:** cualquier persona con membresía en alguna iglesia, sin exigir iglesia activa (la biblioteca no pertenece a ninguna). Una cuenta sin membresías ni acceso de biblioteca (por ejemplo, un gestor de cuentas) no la ve.
-3. **Publicar:** nada es público por omisión; publicar y retirar es una decisión explícita de quien edita. Editar el texto de una letra ya publicada la mantiene publicada y el cambio se ve de inmediato en los enlaces existentes (coherente con «los cambios heredados siguen vigentes incluso en contenido publicado»).
+3. **Publicar:** nada es público por omisión; publicar y retirar es una decisión explícita de quien edita. Editar el texto de una letra ya publicada la mantiene publicada y el cambio se ve de inmediato en los enlaces existentes (coherente con «los cambios heredados siguen vigentes incluso en contenido publicado»). **En la interfaz**, guardar una letra que ya estaba publicada y sigue publicada exige una confirmación explícita («Guardar y mantener publicada»); quitar la marca «Publicable» antes de guardar la evita. La API no cambia: la confirmación es de la pantalla (criterio restrictivo, relajable con una decisión explícita).
 4. **Dónde se muestra:** solo la vista de congregantes, la única que el producto describe «con letras». Las versiones del ministerio no las incluyen.
 5. **Versionado:** solo control de concurrencia, sin historial ni restauración.
 6. **Repetición:** una sección con `repeat` mantiene el orden musical sin duplicar texto. Es una interpretación mínima de «repeticiones».
@@ -43,8 +43,26 @@ El producto no las resuelve; cada una se puede relajar con una decisión explíc
 - **Derechos de las letras:** el producto no dice si publicar exige alguna constancia de licencia; no se ha añadido ninguna.
 - **ChordPro como fuente única:** el producto pide «una sola fuente ChordPro» para derivar vistas. Esta rebanada guarda texto simple por secciones; la unión con acordes (etapa 3) y la conversión desde o hacia ChordPro quedan por decidir.
 - **Importación** de texto existente (TXT) y límites definitivos de tamaño.
-- **Pantallas:** edición, vista interna y vista pública de la letra, en otra PR.
+- **Pantalla de biblioteca:** hoy la letra se abre desde la edición de una canción del setlist; no hay lista ni buscador de canciones con letra. La API de letras tampoco devuelve el título de la canción (las pantallas lo reciben del setlist; sin él muestran «Letra de la canción»).
+- **Publicar por primera vez:** activar «Publicable» en una letra sin publicar no pide confirmación (es una decisión explícita de quien edita); ¿debe pedirla también?
+- **Vista pública** de la letra (congregantes): sin pantalla propia en esta rebanada.
+
+## Pantallas
+
+Mockup: [letras.html](design/pantallas/letras.html) (ver [diseño](design.md#letra-de-una-canción)). Móvil primero, claro y oscuro, con los componentes de `apps/web/src/ui`.
+
+| Ruta | Quién | Qué hace |
+| --- | --- | --- |
+| `/canciones/:songId/letra` | Cualquier integrante de una iglesia | Letra por secciones (tipo, etiqueta, `×N` si se repite, texto con sus saltos). Estado «Publicada» o «Sin publicar», estado vacío si no hay letra. «Editar letra» o «Escribir letra» solo si `canEdit`. |
+| `/canciones/:songId/letra/editar` | Editor de biblioteca y superadministrador (`canEdit`) | Tarjeta por sección: tipo, «Se canta» (1 a 8), etiqueta, texto; subir, bajar, quitar (con «Deshacer») y agregar (hasta 60); interruptor «Publicable» (deshabilitado sin secciones). Quien no tiene permiso ve un aviso y no el formulario. |
+
+- **Entrada:** «Ver letra» en la edición de una canción del setlist (cualquier integrante). Pasa el título y la ruta de regreso por el estado de navegación; solo se acepta una ruta interna como regreso.
+- **Guardar:** reemplazo completo con la versión leída (`PUT`), con `published` siempre explícito; sin secciones se guarda sin publicar. Las tabulaciones y otros caracteres de control que la API rechaza se convierten en espacios antes de enviar. «Guardar» se habilita al cambiar algo; «Descartar cambios» vuelve a lo cargado; salir con cambios pide confirmación.
+- **Letra ya publicada:** al guardarla sin quitar la marca «Publicable», una hoja avisa de que el cambio se verá de inmediato en los enlaces compartidos y pide «Guardar y mantener publicada».
+- **409 (versión desactualizada):** aviso «La letra cambió mientras la editabas»: lo escrito se conserva en pantalla, «Guardar» queda deshabilitado y «Recargar la letra» trae la versión nueva (descarta lo escrito). La pantalla no vuelve a pedir la letra sola mientras se edita para no reemplazar el texto a escondidas.
+- **403, 404 y otros fallos:** mensajes propios al leer y al guardar; el texto escrito no se pierde.
+- La UI oculta lo no permitido, pero la API sigue siendo la que decide.
 
 ## Verificación
 
-Pruebas puras de reglas (`lyrics-rules.test.ts`) e integración sobre PostgreSQL aislado (`test/lyrics.integration.ts`, con `pnpm test:db`): permisos por tipo de cuenta, concurrencia, restricciones de base, publicación y fuga de datos en la vista pública.
+Pantallas: pruebas de componente (`apps/web/src/lyrics/*.test.tsx` y el enlace desde `SetlistPage.test.tsx`) con textos inventados y un servidor ficticio en memoria con versión y 409. API: pruebas puras de reglas (`lyrics-rules.test.ts`) e integración sobre PostgreSQL aislado (`test/lyrics.integration.ts`, con `pnpm test:db`): permisos por tipo de cuenta, concurrencia, restricciones de base, publicación y fuga de datos en la vista pública.

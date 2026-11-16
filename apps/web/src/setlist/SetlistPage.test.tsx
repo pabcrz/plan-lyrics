@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useLocation, useParams } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { CalendarPage } from '../calendar/CalendarPage'
 import { church, mount, service as calendarService, stubApi } from '../calendar/test-utils'
@@ -352,4 +352,31 @@ test('the calendar detail leads to the setlist: «Preparar setlist» for editors
   mount(<Routes><Route path="*" element={<CalendarPage />} /></Routes>)
   fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Servicio de viernes/ }))
   expect(await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Ver setlist' })).toBeTruthy()
+})
+
+function LyricsRoute() {
+  const location = useLocation()
+  const { songId } = useParams()
+  const state = location.state as { title: string; back: string }
+  return <p>{`Letra de ${songId}: ${state.title}, desde ${state.back}`}</p>
+}
+
+test('every member can open the lyrics of a song from its entry, with the title and the way back', async () => {
+  stubSetlist({ canEdit: false })
+  mount(<Routes>
+    <Route path="/servicios/:serviceId/setlist" element={<SetlistPage />} />
+    <Route path="/canciones/:songId/letra" element={<LyricsRoute />} />
+  </Routes>, '/servicios/s1/setlist')
+  fireEvent.click(await screen.findByRole('button', { name: 'Ver Canción de ejemplo' }))
+  const sheet = await screen.findByRole('dialog')
+  fireEvent.click(within(sheet).getByRole('link', { name: 'Ver letra' }))
+  expect(await screen.findByText('Letra de l1: Canción de ejemplo, desde /servicios/s1/setlist')).toBeTruthy()
+})
+
+test('a moment has no lyrics to open', async () => {
+  stubSetlist()
+  page()
+  fireEvent.click(await screen.findByRole('button', { name: 'Editar Ofrenda' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Ofrenda' })
+  expect(within(sheet).queryByRole('link', { name: 'Ver letra' })).toBeNull()
 })

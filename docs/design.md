@@ -18,6 +18,7 @@ Mockups HTML autocontenidos, sin build, con datos ficticios. Se abren directamen
 | Pantalla | [pantallas/participaciones.html](design/pantallas/participaciones.html) | Participaciones: roles, habituales y rotación por día o entre todos. |
 | Pantalla | [pantallas/setlist.html](design/pantallas/setlist.html) | Setlist del servicio: canciones y momentos ordenados, tonalidad y enlace de referencia. |
 | Pantalla | [pantallas/compartir.html](design/pantallas/compartir.html) | Compartir: enlaces del ministerio (crear, revocar, reactivar), setlist en imagen, lista mensual de dirección y PDF de predicaciones. |
+| Pantalla | [pantallas/letras.html](design/pantallas/letras.html) | Letra de una canción: vista por secciones para cualquier integrante y edición (tipo, etiqueta, repeticiones, texto, orden, publicable) para editores de biblioteca, con confirmación al guardar una letra publicada y aviso de conflicto de versión. |
 
 El recorrido de wireframes previo vive en [`design/programacion-mensual`](../design/programacion-mensual/mapa-y-recorrido.md); la alternativa 04 fue la referencia que originó estas pantallas.
 
@@ -143,6 +144,16 @@ Se llega desde «Preparar setlist» en el detalle del servicio. Una sola vista c
 - **Quitar:** desde la edición, con «Deshacer».
 - **Aviso fijo:** tonos, BPM y notas son internos y no aparecen en la vista pública.
 - **Supuesto de diseño:** una canción no se repite en el mismo setlist; un momento sí.
+
+### Letra de una canción
+
+Se llega desde la edición de una canción del setlist («Ver letra»); aún no hay pantalla de biblioteca. Dos vistas y una hoja. Los datos y permisos están en [letras](letras.md).
+
+- **Ver:** cualquier integrante de una iglesia. Estado «Publicada» o «Sin publicar» (forma y texto, no solo color), secciones en orden con su tipo (Intro, Estrofa, Coro, Puente, Outro, Cierre), etiqueta opcional y «×N» si se repite, y el texto con sus saltos de línea. Una canción sin letra muestra un estado vacío. Quien no puede editar no ve botones de edición; lo explica una línea.
+- **Editar:** solo editor de biblioteca o superadministrador. Una tarjeta por sección con tipo (selector nativo), «Se canta» (de 1 a 8 veces, con botones), etiqueta opcional y texto; subir, bajar y quitar por sección (quitar ofrece «Deshacer»), «Agregar sección» (hasta 60) y el interruptor «Publicable» (sin secciones no se puede activar). «Guardar» y «Descartar cambios» se habilitan al cambiar algo. Quien abre la pantalla sin permiso lo lee en un aviso y vuelve a la vista.
+- **Confirmar:** al guardar una letra que **ya estaba publicada y sigue publicada**, una hoja avisa de que el cambio se verá de inmediato en los enlaces compartidos y ofrece «Guardar y mantener publicada» o «Seguir editando». Desactivar «Publicable» antes de guardar evita la hoja.
+- **Conflicto:** si otra persona guardó antes (409), un aviso lo explica y ofrece «Recargar la letra»; los cambios propios se conservan en pantalla hasta recargar.
+- **Supuestos de diseño** (no están en producto): tipo con selector nativo y orden por botones (sin arrastre) para teclado y lectores de pantalla; el título de la canción llega desde el setlist porque la API de letras no lo devuelve.
 
 ## Pendientes
 
