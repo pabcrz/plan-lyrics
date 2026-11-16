@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useLocation } from 'react-router'
 import { Button, Icon, Notice, Segmented, Sheet, TextField, inputClass } from '../ui'
 import { ApiError } from '../calendar/api'
 import { entryLabel, referenceOrigin, tonalities, useSongs, type Entry, type Song } from './setlist-api'
@@ -176,6 +177,7 @@ export function EditSheet({ entry, canEdit, onClose, onRemove, onSave }: {
   const [name, setName] = useState(entry.moment ?? '')
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
+  const location = useLocation()
   const song = entry.song
   const origin = entry.link ? referenceOrigin(entry.link) : null
   const reference = entry.link && origin && (
@@ -207,6 +209,12 @@ export function EditSheet({ entry, canEdit, onClose, onRemove, onSave }: {
     <Sheet open onClose={onClose} title={entryLabel(entry)}>
       <div className="grid gap-4">
         {song && <p className="m-0 text-sm text-text-2">{song.author} · de la biblioteca compartida; aquí solo cambian la tonalidad y el enlace de este servicio.</p>}
+        {song && (
+          <Link to={`/canciones/${encodeURIComponent(song.id)}/letra`} state={{ title: song.title, back: location.pathname }}
+            className="inline-flex min-h-touch items-center gap-1.5 font-semibold text-accent underline">
+            <Icon name="music" width={16} height={16} />Ver letra
+          </Link>
+        )}
         {song && canEdit && (
           <>
             <div role="group" aria-label="Tonalidad en este servicio" className="grid gap-2">

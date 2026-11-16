@@ -13,6 +13,8 @@ import { NewLinkPage } from '../share/NewLinkPage'
 import { SharePage } from '../share/SharePage'
 import { SetlistPage } from '../setlist/SetlistPage'
 import { PersonPage } from '../people/PersonPage'
+import { LyricsEditPage } from '../lyrics/LyricsEditPage'
+import { LyricsPage } from '../lyrics/LyricsPage'
 
 export function ProductRoutes() {
   return (
@@ -20,6 +22,8 @@ export function ProductRoutes() {
       <Route path="/servicios/nuevo" element={<ServiceFormPage />} />
       <Route path="/servicios/lote" element={<BatchPage />} />
       <Route path="/servicios/:serviceId/setlist" element={<SetlistPage />} />
+      <Route path="/canciones/:songId/letra" element={<LyricsPage />} />
+      <Route path="/canciones/:songId/letra/editar" element={<LyricsEditPage />} />
       <Route path="/personas" element={<PeoplePage />} />
       <Route path="/personas/nueva" element={<NewPersonPage />} />
       <Route path="/personas/:personId" element={<PersonPage />} />
