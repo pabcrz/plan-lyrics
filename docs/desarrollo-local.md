@@ -42,6 +42,8 @@ La API compilada puede ejecutarse con `pnpm --filter @plan-lyrics/api start`. Vi
 - Los componentes shadcn/ui se incorporarán al implementar las pantallas acordadas, sobre Tailwind; no se genera ahora otra interfaz ni un catálogo de componentes.
 - El almacén de pnpm queda en `.pnpm-store/`, ignorado por Git. Dependencias, compilados y archivos `.env` tampoco se versionan; sí `pnpm-lock.yaml`.
 
+Para publicar en Vercel, Neon y Clerk, ver la [guía de despliegue](despliegue.md). En local `VITE_API_URL` queda vacía y `WEB_ORIGIN` no hace falta (Vite reenvía `/api`).
+
 No desplegar, crear recursos externos ni aplicar migraciones sobre bases existentes como parte de estos comandos.
 
 ## Configurar Clerk en la web

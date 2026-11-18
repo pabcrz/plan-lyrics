@@ -47,9 +47,9 @@ En la web, separar consultas remotas de formularios y estado local. Las claves d
 
 | Parte | Candidato para el piloto | Condición |
 | --- | --- | --- |
-| Web | Cloudflare Pages | Publicación de los archivos compilados; probar rutas profundas y configuración de API. |
-| API | Vercel Functions con Hono y runtime Node.js | Modelo por peticiones, no proceso siempre encendido. Validar arranque, límites y condiciones del plan. |
-| Base | Neon Free, como candidato original disponible | Piloto de cinco o seis personas; aceptar solo tras comprobar cuotas y comportamiento al reactivar cómputo. No es una garantía de disponibilidad permanente. |
+| Web | Vercel (proyecto estático con raíz `apps/web`) | Decisión de la persona usuaria, en lugar del candidato Cloudflare Pages. Probar rutas profundas y la configuración de API tras el primer despliegue. |
+| API | Vercel Functions con Hono y runtime Node.js (proyecto Vercel aparte, raíz `apps/api`) | Modelo por peticiones, no proceso siempre encendido. Validar arranque, límites y condiciones del plan. |
+| Base | Neon Free (proyecto ya creado por la persona usuaria) | Piloto de cinco o seis personas; aceptar solo tras comprobar cuotas y comportamiento al reactivar cómputo. No es una garantía de disponibilidad permanente. |
 | Identidad | Clerk | Verificar funciones y condiciones del plan; no asumir que una iglesia debe ser una Organization de Clerk. |
 
 La preferencia es un piloto gratuito, no gratuidad permanente. Antes de incorporar el grupo completo —aproximadamente 20–30 personas registradas y unas cinco editoras, más visitas públicas no acotadas— evaluar consumo y un plan adecuado. No fijar capacidad solo por el número de cuentas. Preferir subir de plan en el mismo proveedor si funciona bien, sin migrar por rutina.
@@ -65,6 +65,8 @@ Respetar los [accesos acordados](producto.md#accesos-acordados). Un identificado
 Mantener migraciones del producto en Git y probar exportación y restauración en PostgreSQL independiente con datos de prueba. No prometer que una migración es solo cambiar una URL: conexiones, extensiones y configuración requieren validación. Backups y prueba de recuperación forman parte de la preparación para operación habitual.
 
 Hono debe poder ejecutarse como servidor Node mediante su adaptador además del despliegue candidato. No usar APIs exclusivas de Vercel para las reglas centrales. Ejecutar en Cloudflare Workers sería otra decisión de runtime, no una consecuencia automática de usar Hono.
+
+La preparación de archivos para este despliegue (adaptador, `vercel.json` por proyecto, CORS, IP de confianza y migraciones con conexión directa) y los pasos manuales están en la [guía de despliegue](despliegue.md). No se ha desplegado nada: la prueba técnica de abajo sigue pendiente.
 
 ## Preparación local realizada
 
