@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { accountRoutes } from './accounts.js'
@@ -22,10 +23,26 @@ import { accountManagerBody, createUser, newUserBody, setAccountManager, userCap
  * `shareSecret` derives the tokens of ministry links (`SHARE_LINK_SECRET`); `publicLimiter` throttles the public view;
  * `identity` is the authentication provider port used to create accounts and send invitations (absent: those routes answer 503).
  */
-export type AppOptions = { shareSecret?: string; publicLimiter?: Limiter; identity?: IdentityProvider }
+export type AppOptions = {
+  shareSecret?: string; publicLimiter?: Limiter; identity?: IdentityProvider
+  /** Exact web origins allowed by CORS; empty or absent sends no CORS headers. */
+  allowedOrigins?: string[]
+  /** Read the client IP from Vercel's forwarded headers. Only for a deployment really behind Vercel. */
+  trustClientIpHeaders?: boolean
+}
 
 export function createApp(config: SessionConfig = {}, database?: PrismaClient, now: () => Date = () => new Date(), options: AppOptions = {}) {
   const app = new Hono<SessionEnvironment>()
+  const allowedOrigins = options.allowedOrigins ?? []
+  if (allowedOrigins.length) {
+    // Bearer tokens travel in a header, never in cookies: no credentials, and only the configured web origins.
+    app.use('/api/*', cors({
+      origin: origin => (allowedOrigins.includes(origin) ? origin : null),
+      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Authorization', 'Content-Type'],
+      maxAge: 600,
+    }))
+  }
   app.get('/api/health', (c) => c.json({ status: 'ok', service: 'plan-lyrics-api' }))
   app.get('/api/session', requireSession(config), (c) => c.json({ authenticated: true }))
   app.get('/api/churches/:churchId', requireSession(config), async (c) => {
@@ -77,7 +94,7 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
   app.route('/', lyricsRoutes(config, database))
   app.route('/', setlistRoutes(config, database))
   app.route('/', shareLinkRoutes(config, database, now, options.shareSecret))
-  app.route('/', publicShareRoutes(database, now, options.publicLimiter))
+  app.route('/', publicShareRoutes(database, now, options.publicLimiter, options.trustClientIpHeaders))
   return app
 }
 

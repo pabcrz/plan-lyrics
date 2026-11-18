@@ -11,6 +11,7 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "test": "pnpm -r test",
+    "db:migrate:deploy": "pnpm --filter @plan-lyrics/api db:migrate:deploy",
     "test:db": "node scripts/check-database.mjs",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },

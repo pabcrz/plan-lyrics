@@ -3,6 +3,7 @@ import { Hono, type Context } from 'hono'
 import { safeErrorCode } from './errors.js'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { publicLyrics } from './lyrics-rules.js'
+import { trustedClientIp } from './client-ip.js'
 import { createLimiter, type Limiter } from './rate-limit.js'
 import { todayInZone } from './service-rules.js'
 import { linkStatus, type ShareVersion } from './share-rules.js'
@@ -91,14 +92,18 @@ export async function buildView(db: PrismaClient, link: Link) {
   }
 }
 
-const clientKey = (c: Context) => { try { return getConnInfo(c).remote.address ?? 'unknown' } catch { return 'unknown' } }
+const clientKey = (c: Context, trustHeaders: boolean) => {
+  // Behind Vercel the socket address is the platform's, so only its own headers identify the client.
+  if (trustHeaders) return trustedClientIp(c.req.raw.headers) ?? 'unknown'
+  try { return getConnInfo(c).remote.address ?? 'unknown' } catch { return 'unknown' }
+}
 
 /**
  * The only unauthenticated route: `GET /api/public/links/:token`. A token that does not exist, is expired or was
  * revoked answers the same `404`, so the response never says which. Every answer, errors included, is private
  * (`no-store`), not indexable and without referrer, and the number of requests per address is limited.
  */
-export function publicShareRoutes(db: PrismaClient | undefined, now: () => Date, limiter: Limiter = createLimiter({ limit: 120, windowMs: 60_000 })) {
+export function publicShareRoutes(db: PrismaClient | undefined, now: () => Date, limiter: Limiter = createLimiter({ limit: 120, windowMs: 60_000 }), trustClientIpHeaders = false) {
   const routes = new Hono()
   routes.use('/api/public/*', async (c, next) => {
     await next()
@@ -107,7 +112,7 @@ export function publicShareRoutes(db: PrismaClient | undefined, now: () => Date,
     c.header('Referrer-Policy', 'no-referrer')
   })
   routes.get('/api/public/links/:token', async c => {
-    if (!limiter(clientKey(c))) { c.header('Retry-After', '60'); return c.json({ error: 'Too many requests' }, 429) }
+    if (!limiter(clientKey(c, trustClientIpHeaders))) { c.header('Retry-After', '60'); return c.json({ error: 'Too many requests' }, 429) }
     const token = c.req.param('token')
     if (!isTokenShape(token)) return c.json({ error: 'Not found' }, 404)
     if (!db) return c.json({ error: 'Access unavailable' }, 503)

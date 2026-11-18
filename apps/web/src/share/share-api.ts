@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApiFetch } from '../calendar/api'
 import type { NewLink, ShareLink, Version } from './share-model'
+import { apiUrl } from '../api-url'
 
 export function useShareLinks(enabled: boolean) {
   const api = useApiFetch()
@@ -52,7 +53,7 @@ export class PublicLinkError extends Error {
 
 /** Sin sesión, sin cookies y sin caché: quien abre el enlace no tiene cuenta. */
 export async function fetchPublicLink(token: string, signal?: AbortSignal): Promise<PublicView> {
-  const response = await fetch(`/api/public/links/${encodeURIComponent(token)}`, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal })
+  const response = await fetch(apiUrl(`/api/public/links/${encodeURIComponent(token)}`), { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal })
   if (!response.ok) throw new PublicLinkError(response.status)
   return (await response.json()) as PublicView
 }

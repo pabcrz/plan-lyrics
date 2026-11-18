@@ -15,6 +15,7 @@ Lectura recomendada: primero el producto; consulta las demás guías según tu t
 | [Compartir servicios (API e interfaz)](compartir.md) | Enlaces del ministerio con vigencia, revocación y reactivación, su vista pública y decisiones pendientes. | Al tocar enlaces, documentos compartibles o la vista de congregantes. |
 | [Letras de la biblioteca (API)](letras.md) | Letras por secciones de las canciones compartidas, marca de publicable, permisos, vista pública de congregantes y decisiones abiertas. | Al tocar letras o lo que se publica en la vista de congregantes. |
 | [Gestión de accesos (API e interfaz)](accesos.md) | Cuentas, invitaciones por el puerto `IdentityProvider`, vínculo persona-cuenta, membresías por iglesia, decisiones restrictivas y lo no verificado. | Al tocar permisos, cuentas, invitaciones o la pantalla de accesos. |
+| [Despliegue (Vercel, Neon, Clerk)](despliegue.md) | Pasos para publicar web y API en Vercel con Neon y Clerk, migraciones, superadmin, verificación y riesgos. | Al desplegar o cambiar variables de entorno. |
 | [Backend](propuestas/backend.md) | Propuesta de casos de uso, dominio y validación incremental. | Antes de construir la API y la persistencia. |
 | [Entrega integral](propuestas/entrega-integral.md) | Secuencia que conecta diseño, backend y verificación. | Para avanzar por resultados completos, no por capas aisladas. |
 | [Guía ChordPro](guia-chordpro.md) | Convenciones de formato musical. | Al trabajar con ChordPro o sus vistas. |

@@ -16,6 +16,8 @@ const url = `postgresql://planlyrics_fixture@127.0.0.1:${port}/plan_lyrics_acces
 // Do not inherit PostgreSQL service/credential selectors or Prisma dotenv loading.
 const env = { ...process.env, DATABASE_URL: url, TEST_DATABASE_URL: url }
 for (const key of Object.keys(env)) if (key.startsWith('PG')) delete env[key]
+// DIRECT_URL takes precedence in prisma.config.ts: never let a deployment URL reach this local fixture run.
+delete env.DIRECT_URL
 function run(command, args) {
   const result = spawnSync(command, args, { env, stdio: 'inherit' })
   if (result.error) throw result.error

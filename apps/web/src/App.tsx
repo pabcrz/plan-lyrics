@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { apiUrl } from './api-url'
 
 async function checkApi() {
-  const response = await fetch('/api/health')
+  const response = await fetch(apiUrl('/api/health'))
   if (!response.ok) throw new Error('La API no respondió correctamente')
 
   const body = await response.json()

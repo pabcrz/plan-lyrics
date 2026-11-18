@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useAuth } from '@clerk/react'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Church, ChurchSettings, ClosedDate, Person, PersonDetail, Service, Status, Slot } from './model'
+import { apiUrl } from '../api-url'
 
 export class ApiError extends Error {
   constructor(readonly status: number, readonly code = '', readonly issues: string[] = [], readonly existing?: { id: string; name: string }, readonly services?: number) {
@@ -15,7 +16,7 @@ export function useApiFetch() {
   return useCallback(async <T,>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> => {
     const token = await getToken()
     if (!token) throw new ApiError(401)
-    const response = await fetch(path, {
+    const response = await fetch(apiUrl(path), {
       method: init.method ?? 'GET',
       headers: { Authorization: `Bearer ${token}`, ...(init.body ? { 'Content-Type': 'application/json' } : {}) },
       body: init.body ? JSON.stringify(init.body) : undefined,

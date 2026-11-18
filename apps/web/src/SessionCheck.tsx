@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@clerk/react'
+import { apiUrl } from './api-url'
 
 const messages = {
   idle: '', loading: 'Verificando sesión en API…',
@@ -17,7 +18,7 @@ export function SessionCheck() {
     try {
       const token = await getToken()
       if (!token) return setState('unauthorized')
-      const response = await fetch('/api/session', {
+      const response = await fetch(apiUrl('/api/session'), {
         headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', credentials: 'omit',
       })
       if (response.status === 401) return setState('unauthorized')
