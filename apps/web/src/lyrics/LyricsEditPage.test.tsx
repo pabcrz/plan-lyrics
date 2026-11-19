@@ -271,3 +271,15 @@ test('an empty letter starts with no cards and offers to add the first section',
   expect(screen.queryAllByRole('group', { name: /^Sección/ })).toHaveLength(0)
   expect(screen.getByRole('switch', { name: 'Publicable' })).toBeDisabled()
 })
+
+test('a text change that would lose chords says which sections and saves nothing', async () => {
+  const server = page({ writeFailure: { status: 409, body: { error: 'chords_would_be_lost', sections: [{ position: 1, kind: 'VERSE', label: 'Estrofa 1' }] } } })
+  await ready()
+  typeIn('Texto', 'Texto corregido de otra manera', 1)
+  fireEvent.click(save())
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('Se perderían acordes')
+  expect(within(alert).getByRole('listitem')).toHaveTextContent('Sección 2 · Estrofa «Estrofa 1»')
+  expect(screen.queryByText('La letra cambió mientras la editabas')).not.toBeInTheDocument()
+  expect(server.writes()).toHaveLength(1)
+})

@@ -1,6 +1,6 @@
-# Acordes de la biblioteca (API y reglas)
+# Acordes de la biblioteca (API y pantallas)
 
-Primera rebanada de la [etapa 3 del producto](producto.md#etapa-3--acordes): **conservar la relación entre letra y acordes y transponer respetando modo mayor/menor**. Es solo API y reglas puras; las pantallas van en otra PR. No hay letras ni canciones reales: las pruebas usan textos y acordes inventados. Complementa [letras](letras.md).
+[Etapa 3 del producto](producto.md#etapa-3--acordes): **conservar la relación entre letra y acordes y transponer respetando modo mayor/menor**. La primera rebanada es la API y sus reglas puras; la segunda, las [pantallas móviles](#pantallas). No hay letras ni canciones reales: las pruebas usan textos y acordes inventados. Complementa [letras](letras.md).
 
 ## Representación
 
@@ -53,7 +53,7 @@ Sin cambios de contrato: la vista pública y la consulta de letras publicadas **
 
 ## Pendientes y decisiones abiertas
 
-- **Pantallas:** lectura con acordes sobre la letra, selector de tonalidad y edición (otra PR). La pantalla actual de edición aún no envía `chordPro` (los acordes se conservan por la regla de compatibilidad).
+- **Texto de una sección con acordes:** la pantalla de edición de la letra aún no envía `chordPro`; si el cambio de texto movería o perdería acordes, la API lo rechaza (`chords_would_be_lost`) y la pantalla lo avisa, pero hoy no hay un modo de cambiar a propósito el texto de una sección con acordes. ¿Una edición conjunta de texto y acordes, o rehacer los acordes desde la pantalla de acordes?
 - **Editor avanzado** de acordes: no es prioridad de la primera etapa.
 - **Importación de TXT** con acordes encima y exportaciones TXT/ChordPro: sin decidir.
 - **Tonalidad por servicio u override de iglesia:** el producto prevé adaptaciones que heredan de la base; hoy la tonalidad contextual del setlist es independiente y no transpone la letra.
@@ -63,6 +63,27 @@ Sin cambios de contrato: la vista pública y la consulta de letras publicadas **
 - **Límites definitivos** de tamaño y número de acordes.
 - **BPM:** no existe en la biblioteca; cuando exista deberá seguir fuera de la vista pública.
 
+## Pantallas
+
+Mockup: [acordes.html](design/pantallas/acordes.html) (ver [diseño](design.md#acordes-de-una-canción)). Móvil primero, claro y oscuro, con los componentes de `apps/web/src/ui`. Consumen la API tal como está; no la cambian.
+
+| Ruta | Quién | Qué hace |
+| --- | --- | --- |
+| `/canciones/:songId/letra` | Cualquier integrante de una iglesia | La letra de siempre, con cada acorde sobre la sílaba donde cae. Si la letra tiene acordes, una tarjeta muestra la tonalidad **base** y la **actual** y un control para transponer solo en pantalla. «Editar acordes» y «Editar letra» solo si `canEdit`. |
+| `/canciones/:songId/letra/acordes` | Editor de biblioteca y superadministrador (`canEdit`) | Tonalidad base (modo y nota) y, por sección y línea, agregar, mover, cambiar o quitar acordes. |
+
+- **Tono contextual.** Desde un setlist, «Ver letra» lleva la tonalidad de esa entrada (`SetlistEntry.key`). La pantalla lee la letra guardada y, si tiene tonalidad base **del mismo modo** que el tono de la entrada y es distinto, vuelve a pedirla con `GET /api/songs/:id/lyrics?toKey=…` (un `#` va codificado). Sin tono contextual, o de otro modo, o sin tonalidad base guardada, muestra los acordes guardados y una línea lo explica. **Nunca se guarda una copia por servicio**: el tono es solo un parámetro de lectura.
+- **Transposición manual.** Medio tono arriba o abajo (−11 a +11), solo en pantalla. Se pide siempre **desde la base** como `semitones` (distancia al tono del servicio más lo movido, de 0 a 11); sin tonalidad base se pide el movimiento tal cual. «Volver al tono del servicio» (o «al tono base») la quita. Si la lectura transpuesta falla, se ven los acordes guardados y un aviso.
+- **Editar.** Cada acorde es un botón sobre su sílaba y cada línea con texto tiene un «+». La hoja «Acorde» pide el texto del acorde (se valida con la misma lista cerrada que la API, y el error dice qué se acepta), la posición en la línea (un carácter por toque, con vista previa en vivo), y ofrece «Listo», «Quitar acorde» y «Cancelar». Nunca se cambia el texto.
+- **Guardar.** Reemplazo completo con la versión leída, `key` explícita y **`chordPro` explícito en cada sección**: con acordes viaja solo `chordPro` (el texto sale de él); sin acordes, el `text` y `chordPro: null`. `published` viaja con el valor leído. No pide la confirmación de «letra publicada» porque los acordes nunca son públicos.
+- **Errores.** `409 Lyrics changed`: el aviso de siempre y «Recargar la letra». `409 chords_would_be_lost`: aviso «Se perderían acordes» con la lista de secciones afectadas (`Sección N · tipo «etiqueta»`) y «Recargar la letra»; no se guardó nada y lo escrito sigue en pantalla. `400`: «algún acorde o el texto no es válido» con ejemplos. `403`, `404` y otros fallos tienen mensaje propio. La pantalla de edición del **texto** también muestra la lista cuando la API rechaza un cambio por pérdida de acordes.
+- **Hoja de una entrada del setlist.** Si la letra tiene tonalidad base, el selector de tono solo ofrece las tonalidades de **ese modo** (sin selector Mayor/Menor), lo dice en una línea y muestra una vista previa corta (dos líneas con acordes) en la tonalidad elegida. Un tono guardado antes de otro modo se conserva (no se borra en silencio) y un aviso dice que no se transpone. Sin tonalidad base, el selector sigue siendo libre.
+
+### Supuestos de pantalla (no están en producto)
+
+Posición por pasos de un carácter en vez de arrastrar; el acorde se escribe como texto y la API lo valida; la lista de calidades de acorde se repite en `apps/web/src/lyrics/chords.ts` (no hay paquete compartido) y debe cambiar junto con `chord-rules.ts`; los acordes no se pueden agregar a una línea vacía; sin sugerencias de acordes de la tonalidad.
+
 ## Verificación
 
-Reglas puras: `chord-rules.test.ts` (acordes, tonalidades, enarmonía, bajo, extensiones, transposición, marcas en línea y límites) y `lyrics-rules.test.ts` (cuerpo, `key`, parámetros y letra pública). Integración sobre PostgreSQL aislado: `test/chords.integration.ts` y `test/lyrics.integration.ts` con `pnpm test:db` (permisos, versión, compatibilidad, transposición sin persistir, restricciones de base y ausencia de acordes, tonalidad y BPM en las respuestas públicas).
+
+Pantallas: pruebas de componente (`apps/web/src/lyrics/LyricsChords.test.tsx`, `ChordsEditPage.test.tsx`, `chords.test.ts` y las del selector de tono en `SetlistPage.test.tsx`) con textos inventados y un servidor ficticio en memoria. API — reglas puras: `chord-rules.test.ts` (acordes, tonalidades, enarmonía, bajo, extensiones, transposición, marcas en línea y límites) y `lyrics-rules.test.ts` (cuerpo, `key`, parámetros y letra pública). Integración sobre PostgreSQL aislado: `test/chords.integration.ts` y `test/lyrics.integration.ts` con `pnpm test:db` (permisos, versión, compatibilidad, transposición sin persistir, restricciones de base y ausencia de acordes, tonalidad y BPM en las respuestas públicas).

@@ -15,8 +15,10 @@ export const kindLabel = (kind: SectionKind) => kinds.find((item) => item.value 
 /** Mismos límites que la API (`LYRICS_LIMITS`). */
 export const limits = { maxSections: 60, maxText: 4000, maxLabel: 60, maxRepeat: 8 } as const
 
-export type Section = { kind: SectionKind; label: string | null; text: string; repeat: number }
-export type Lyrics = { version: number; published: boolean; canEdit: boolean; sections: Section[] }
+/** `chordPro` trae los acordes en línea (`[Am]texto`); sin acordes es `null`. Quien no los conoce puede omitirlo. */
+export type Section = { kind: SectionKind; label: string | null; text: string; repeat: number; chordPro?: string | null }
+/** `key` es la tonalidad guardada (`null` si no hay); en una lectura transpuesta, `semitones` dice cuánto se movió. */
+export type Lyrics = { version: number; published: boolean; key: string | null; canEdit: boolean; sections: Section[]; semitones?: number }
 
 /** Sección en edición: `key` identifica la tarjeta aunque cambie de lugar. */
 export type DraftSection = { key: string; kind: SectionKind; label: string; text: string; repeat: number }
@@ -63,14 +65,16 @@ export function moveItem<T>(items: T[], from: number, to: number) {
 }
 
 /** Estado de navegación que deja el setlist: título de la canción y a dónde volver (solo rutas internas). */
-export type LyricsNav = { title?: string; back?: string; saved?: boolean }
+/** `key` es la tonalidad de la entrada del setlist: con ella se muestran los acordes. */
+export type LyricsNav = { title?: string; back?: string; saved?: boolean; key?: string }
 
 export function navState(state: unknown): LyricsNav {
   if (typeof state !== 'object' || state === null) return {}
-  const { title, back, saved } = state as Record<string, unknown>
+  const { title, back, saved, key } = state as Record<string, unknown>
   return {
     title: typeof title === 'string' && title.trim() ? title.slice(0, 200) : undefined,
     back: typeof back === 'string' && /^\/(?![/\\])/.test(back) ? back : undefined,
     saved: saved === true,
+    key: typeof key === 'string' && /^[A-G][#b]?m?$/.test(key) ? key : undefined,
   }
 }

@@ -13,6 +13,7 @@ import { NewLinkPage } from '../share/NewLinkPage'
 import { SharePage } from '../share/SharePage'
 import { SetlistPage } from '../setlist/SetlistPage'
 import { PersonPage } from '../people/PersonPage'
+import { ChordsEditPage } from '../lyrics/ChordsEditPage'
 import { LyricsEditPage } from '../lyrics/LyricsEditPage'
 import { LyricsPage } from '../lyrics/LyricsPage'
 
@@ -24,6 +25,7 @@ export function ProductRoutes() {
       <Route path="/servicios/:serviceId/setlist" element={<SetlistPage />} />
       <Route path="/canciones/:songId/letra" element={<LyricsPage />} />
       <Route path="/canciones/:songId/letra/editar" element={<LyricsEditPage />} />
+      <Route path="/canciones/:songId/letra/acordes" element={<ChordsEditPage />} />
       <Route path="/personas" element={<PeoplePage />} />
       <Route path="/personas/nueva" element={<NewPersonPage />} />
       <Route path="/personas/:personId" element={<PersonPage />} />

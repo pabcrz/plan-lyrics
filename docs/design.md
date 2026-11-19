@@ -19,6 +19,7 @@ Mockups HTML autocontenidos, sin build, con datos ficticios. Se abren directamen
 | Pantalla | [pantallas/setlist.html](design/pantallas/setlist.html) | Setlist del servicio: canciones y momentos ordenados, tonalidad y enlace de referencia. |
 | Pantalla | [pantallas/compartir.html](design/pantallas/compartir.html) | Compartir: enlaces del ministerio (crear, revocar, reactivar), setlist en imagen, lista mensual de dirección y PDF de predicaciones. |
 | Pantalla | [pantallas/letras.html](design/pantallas/letras.html) | Letra de una canción: vista por secciones para cualquier integrante y edición (tipo, etiqueta, repeticiones, texto, orden, publicable) para editores de biblioteca, con confirmación al guardar una letra publicada y aviso de conflicto de versión. |
+| Pantalla | [pantallas/acordes.html](design/pantallas/acordes.html) | Acordes: letra con acordes sobre cada sílaba en el tono del servicio o el base, transposición solo en pantalla, edición de acordes y de la tonalidad base, y selector de tono del setlist limitado al modo de la canción. |
 
 El recorrido de wireframes previo vive en [`design/programacion-mensual`](../design/programacion-mensual/mapa-y-recorrido.md); la alternativa 04 fue la referencia que originó estas pantallas.
 
@@ -154,6 +155,16 @@ Se llega desde la edición de una canción del setlist («Ver letra»); aún no 
 - **Confirmar:** al guardar una letra que **ya estaba publicada y sigue publicada**, una hoja avisa de que el cambio se verá de inmediato en los enlaces compartidos y ofrece «Guardar y mantener publicada» o «Seguir editando». Desactivar «Publicable» antes de guardar evita la hoja.
 - **Conflicto:** si otra persona guardó antes (409), un aviso lo explica y ofrece «Recargar la letra»; los cambios propios se conservan en pantalla hasta recargar.
 - **Supuestos de diseño** (no están en producto): tipo con selector nativo y orden por botones (sin arrastre) para teclado y lectores de pantalla; el título de la canción llega desde el setlist porque la API de letras no lo devuelve.
+
+### Acordes de una canción
+
+Amplía la pantalla de letra; los datos y reglas están en [acordes](acordes.md). Mockup: [acordes.html](design/pantallas/acordes.html).
+
+- **Ver:** cada acorde va sobre la sílaba donde cae (tipografía de datos, color de acento); la línea se parte en tramos «acorde + texto» para que la alineación no dependa de una fuente monoespaciada. Encima, una tarjeta con la tonalidad **base** y la **actual**, y un control «Transponer solo en pantalla» (medio tono arriba o abajo, con la distancia en el centro). Al llegar desde un setlist se muestra el tono de ese servicio si es del mismo modo que la base; si no, el base, y una línea lo dice. Nada se guarda.
+- **Editar acordes:** solo editor de biblioteca o superadministrador. Tonalidad base (modo y nota, tocar de nuevo la quita) y, por sección, cada línea con sus acordes como botones sobre la sílaba y un botón «+» para agregar uno. La hoja «Acorde» tiene el texto del acorde, la posición en la línea (un carácter por toque) con vista previa en vivo, «Listo», «Quitar acorde» y «Cancelar».
+- **Avisos:** acorde inválido (junto al campo, dice qué se acepta); versión desactualizada (409, igual que en la letra) y acordes que se perderían (409 `chords_would_be_lost`, con la lista de secciones afectadas; no se guardó nada).
+- **Setlist:** la hoja de una entrada solo ofrece tonalidades del mismo modo que la base de la canción y muestra una vista previa corta transpuesta.
+- **Supuestos de diseño** (no están en producto): posición por pasos de un carácter en lugar de arrastrar (accesible con teclado y lector de pantalla); el acorde se escribe como texto y la API lo valida; guardar acordes no pide la confirmación de «letra publicada» porque los acordes nunca son públicos.
 
 ## Pendientes
 
