@@ -3,7 +3,6 @@
   "services": {
     "api": {
       "root": "apps/api",
-      "framework": "hono",
       "entrypoint": "api/index.mjs",
       "installCommand": "pnpm install --frozen-lockfile",
       "buildCommand": "pnpm build"
