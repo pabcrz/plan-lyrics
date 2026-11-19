@@ -1,6 +1,6 @@
 # Letras de la biblioteca (API y pantallas)
 
-Primeras rebanadas de la [etapa 2 del producto](producto.md#etapa-2--letras): modelo, reglas y rutas (API) y las [pantallas móviles](#pantallas) para ver y editar la letra. **No hay letras reales** en el repositorio: las pruebas usan solo textos inventados. Los acordes (etapa 3) se describen en [acordes](acordes.md); esta guía sigue siendo la del texto.
+Primeras rebanadas de la [etapa 2 del producto](producto.md#etapa-2--letras): modelo, reglas y rutas (API) y las [pantallas móviles](#pantallas) para ver y editar la letra. **No hay letras reales** en el repositorio: las pruebas usan solo textos inventados. Los acordes (etapa 3), con su API y sus pantallas, se describen en [acordes](acordes.md); esta guía sigue siendo la del texto.
 
 ## Qué hay
 
@@ -56,7 +56,7 @@ Mockup: [letras.html](design/pantallas/letras.html) (ver [diseño](design.md#let
 | `/canciones/:songId/letra` | Cualquier integrante de una iglesia | Letra por secciones (tipo, etiqueta, `×N` si se repite, texto con sus saltos). Estado «Publicada» o «Sin publicar», estado vacío si no hay letra. «Editar letra» o «Escribir letra» solo si `canEdit`. |
 | `/canciones/:songId/letra/editar` | Editor de biblioteca y superadministrador (`canEdit`) | Tarjeta por sección: tipo, «Se canta» (1 a 8), etiqueta, texto; subir, bajar, quitar (con «Deshacer») y agregar (hasta 60); interruptor «Publicable» (deshabilitado sin secciones). Quien no tiene permiso ve un aviso y no el formulario. |
 
-- **Entrada:** «Ver letra» en la edición de una canción del setlist (cualquier integrante). Pasa el título y la ruta de regreso por el estado de navegación; solo se acepta una ruta interna como regreso.
+- **Entrada:** «Ver letra» en la edición de una canción del setlist (cualquier integrante). Pasa el título, la ruta de regreso y la tonalidad de la entrada (para los [acordes](acordes.md#pantallas)) por el estado de navegación; solo se acepta una ruta interna como regreso.
 - **Guardar:** reemplazo completo con la versión leída (`PUT`), con `published` siempre explícito; sin secciones se guarda sin publicar. Las tabulaciones y otros caracteres de control que la API rechaza se convierten en espacios antes de enviar. «Guardar» se habilita al cambiar algo; «Descartar cambios» vuelve a lo cargado; salir con cambios pide confirmación.
 - **Letra ya publicada:** al guardarla sin quitar la marca «Publicable», una hoja avisa de que el cambio se verá de inmediato en los enlaces compartidos y pide «Guardar y mantener publicada».
 - **409 (versión desactualizada):** aviso «La letra cambió mientras la editabas»: lo escrito se conserva en pantalla, «Guardar» queda deshabilitado y «Recargar la letra» trae la versión nueva (descarta lo escrito). La pantalla no vuelve a pedir la letra sola mientras se edita para no reemplazar el texto a escondidas.
