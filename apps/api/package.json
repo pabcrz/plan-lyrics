@@ -12,7 +12,7 @@
     "db:migrate:deploy": "tsx src/migrate-deploy-cli.ts",
     "db:drift": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
     "test:integration": "vitest run --config vitest.integration.ts",
-    "build": "pnpm db:generate && tsc --noEmit false && node -e \"require('fs').writeFileSync('dist/package.json','{\\\"type\\\":\\\"module\\\"}')\"",
+    "build": "pnpm db:generate && tsc --noEmit false && esbuild src/runtime.ts --bundle --platform=node --format=esm --target=node24 --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=dist/runtime.bundle.mjs --log-level=warning",
     "start": "node dist/index.js",
     "smoke:vercel": "node test/vercel-smoke.mjs",
     "typecheck": "pnpm db:generate && tsc --noEmit",
@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@types/pg": "8.23.1",
+    "esbuild": "0.28.2",
     "prisma": "7.10.1",
     "tsx": "4.23.15"
   }
