@@ -49,3 +49,18 @@ export function ChordsLost({ sections, intro, onReload }: { sections: Affected; 
     </Notice>
   )
 }
+
+/** El texto sin acordes con una marca donde cae el acorde: el relleno del acorde en la vista previa no mueve esta referencia. */
+export function PositionRuler({ text, offset }: { text: string; offset: number }) {
+  const before = text.slice(0, offset)
+  const after = text.slice(offset)
+  const label = before === '' ? `Cae al inicio, antes de «${after}»` : after === '' ? `Cae al final, después de «${before}»` : `Cae entre «${before}» y «${after}»`
+  return (
+    <p role="img" aria-label={label} className="m-0 text-[1.0625rem] leading-normal whitespace-pre-wrap [overflow-wrap:anywhere]">
+      <span aria-hidden="true" className="text-text-3">{before}</span>
+      <span aria-hidden="true" className="mx-px inline-block h-[1.2em] w-0.5 translate-y-[0.2em] rounded-sm bg-accent" />
+      <span aria-hidden="true" className="font-semibold">{after.slice(0, 1)}</span>
+      <span aria-hidden="true" className="text-text-3">{after.slice(1)}</span>
+    </p>
+  )
+}
