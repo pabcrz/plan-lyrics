@@ -3,7 +3,10 @@
   "services": {
     "api": {
       "root": "apps/api",
-      "framework": "hono"
+      "framework": "hono",
+      "entrypoint": "api/index.mjs",
+      "installCommand": "pnpm install --frozen-lockfile",
+      "buildCommand": "pnpm build"
     },
     "web": {
       "root": "apps/web",
@@ -11,7 +14,17 @@
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": { "service": "api" } },
-    { "source": "/(.*)", "destination": { "service": "web" } }
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "api"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "web"
+      }
+    }
   ]
 }
