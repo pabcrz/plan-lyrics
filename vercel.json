@@ -5,8 +5,7 @@
       "root": "apps/api",
       "entrypoint": "api/index.mjs",
       "installCommand": "pnpm install --frozen-lockfile",
-      "buildCommand": "pnpm build",
-      "framework": null
+      "buildCommand": "pnpm build"
     },
     "web": {
       "root": "apps/web",
