@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { LYRICS_LIMITS, lyricsBody, publicLyrics } from './lyrics-rules.js'
+import { LYRICS_LIMITS, lyricsBody, publicLyrics, transposeLyrics, transposeQuery } from './lyrics-rules.js'
 
 // Every text below is invented for these tests.
 const section = (over: Record<string, unknown> = {}) => ({ kind: 'VERSE', text: 'Línea ficticia uno\nLínea ficticia dos', ...over })
@@ -84,5 +84,94 @@ describe('letra pública', () => {
 
   test('a published lyrics with no sections is not shown', () => {
     expect(publicLyrics({ published: true, sections: [] })).toBeNull()
+  })
+})
+
+describe('acordes en el cuerpo de la letra', () => {
+  const chorded = (over: Record<string, unknown> = {}) => section({ text: undefined, chordPro: '[G]Luz de la [Em]mañana\n[C]Canto [D]hoy', ...over })
+  const first = (value: unknown) => { const result = parse(body({ sections: [value] })); return result.success ? result.data.sections[0] : undefined }
+
+  test('the clean text is derived from the chords when it is omitted', () => {
+    expect(first(chorded())).toEqual({ kind: 'VERSE', label: null, text: 'Luz de la mañana\nCanto hoy', chordPro: '[G]Luz de la [Em]mañana\n[C]Canto [D]hoy', repeat: 1 })
+  })
+
+  test('a text that is sent must be exactly the chorded one without its marks', () => {
+    expect(first(chorded({ text: 'Luz de la mañana\nCanto hoy' }))?.text).toBe('Luz de la mañana\nCanto hoy')
+    expect(first(chorded({ text: 'Luz de la mañana\nCanto ayer' }))).toBeUndefined()
+    expect(first(chorded({ text: '' }))).toBeUndefined()
+  })
+
+  test('omitting chordPro is not the same as sending null, and a chordPro without marks is plain text', () => {
+    expect(first(section())).toEqual({ kind: 'VERSE', label: null, text: 'Línea ficticia uno\nLínea ficticia dos', repeat: 1 })
+    expect(first(section())).not.toHaveProperty('chordPro', null)
+    expect(first(section({ chordPro: null }))?.chordPro).toBeNull()
+    // Marks that carry no chord at all are the same as no chords.
+    expect(first(section({ text: undefined, chordPro: 'solo texto' }))).toMatchObject({ text: 'solo texto', chordPro: null })
+  })
+
+  test('refuses an invalid, empty or unknown mark and a section with neither text nor chords', () => {
+    for (const chordPro of ['[Hm]x', '[Am', 'x]', '[]x', 'texto [libre]', '[G]', '[G] \n [C]', '']) expect(first(chorded({ chordPro })), chordPro).toBeUndefined()
+    expect(first({ kind: 'VERSE' })).toBeUndefined()
+    expect(first(section({ chordPro: 5 }))).toBeUndefined()
+  })
+
+  test('normalizes line breaks and edges like the text, and refuses control characters and excess size', () => {
+    expect(first(chorded({ chordPro: '\r\n [G]Uno \r\n\r\n[C]Dos  \n' }))).toMatchObject({ text: 'Uno\n\nDos', chordPro: '[G]Uno\n\n[C]Dos' })
+    expect(first(chorded({ chordPro: '[G]hola\u0000' }))).toBeUndefined()
+    expect(first(chorded({ chordPro: `[G]${'a'.repeat(LYRICS_LIMITS.maxText)}` }))).toBeDefined()
+    expect(first(chorded({ chordPro: `[G]${'a'.repeat(LYRICS_LIMITS.maxText + 1)}` }))).toBeUndefined()
+  })
+
+  test('the tonality is optional (absent keeps the stored one), nullable and must be a note with an optional m', () => {
+    const plain = parse(body())
+    expect(plain.success && 'key' in plain.data).toBe(false)
+    expect(parse(body({ key: 'Em' })).success).toBe(true)
+    expect(parse(body({ key: null })).success).toBe(true)
+    for (const key of ['', 'H', 'em', 'G7', 'Gmaj', ' G', 5]) expect(parse(body({ key })).success, String(key)).toBe(false)
+  })
+})
+
+describe('parámetros de transposición', () => {
+  test('reads semitones as a signed integer and a target key; nothing is a no transposition', () => {
+    expect(transposeQuery({})).toEqual({ ok: true, request: null })
+    expect(transposeQuery({ semitones: '3' })).toEqual({ ok: true, request: { semitones: 3 } })
+    expect(transposeQuery({ semitones: '-2' })).toEqual({ ok: true, request: { semitones: -2 } })
+    expect(transposeQuery({ toKey: 'F#m' })).toEqual({ ok: true, request: { toKey: 'F#m' } })
+    expect(transposeQuery({ other: 'x' })).toEqual({ ok: true, request: null })
+  })
+
+  test('refuses non numeric, fractional, huge, empty or combined parameters', () => {
+    for (const query of [{ semitones: 'x' }, { semitones: '1.5' }, { semitones: '' }, { semitones: '+2' }, { semitones: '123' }, { toKey: '' }, { toKey: 'H' }, { semitones: '1', toKey: 'A' }])
+      expect(transposeQuery(query), JSON.stringify(query)).toEqual({ ok: false })
+  })
+})
+
+describe('transposición de una letra', () => {
+  const sections = [{ text: 'a', chordPro: '[G]a [Em]b' }, { text: 'c', chordPro: null }, { text: 'd', chordPro: '[D/F#]d' }]
+
+  test('moves every chorded section and the key, and leaves the rest as it is', () => {
+    expect(transposeLyrics('G', sections, { semitones: 3 })).toEqual({
+      key: 'Bb', semitones: 3,
+      sections: [{ text: 'a', chordPro: '[Bb]a [Gm]b' }, { text: 'c', chordPro: null }, { text: 'd', chordPro: '[F/A]d' }],
+    })
+  })
+
+  test('to a target key, and a refusal when it cannot be done', () => {
+    expect(transposeLyrics('Em', [{ chordPro: '[Em]x [C]y' }], { toKey: 'Gm' })?.sections).toEqual([{ chordPro: '[Gm]x [Eb]y' }])
+    expect(transposeLyrics('Em', sections, { toKey: 'G' })).toBeNull()
+    expect(transposeLyrics(null, sections, { toKey: 'G' })).toBeNull()
+  })
+
+  test('refuses to guess when the stored chords are corrupt', () => {
+    expect(() => transposeLyrics('G', [{ chordPro: '[Zz]x' }], { semitones: 2 })).toThrow()
+  })
+})
+
+describe('letra pública sin acordes', () => {
+  test('never shows chords, key or any other stored field even if the stored rows carry them', () => {
+    const stored = { published: true, key: 'G', sections: [{ kind: 'VERSE' as const, label: null, text: 'Luz ficticia', chordPro: '[G]Luz ficticia', repeat: 1, position: 0 }] }
+    const shown = publicLyrics(stored)
+    expect(shown).toEqual([{ kind: 'VERSE', label: null, text: 'Luz ficticia', repeat: 1 }])
+    expect(JSON.stringify(shown)).not.toMatch(/chordPro|key|\[G\]/)
   })
 })
