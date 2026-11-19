@@ -3,7 +3,7 @@
   "services": {
     "api": {
       "root": "apps/api",
-      "entrypoint": "api/index.mjs",
+      "entrypoint": "src/vercel.ts",
       "installCommand": "pnpm install --frozen-lockfile",
       "buildCommand": "pnpm build"
     },
