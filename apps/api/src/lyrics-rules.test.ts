@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { CHORD_LIMITS, parseChordPro } from './chord-rules.js'
 import { LYRICS_LIMITS, lyricsBody, publicLyrics, transposeLyrics, transposeQuery } from './lyrics-rules.js'
 
 // Every text below is invented for these tests.
@@ -164,6 +165,36 @@ describe('transposición de una letra', () => {
 
   test('refuses to guess when the stored chords are corrupt', () => {
     expect(() => transposeLyrics('G', [{ chordPro: '[Zz]x' }], { semitones: 2 })).toThrow()
+  })
+})
+
+describe('acordes: normalización y compatibilidad', () => {
+  const only = (chordPro: string) => { const result = parse(body({ sections: [{ kind: 'VERSE', chordPro }] })); return result.success ? result.data.sections[0] : undefined }
+
+  test('the derived text always matches what the stored chordPro parses to, even with spaces at a mark', () => {
+    const shown = only('Uno [G]\nDos')
+    expect(shown).toMatchObject({ text: 'Uno\nDos', chordPro: 'Uno[G]\nDos' })
+    const reparsed = parseChordPro(shown!.chordPro!)
+    expect(reparsed.ok && reparsed.text).toBe(shown!.text)
+    for (const source of ['[G] Uno\n [C]  Dos [D] \n\n', '\n\n[G]Uno  [C] dos', '  [G]  \n[C]Hola mundo  ']) {
+      const item = only(source)
+      const again = item?.chordPro ? parseChordPro(item.chordPro) : undefined
+      expect(item && again?.ok && again.text === item.text, source).toBe(true)
+      expect(item?.text).toBe(item?.text?.trim())
+    }
+    expect(only('[G] Uno')).toMatchObject({ text: 'Uno', chordPro: '[G]Uno' })
+  })
+
+  test('an oversized chordPro is refused before it is parsed', () => {
+    expect(only(`[G]a${' '.repeat(CHORD_LIMITS.maxChordPro)}`)).toBeUndefined()
+  })
+})
+
+describe('transposición por cero', () => {
+  test('keeps the stored chords as written, without respelling them', () => {
+    expect(transposeLyrics('G', [{ chordPro: '[Bb]x [A#]y' }], { semitones: 0 })).toEqual({ key: 'G', semitones: 0, sections: [{ chordPro: '[Bb]x [A#]y' }] })
+    expect(transposeLyrics('G', [{ chordPro: '[Bb]x' }], { toKey: 'G' })?.sections).toEqual([{ chordPro: '[Bb]x' }])
+    expect(transposeLyrics('A#', [{ chordPro: '[Bb]x' }], { toKey: 'Bb' })).toMatchObject({ key: 'Bb', sections: [{ chordPro: '[Bb]x' }] })
   })
 })
 

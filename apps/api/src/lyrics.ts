@@ -41,12 +41,20 @@ async function replace(tx: Tx, songId: string, body: LyricsBody) {
   if (!await tx.song.findUnique({ where: { id: songId }, select: { id: true } })) return { result: 'missing' as const }
   const [current] = await tx.$queryRaw<Array<{ id: string; version: number }>>`SELECT id, version FROM "SongLyrics" WHERE "songId" = ${songId} FOR UPDATE`
   if ((current?.version ?? 0) !== body.version) return { result: 'stale' as const, version: current?.version ?? 0 }
-  // A client that does not know about chords omits `chordPro`: a section whose text did not change keeps its chords.
-  const previous = current ? await tx.lyricsSection.findMany({ where: { lyricsId: current.id }, select: { text: true, chordPro: true } }) : []
-  const rows = body.sections.map(({ chordPro, ...section }, position) => {
-    const kept = chordPro === undefined ? previous.findIndex(old => old.text === section.text && old.chordPro !== null) : -1
-    return { ...section, position, chordPro: chordPro === undefined ? (kept >= 0 ? previous.splice(kept, 1)[0]!.chordPro : null) : chordPro }
-  })
+  // A client that does not know about chords omits `chordPro`. Then a section keeps its chords only in the same
+  // position and with the identical text; if any stored chorded section would change, move or vanish, nothing is
+  // written and the client must resend it (with `chordPro: null` to remove the chords on purpose).
+  const previous = current ? await tx.lyricsSection.findMany({ where: { lyricsId: current.id }, orderBy: { position: 'asc' }, select: { kind: true, label: true, text: true, chordPro: true } }) : []
+  if (body.sections.some(section => section.chordPro === undefined)) {
+    const affected = previous.flatMap((old, position) => {
+      const next = body.sections[position]
+      return old.chordPro === null || (next && (next.chordPro !== undefined || next.text === old.text)) ? [] : [{ position, kind: old.kind, label: old.label }]
+    })
+    if (affected.length > 0) return { result: 'chords' as const, sections: affected }
+  }
+  const rows = body.sections.map(({ chordPro, ...section }, position) => ({
+    ...section, position, chordPro: chordPro === undefined ? (previous[position]?.text === section.text ? previous[position]!.chordPro : null) : chordPro,
+  }))
   if (!current) {
     await tx.songLyrics.create({ data: { songId, published: body.published ?? false, key: body.key ?? null, sections: { create: rows } }, select: { id: true } })
   } else {
@@ -96,6 +104,7 @@ export function lyricsRoutes(config: SessionConfig, db?: PrismaClient) {
       return { result: 'stale' as const, version: undefined }
     })
     if (outcome.result === 'missing') return c.json({ error: 'Not found' }, 404)
+    if (outcome.result === 'chords') return c.json({ error: 'chords_would_be_lost', sections: outcome.sections }, 409)
     if (outcome.result === 'stale') {
       const version = outcome.version ?? (await db.songLyrics.findUnique({ where: { songId }, select: { version: true } }))?.version ?? 0
       return c.json({ error: 'Lyrics changed', version }, 409)

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CHORD_LIMITS, parseChordPro, parseKey, planTransposition, transposeChordPro } from './chord-rules.js'
+import { CHORD_LIMITS, parseChordPro, parseKey, planTransposition, serializeChordPro, transposeChordPro } from './chord-rules.js'
 
 export const LYRICS_LIMITS = { maxSections: 60, maxText: 4000, maxLabel: 60, maxRepeat: 8 } as const
 
@@ -36,17 +36,43 @@ const section = z.strictObject({
   let chordPro: string | null | undefined = value.chordPro === null ? null : undefined
   let candidate = value.text
   if (value.chordPro !== undefined && value.chordPro !== null) {
-    const source = normalize(value.chordPro)
-    const parsed = parseChordPro(source)
-    if (!source || source.length > CHORD_LIMITS.maxChordPro || hasControl(source) || !parsed.ok) return fail()
-    const derived = normalize(parsed.text)
-    if (value.text !== undefined && normalize(value.text) !== derived) return fail()
-    candidate = derived
-    chordPro = parsed.chords.length > 0 ? source : null
+    // Size first, so an oversized input is never parsed.
+    if (value.chordPro.length > CHORD_LIMITS.maxChordPro || hasControl(value.chordPro.replace(/\r\n?/g, '\n'))) return fail()
+    const parsed = parseChordPro(value.chordPro.replace(/\r\n?/g, '\n'))
+    if (!parsed.ok) return fail()
+    const canonical = canonicalChordPro(parsed)
+    if (!canonical.text || canonical.chordPro.length > CHORD_LIMITS.maxChordPro) return fail()
+    if (value.text !== undefined && normalize(value.text) !== canonical.text) return fail()
+    candidate = canonical.text
+    chordPro = parsed.chords.length > 0 ? canonical.chordPro : null
   }
   const clean = text.safeParse(candidate)
   return clean.success ? { kind: value.kind, label: value.label, text: clean.data, chordPro, repeat: value.repeat } : fail()
 })
+
+/**
+ * Normalizes a parsed chorded text like `normalize` does with plain text (trimmed lines and edges) and moves each
+ * chord offset along, so the derived text always equals what `parseChordPro` finds in the stored `chordPro`.
+ */
+function canonicalChordPro(parsed: { text: string; chords: Array<{ offset: number; chord: string }> }) {
+  const kept: boolean[] = []
+  let index = 0
+  for (const line of parsed.text.split('\n')) {
+    const lead = line.length - line.trimStart().length
+    const end = line.trimEnd().length
+    for (let at = 0; at < line.length; at++) kept[index + at] = line.trim() !== '' && at >= lead && at < end
+    index += line.length
+    if (index < parsed.text.length) kept[index++] = true
+  }
+  let first = 0
+  let last = kept.length
+  while (first < last && (!kept[first] || parsed.text[first] === '\n')) first++
+  while (last > first && (!kept[last - 1] || parsed.text[last - 1] === '\n')) last--
+  const keep = (at: number) => kept[at] === true && at >= first && at < last
+  const text = [...parsed.text].filter((_, at) => keep(at)).join('')
+  const before = (offset: number) => { let count = 0; for (let at = 0; at < offset; at++) if (keep(at)) count++; return count }
+  return { text, chordPro: serializeChordPro(text, parsed.chords.map(item => ({ offset: before(item.offset), chord: item.chord }))) }
+}
 
 const lyricsKey = z.string().refine(value => parseKey(value) !== null)
 
@@ -100,7 +126,8 @@ export function transposeLyrics<T extends { chordPro: string | null }>(key: stri
   return {
     key: plan.key, semitones: plan.semitones,
     sections: sections.map(item => {
-      if (item.chordPro === null) return item
+      // Moving by zero returns the stored chords as they are, without respelling them.
+      if (item.chordPro === null || plan.semitones === 0) return item
       const moved = transposeChordPro(item.chordPro, plan.semitones, plan.spelling)
       if (moved === null) throw new Error('Stored chords are invalid')
       return { ...item, chordPro: moved }

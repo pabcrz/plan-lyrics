@@ -161,7 +161,7 @@ describe('plan de transposición', () => {
 
   test('to a target key: same mode only, spelled as the target is written', () => {
     expect(planTransposition('G', { toKey: 'Bb' })).toEqual({ ok: true, semitones: 3, spelling: 'flat', key: 'Bb' })
-    expect(planTransposition('G', { toKey: 'A#' })).toEqual({ ok: true, semitones: 3, spelling: 'sharp', key: 'A#' })
+    expect(planTransposition('G', { toKey: 'A#' })).toEqual({ ok: true, semitones: 3, spelling: 'sharp', key: 'Bb' })
     expect(planTransposition('Em', { toKey: 'Gm' })).toEqual({ ok: true, semitones: 3, spelling: 'flat', key: 'Gm' })
     expect(planTransposition('Am', { toKey: 'F#m' })).toEqual({ ok: true, semitones: 9, spelling: 'sharp', key: 'F#m' })
     expect(planTransposition('G', { toKey: 'Em' })).toEqual({ ok: false })
@@ -190,5 +190,7 @@ describe('plan de transposición', () => {
     expect(planTransposition('G', { semitones: 11 }).ok).toBe(true)
     expect(planTransposition('G', { semitones: -11 }).ok).toBe(true)
     expect(planTransposition('G', { semitones: 0 })).toMatchObject({ ok: true, semitones: 0, key: 'G' })
+    expect(planTransposition('A#', { semitones: 0 })).toMatchObject({ semitones: 0, key: 'A#' })
+    expect(planTransposition('G', { toKey: 'G' })).toMatchObject({ semitones: 0, key: 'G' })
   })
 })

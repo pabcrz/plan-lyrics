@@ -119,12 +119,12 @@ export function planTransposition(key: string | null, request: { semitones?: num
   if ((request.semitones === undefined) === (request.toKey === undefined)) return { ok: false }
   if (request.toKey !== undefined) {
     const semitones = key === null ? null : semitonesBetween(key, request.toKey)
-    return semitones === null ? { ok: false } : { ok: true, semitones, spelling: keySpelling(request.toKey), key: request.toKey }
+    return semitones === null ? { ok: false } : { ok: true, semitones, spelling: keySpelling(request.toKey), key: transposeKeyName(request.toKey, 0) }
   }
   const { semitones } = request
   if (semitones === undefined || !Number.isInteger(semitones) || semitones < -11 || semitones > 11) return { ok: false }
   if (key !== null) {
-    const moved = transposeKeyName(key, semitones)
+    const moved = semitones === 0 ? key : transposeKeyName(key, semitones)
     return moved ? { ok: true, semitones, spelling: keySpelling(moved), key: moved } : { ok: false }
   }
   const notes = sources.flatMap(source => { const parsed = parseChordPro(source); return parsed.ok ? parsed.chords.flatMap(item => { const chord = parseChord(item.chord)!; return [chord.root, ...(chord.bass ? [chord.bass] : [])] }) : [] })
