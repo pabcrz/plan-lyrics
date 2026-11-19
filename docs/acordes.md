@@ -19,7 +19,7 @@ Raíz `A`–`G` con `#` o `b` opcional, calidad de una **lista cerrada** (`m`, `
 ## Transposición
 
 - **Solo cálculo:** `GET /api/songs/:songId/lyrics?semitones=n` o `?toKey=D` devuelve la letra con los acordes y la tonalidad movidos, más `semitones`. No guarda nada ni cambia la versión. Un `#` en `toKey` debe ir codificado (`F%23m`).
-- `semitones` va de -11 a 11; `toKey` exige tonalidad guardada **del mismo modo** (mayor con mayor, menor con menor). Sin tonalidad guardada solo funciona `semitones`. Ambos a la vez, valores inválidos o una petición imposible son `400`. Otros parámetros se siguen ignorando.
+- `semitones` va de -11 a 11; `toKey` exige tonalidad guardada **del mismo modo** (mayor con mayor, menor con menor). Sin tonalidad guardada solo funciona `semitones`. Con `semitones=0` o una `toKey` igual a la guardada, los acordes se devuelven tal cual, sin reescribir la enarmonía (un `Bb` en tono `G` sigue `Bb`). El nombre de `toKey` se devuelve en su grafía canónica (`A#` → `Bb`), aunque la grafía escrita decide sostenidos o bemoles de los acordes. Ambos a la vez, valores inválidos o una petición imposible son `400`. Otros parámetros se siguen ignorando.
 - Solo se mueven la raíz y el bajo; la calidad y las extensiones se conservan tal cual (`Em7b5` → `Am7b5`).
 - **Enarmonía:** la tonalidad destino decide sostenidos o bemoles. Si se escribe con alteración (`Bb`, `F#`) manda ella; si no, la armadura (mayores `F` y menores `Dm`, `Gm`, `Cm`, `Fm` con bemoles; el resto con sostenidos). Al transponer por semitonos se usa la tonalidad resultante con su nombre habitual (`Bb`, `Eb`, `Ab`, `Db`, `F#`; `C#m`, `Ebm`, `F#m`, `G#m`, `Bbm`). Sin tonalidad guardada, si los acordes de origen solo tienen bemoles se conservan bemoles; en cualquier otro caso, sostenidos. Un acorde enarmónico (`A#`) se reescribe con la grafía destino.
 
@@ -30,7 +30,9 @@ Raíz `A`–`G` con `#` o `b` opcional, calidad de una **lista cerrada** (`m`, `
 | `GET /api/songs/:songId/lyrics` | Respuesta ampliada: `key` y, por sección, `chordPro` (ambos `null` si no hay). Con `semitones` o `toKey` calcula la transposición. Permisos sin cambios (miembros y editores leen). |
 | `PUT /api/songs/:songId/lyrics` | Secciones aceptan `chordPro` (y `text` opcional si hay `chordPro`); el cuerpo acepta `key` (ausente la conserva, `null` la borra). Mismo control de versión, mismo `409`, mismos permisos: solo superadministrador y editores de biblioteca; el `403` sigue antes de validar. |
 
-**Compatibilidad:** los campos nuevos son aditivos. Un cliente que no conoce los acordes y reenvía el mismo texto **no pierde los acordes**: si una sección omite `chordPro` y su texto no cambió, conserva los suyos; si el texto cambió, esos acordes ya no lo describen y se descartan; `chordPro: null` los borra de forma explícita.
+**Compatibilidad y pérdida de acordes (criterio restrictivo):** los campos nuevos son aditivos. Si la letra guardada tiene acordes y el `PUT` **omite** `chordPro` en alguna sección, cada sección con acordes guardados solo los conserva si ocupa **la misma posición y su texto es idéntico**. Si cualquier sección con acordes cambiaría, se movería o desaparecería (reordenar, corregir el texto, insertar o quitar secciones, duplicadas incluidas), la API responde `409 {"error":"chords_would_be_lost","sections":[{position,kind,label}]}` con las secciones afectadas y **no escribe nada**. Para cambiarlas a propósito, el cliente reenvía la sección con `chordPro` explícito (texto con acordes) o `chordPro: null` (borrar los acordes). La versión desactualizada se sigue informando antes (`409 Lyrics changed`).
+
+**Normalización:** el texto derivado de `chordPro` se normaliza como cualquier texto (líneas y bordes recortados) y las posiciones de los acordes se ajustan, de modo que `text` siempre coincide con lo que se obtiene al interpretar el `chordPro` guardado (`Uno [G]` se guarda como `Uno[G]`). El tamaño máximo se valida antes de interpretar.
 
 ### Base de datos
 
@@ -56,7 +58,7 @@ Sin cambios de contrato: la vista pública y la consulta de letras publicadas **
 - **Importación de TXT** con acordes encima y exportaciones TXT/ChordPro: sin decidir.
 - **Tonalidad por servicio u override de iglesia:** el producto prevé adaptaciones que heredan de la base; hoy la tonalidad contextual del setlist es independiente y no transpone la letra.
 - **Texto plano con marcas:** una sección sin `chordPro` cuyo `text` contenga literalmente `[Am]` se publica tal cual (es texto). ¿Se debe rechazar o limpiar?
-- **Calidades de acorde** fuera de la lista (`C6/9`, `m(maj7)`, `sus`) y acordes sin texto asociado (solo instrumental) en una sección.
+- **Lista cerrada de calidades de acorde:** ¿se amplía (`C6/9`, `m(maj7)`, `sus`, `6add9`) o se acepta cualquier sufijo sin validarlo? Hoy lo no listado se rechaza. También queda por decidir cómo guardar acordes sin texto asociado (pasajes instrumentales).
 - **Matiz de notación:** alteraciones enarmónicas raras (`E#`, `Cb`) se aceptan como acorde y se reescriben al transponer; como tonalidad se rechazan.
 - **Límites definitivos** de tamaño y número de acordes.
 - **BPM:** no existe en la biblioteca; cuando exista deberá seguir fuera de la vista pública.
