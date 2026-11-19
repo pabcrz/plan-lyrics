@@ -85,6 +85,16 @@ test('does not let a chord leave the line', async () => {
   expect(sheet().getByRole('button', { name: 'Un carácter a la derecha' })).toBeDisabled()
 })
 
+test('marks on the plain line where the chord lands, apart from the chord padding', async () => {
+  edit()
+  fireEvent.click((await section(2)).getByRole('button', { name: 'Agregar acorde a la línea 2' }))
+  expect(sheet().getByRole('img', { name: 'Cae al inicio, antes de «Segunda línea de la misma estrofa»' })).toBeInTheDocument()
+  right(8)
+  expect(sheet().getByRole('img', { name: 'Cae entre «Segunda » y «línea de la misma estrofa»' })).toBeInTheDocument()
+  right(40)
+  expect(sheet().getByRole('img', { name: 'Cae al final, después de «Segunda línea de la misma estrofa»' })).toBeInTheDocument()
+})
+
 test('renames a chord and removes another', async () => {
   const server = edit()
   fireEvent.click((await section(2)).getByRole('button', { name: 'Editar acorde Em' }))

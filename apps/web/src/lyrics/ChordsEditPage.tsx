@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { Button, Icon, Notice, Segmented, Sheet, TextField } from '../ui'
 import { ApiError } from '../calendar/api'
-import { ChordLine, ChordsLost, linesOf } from './ChordParts'
+import { ChordLine, ChordsLost, PositionRuler, linesOf } from './ChordParts'
 import { EditHeader } from './LyricsEditPage'
 import { LyricsHeader, LyricsLoadFailure } from './LyricsPage'
 import { isChord, keysOfMode, parseKey, serializeLines, type Line } from './chords'
@@ -198,6 +198,7 @@ function Editor({ songId, lyrics, nav }: { songId: string; lyrics: Lyrics; nav: 
               <ChordLine line={sheetLine} mark={sheetLine.chords.findIndex((mark, index) => mark.offset === editing.offset && sheetLine.chords[index]!.chord === editing.chord.trim())} />
               <small className="text-[0.8125rem] text-text-3">Posición {editing.offset} de {lineOf(editing).text.length}</small>
             </div>
+            <PositionRuler text={lineOf(editing).text} offset={editing.offset} />
             <TextField label="Acorde" value={editing.chord} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={16} className="font-mono"
               help="Por ejemplo: Am, C/G, F#m7, Dsus4." error={chordError || undefined}
               onChange={(event) => { setEditing({ ...editing, chord: event.target.value }); setChordError('') }}
