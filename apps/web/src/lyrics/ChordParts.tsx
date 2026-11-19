@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Fragment, type MouseEvent, type ReactNode } from 'react'
 import { Button, Notice } from '../ui'
 import { parseLines, segments, type Line } from './chords'
 import { kindLabel, type Section, type SectionKind } from './lyrics-model'
@@ -50,17 +50,24 @@ export function ChordsLost({ sections, intro, onReload }: { sections: Affected; 
   )
 }
 
-/** El texto sin acordes con una marca donde cae el acorde: el relleno del acorde en la vista previa no mueve esta referencia. */
-export function PositionRuler({ text, offset }: { text: string; offset: number }) {
+/** El texto sin acordes con una marca donde cae el acorde: el relleno del acorde en la vista previa no mueve esta referencia. Tocar una letra mueve el acorde ahí (mitad izquierda: antes; derecha: después). */
+export function PositionRuler({ text, offset, onPick }: { text: string; offset: number; onPick: (offset: number) => void }) {
   const before = text.slice(0, offset)
   const after = text.slice(offset)
   const label = before === '' ? `Cae al inicio, antes de «${after}»` : after === '' ? `Cae al final, después de «${before}»` : `Cae entre «${before}» y «${after}»`
+  const pick = (at: number) => (event: MouseEvent<HTMLSpanElement>) => {
+    const box = event.currentTarget.getBoundingClientRect()
+    onPick(event.clientX > box.left + box.width / 2 ? at + 1 : at)
+  }
   return (
-    <p role="img" aria-label={label} className="m-0 text-[1.0625rem] leading-normal whitespace-pre-wrap [overflow-wrap:anywhere]">
-      <span aria-hidden="true" className="text-text-3">{before}</span>
-      <span aria-hidden="true" className="mx-px inline-block h-[1.2em] w-0.5 translate-y-[0.2em] rounded-sm bg-accent" />
-      <span aria-hidden="true" className="font-semibold">{after.slice(0, 1)}</span>
-      <span aria-hidden="true" className="text-text-3">{after.slice(1)}</span>
+    <p role="img" aria-label={label} className="m-0 cursor-pointer text-[1.0625rem] leading-normal whitespace-pre-wrap [overflow-wrap:anywhere]">
+      {[...text].map((char, at) => (
+        <Fragment key={at}>
+          {at === offset && <span aria-hidden="true" className="mx-px inline-block h-[1.2em] w-0.5 translate-y-[0.2em] rounded-sm bg-accent" />}
+          <span aria-hidden="true" data-at={at} onClick={pick(at)} className={at === offset ? 'font-semibold' : 'text-text-3'}>{char}</span>
+        </Fragment>
+      ))}
+      {offset >= text.length && <span aria-hidden="true" className="mx-px inline-block h-[1.2em] w-0.5 translate-y-[0.2em] rounded-sm bg-accent" />}
     </p>
   )
 }
