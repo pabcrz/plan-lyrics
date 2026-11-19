@@ -88,7 +88,7 @@ function Editor({ songId, lyrics, nav }: { songId: string; lyrics: Lyrics; nav: 
     const rest = chords.filter((_, index) => index !== at.index)
     if (remove) return { text, chords: rest }
     const next = rest.findIndex((mark) => mark.offset > at.offset)
-    rest.splice(next < 0 ? rest.length : next, 0, { offset: at.offset, chord: at.chord.trim() })
+    rest.splice(next < 0 ? rest.length : next, 0, { offset: at.offset, chord: at.chord.trim() || '?' })
     return { text, chords: rest }
   }
 
@@ -146,7 +146,7 @@ function Editor({ songId, lyrics, nav }: { songId: string; lyrics: Lyrics; nav: 
               <span className="mt-2 block"><Button variant="secondary" onClick={() => void reload()}>Recargar la letra</Button></span>
             </Notice>
           )}
-          {lost && <ChordsLost sections={lost} intro="Tus cambios modificarían el texto de estas secciones y sus acordes no se podrían conservar. No se guardó nada." onReload={() => void reload()} />}
+          {lost && <ChordsLost sections={lost} intro="Con lo que intentas guardar, los acordes de estas secciones no se podrían conservar. No se guardó nada." onReload={() => void reload()} />}
           {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
         </div>
 
@@ -172,7 +172,7 @@ function Editor({ songId, lyrics, nav }: { songId: string; lyrics: Lyrics; nav: 
                   <div key={lineIndex} className="grid grid-cols-[1fr_auto] items-end gap-1 border-t border-dashed border-line py-1 first-of-type:border-t-0">
                     <ChordLine line={line} renderChord={(chord, index) => (
                       <button type="button" aria-label={`Editar acorde ${chord}`} onClick={() => open({ section: sectionIndex, line: lineIndex, index, chord, offset: line.chords[index]!.offset })}
-                        className="mr-1.5 mb-0.5 min-h-8 min-w-8 cursor-pointer rounded-sm border-0 bg-accent-soft px-2 font-mono text-sm font-medium text-accent-soft-text hover:bg-accent-soft/70">{chord}</button>
+                        className="mr-1.5 mb-0.5 min-h-8 min-w-8 cursor-pointer self-start rounded-sm border-0 bg-accent-soft px-2 font-mono text-sm font-medium text-accent-soft-text hover:bg-accent-soft/70">{chord}</button>
                     )} />
                     {line.text !== '' && (
                       <button type="button" aria-label={`Agregar acorde a la línea ${lineIndex + 1}`} onClick={() => open({ section: sectionIndex, line: lineIndex, index: null, chord: '', offset: 0 })}

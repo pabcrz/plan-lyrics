@@ -24,7 +24,7 @@ export function ChordLine({ line, renderChord, mark }: { line: Line; renderChord
           <span key={index} className="inline-flex flex-col align-bottom whitespace-pre-wrap">
             {part.chord === null
               ? <span aria-hidden="true" className="min-h-[1.5em]" />
-              : renderChord?.(part.chord, at) ?? <span className={`min-h-[1.5em] pr-[0.6em] font-mono text-sm leading-normal font-medium ${at === mark ? 'rounded-sm bg-accent-soft px-1 text-accent-soft-text' : 'text-accent'}`}>{part.chord}</span>}
+              : renderChord?.(part.chord, at) ?? <span className={`min-h-[1.5em] self-start pr-[0.6em] font-mono text-sm leading-normal font-medium ${at === mark ? 'rounded-sm bg-accent-soft px-1 text-accent-soft-text' : 'text-accent'}`}>{part.chord}</span>}
             <span className="text-[1.0625rem] leading-normal">{part.text}</span>
           </span>
         )
