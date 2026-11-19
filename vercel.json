@@ -9,7 +9,13 @@
     },
     "web": {
       "root": "apps/web",
-      "framework": "vite"
+      "framework": "vite",
+      "rewrites": [
+        {
+          "source": "/(.*)",
+          "destination": "/index.html"
+        }
+      ]
     }
   },
   "rewrites": [
@@ -22,8 +28,7 @@
     {
       "source": "/(.*)",
       "destination": {
-        "service": "web",
-        "path": "/index.html"
+        "service": "web"
       }
     }
   ],
