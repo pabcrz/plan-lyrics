@@ -21,7 +21,10 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": {
+        "service": "web",
+        "path": "/index.html"
+      }
     }
   ],
   "headers": [
