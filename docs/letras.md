@@ -1,6 +1,6 @@
 # Letras de la biblioteca (API y pantallas)
 
-Primeras rebanadas de la [etapa 2 del producto](producto.md#etapa-2--letras): modelo, reglas y rutas (API) y las [pantallas móviles](#pantallas) para ver y editar la letra. **No hay letras reales** en el repositorio: las pruebas usan solo textos inventados. No incluye acordes (etapa 3) ni ChordPro.
+Primeras rebanadas de la [etapa 2 del producto](producto.md#etapa-2--letras): modelo, reglas y rutas (API) y las [pantallas móviles](#pantallas) para ver y editar la letra. **No hay letras reales** en el repositorio: las pruebas usan solo textos inventados. Los acordes (etapa 3) se describen en [acordes](acordes.md); esta guía sigue siendo la del texto.
 
 ## Qué hay
 
@@ -41,7 +41,7 @@ El producto no las resuelve; cada una se puede relajar con una decisión explíc
 - **Quién publica:** hoy es quien edita. ¿Debe publicar una persona distinta, o requerir revisión?
 - **Letras en las versiones del ministerio** y en la imagen/PDF del setlist: hoy no.
 - **Derechos de las letras:** el producto no dice si publicar exige alguna constancia de licencia; no se ha añadido ninguna.
-- **ChordPro como fuente única:** el producto pide «una sola fuente ChordPro» para derivar vistas. Esta rebanada guarda texto simple por secciones; la unión con acordes (etapa 3) y la conversión desde o hacia ChordPro quedan por decidir.
+- **ChordPro como fuente única:** resuelto en lo esencial para las secciones en [acordes](acordes.md#representación); la exportación e importación de ChordPro completo siguen abiertas.
 - **Importación** de texto existente (TXT) y límites definitivos de tamaño.
 - **Pantalla de biblioteca:** hoy la letra se abre desde la edición de una canción del setlist; no hay lista ni buscador de canciones con letra. La API de letras tampoco devuelve el título de la canción (las pantallas lo reciben del setlist; sin él muestran «Letra de la canción»).
 - **Publicar por primera vez:** activar «Publicable» en una letra sin publicar no pide confirmación (es una decisión explícita de quien edita); ¿debe pedirla también?
