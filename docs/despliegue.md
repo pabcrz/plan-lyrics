@@ -65,7 +65,7 @@ Variables (Production; evitá cargarlas en Preview, ver más abajo):
 | `CLERK_SECRET_KEY` | Secret key de Clerk. |
 | `CLERK_JWT_KEY` | Clave pública PEM completa, con saltos de línea. |
 | `CLERK_ISSUER` | Issuer de la instancia. |
-| `CLERK_AUTHORIZED_PARTY` | Origen de la web (paso 4 de Clerk). |
+| `CLERK_AUTHORIZED_PARTY` | Origen de la web (paso 4 de Clerk); admite varios separados por comas, el primero es el de producción. |
 | `WEB_ORIGIN` | El mismo origen de la web. |
 | `SHARE_LINK_SECRET` | Ver abajo. |
 

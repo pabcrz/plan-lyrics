@@ -32,3 +32,9 @@ test('a provider failure surfaces as one generic error without the original mess
   client.users.getUserList = vi.fn(async () => { throw new Error('secret sk_live_123 leaked') })
   await expect(clerkIdentityProvider(client).inviteByEmail('ana@example.com')).rejects.toThrow(/^Identity provider unavailable$/)
 })
+
+test('sends the redirect URL with the invitation only when one is configured', async () => {
+  const { client } = fakeClerk()
+  await clerkIdentityProvider(client, 'https://app.example.com').inviteByEmail('ana@example.com')
+  expect(client.invitations.createInvitation).toHaveBeenCalledWith({ emailAddress: 'ana@example.com', ignoreExisting: true, notify: true, redirectUrl: 'https://app.example.com' })
+})
