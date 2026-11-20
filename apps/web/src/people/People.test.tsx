@@ -67,9 +67,9 @@ test('adds a person with a full name and an optional phone, then opens the recor
   const save = await screen.findByRole('button', { name: 'Agregar persona' }) as HTMLButtonElement
   expect(save.disabled).toBe(true)
   fireEvent.change(screen.getByLabelText('Nombre completo'), { target: { value: ' Juan Pérez Rodríguez ' } })
-  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '555 0101' } })
+  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '5550101234' } })
   fireEvent.click(save)
-  await waitFor(() => expect(sent(calls, 'POST')).toEqual([{ url: '/api/people', body: { name: 'Juan Pérez Rodríguez', phone: '555 0101' } }]))
+  await waitFor(() => expect(sent(calls, 'POST')).toEqual([{ url: '/api/people', body: { name: 'Juan Pérez Rodríguez', phone: '+525550101234' } }]))
 })
 
 test('an existing name is not created again: it asks to complete the name and links to the record', async () => {
@@ -84,31 +84,71 @@ test('an existing name is not created again: it asks to complete the name and li
   expect(await screen.findByRole('heading', { name: 'Ana Ramírez', level: 1 })).toBeTruthy()
 })
 
-test('the record shows the account state read-only and the note about shared data', async () => {
-  stubApi({ directory: [detail({ id: 'p1', hasAccount: true, sharedWithOtherChurches: true })], church: member })
+test('a member sees only the name, phone and a WhatsApp link', async () => {
+  stubApi({ directory: [detail({ id: 'p1', hasAccount: true, sharedWithOtherChurches: true, phone: '+525512345678' })], church: member })
   app('/personas/p1')
   expect(await screen.findByRole('heading', { name: 'Ana Ramírez', level: 1 })).toBeTruthy()
-  expect(screen.getByText('Con cuenta vinculada')).toBeTruthy()
-  expect(screen.getByText(/se ve igual en las demás iglesias/)).toBeTruthy()
-  expect(screen.getByText(/Vincular o desvincular la cuenta lo hace el superadministrador/)).toBeTruthy()
+  expect((screen.getByRole('link', { name: 'Contactar por WhatsApp' }) as HTMLAnchorElement).href).toBe('https://wa.me/525512345678')
+  expect(screen.queryByText(/Con cuenta/)).toBeNull()
+  expect(screen.queryByText(/otra iglesia|demás iglesias/)).toBeNull()
   expect(screen.queryByLabelText('Nombre completo')).toBeNull()
   expect(screen.queryByRole('button', { name: /Quitar de/ })).toBeNull()
 })
 
+test('a member sees which profile is theirs, without a WhatsApp link to themselves', async () => {
+  stubApi({ directory: [detail({ id: 'p1', isYou: true, phone: '+525512345678' })], church: member })
+  app('/personas/p1')
+  await screen.findByRole('heading', { name: 'Ana Ramírez', level: 1 })
+  expect(screen.getByText('Tú')).toBeTruthy()
+  expect(screen.getByText(/gestiona el administrador/)).toBeTruthy()
+  expect(screen.queryByRole('link', { name: /WhatsApp/ })).toBeNull()
+})
+
+test('the directory marks your own entry', async () => {
+  stubApi({ directory: [detail({ id: 'p1', isYou: true }), detail({ id: 'p2', name: 'Álvaro Núñez' })], church: member })
+  app('/personas')
+  await screen.findByText('Álvaro Núñez')
+  expect(screen.getAllByText('Tú')).toHaveLength(1)
+})
+
+test('an editor types only 10 digits after a fixed +52 and a legacy phone does not block a name change', async () => {
+  const calls = stubApi({ directory: [detail({ id: 'p1', phone: '23342' })], church: editor, patchPerson: () => ({ body: detail({ id: 'p1', name: 'Ana Soto', phone: '23342' }) }) })
+  app('/personas/p1')
+  const phone = await screen.findByLabelText('Teléfono (opcional)') as HTMLInputElement
+  expect(phone.value).toBe('23342')
+  fireEvent.change(await screen.findByLabelText('Nombre completo'), { target: { value: 'Ana Soto' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+  await waitFor(() => expect(sent(calls, 'PATCH')).toHaveLength(1))
+  expect(sent(calls, 'PATCH')[0]?.body).toEqual({ name: 'Ana Soto' })
+  fireEvent.change(phone, { target: { value: '55 1234-56789012' } })
+  expect(phone.value).toBe('5512345678')
+  fireEvent.change(phone, { target: { value: '55123' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+  expect(await screen.findByText('Escribe los 10 dígitos del teléfono.')).toBeTruthy()
+  expect(sent(calls, 'PATCH')).toHaveLength(1)
+})
+
+test('without a usable phone a member gets no WhatsApp link', async () => {
+  stubApi({ directory: [detail({ id: 'p1', phone: '23342' })], church: member })
+  app('/personas/p1')
+  await screen.findByRole('heading', { name: 'Ana Ramírez', level: 1 })
+  expect(screen.queryByRole('link', { name: /WhatsApp/ })).toBeNull()
+})
+
 test('an editor changes name and phone; save and discard appear only when something changed', async () => {
-  const calls = stubApi({ directory, church: editor, patchPerson: () => ({ body: detail({ id: 'p1', name: 'Ana Ramírez Soto', phone: '555-0199' }) }) })
+  const calls = stubApi({ directory, church: editor, patchPerson: () => ({ body: detail({ id: 'p1', name: 'Ana Ramírez Soto', phone: '+525550199000' }) }) })
   app('/personas/p1')
   const name = await screen.findByLabelText('Nombre completo') as HTMLInputElement
   expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
   fireEvent.change(name, { target: { value: 'Ana Ramírez Soto' } })
-  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '555-0199' } })
+  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '5550199000' } })
   fireEvent.click(screen.getByRole('button', { name: 'Descartar cambios' }))
   expect(name.value).toBe('Ana Ramírez')
   fireEvent.change(name, { target: { value: 'Ana Ramírez Soto' } })
-  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '555-0199' } })
+  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '5550199000' } })
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   expect(await screen.findByText('Cambios guardados')).toBeTruthy()
-  expect(sent(calls, 'PATCH')).toEqual([{ url: '/api/people/p1', body: { name: 'Ana Ramírez Soto', phone: '555-0199' } }])
+  expect(sent(calls, 'PATCH')).toEqual([{ url: '/api/people/p1', body: { name: 'Ana Ramírez Soto', phone: '+525550199000' } }])
   expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
 })
 

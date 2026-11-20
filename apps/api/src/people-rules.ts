@@ -12,8 +12,8 @@ export function findSameName<T extends { id: string; name: string }>(people: rea
 }
 
 const name = z.string().transform(value => value.trim().replace(/\s+/g, ' ')).pipe(z.string().min(1).max(120))
-// Vacío significa «sin teléfono»; el resto admite solo los símbolos habituales de un número.
-const phone = z.string().trim().transform(value => value || null).pipe(z.string().regex(/^[\d+()\-.\s]{3,30}$/).nullable())
+// Vacío significa «sin teléfono»; el resto es un número mexicano de 10 dígitos guardado como +52XXXXXXXXXX.
+const phone = z.string().trim().transform(value => value || null).pipe(z.string().regex(/^\+52\d{10}$/).nullable())
 
 // La iglesia nunca forma parte del cuerpo: siempre es la iglesia activa de quien llama.
 export const newPersonBody = z.strictObject({ name, phone: phone.optional() })

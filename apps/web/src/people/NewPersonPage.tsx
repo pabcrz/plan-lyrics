@@ -4,6 +4,7 @@ import { Button, Notice, TextField } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, usePersonActions } from '../calendar/api'
 import type { Church } from '../calendar/model'
+import { PhoneField, phoneError, phoneStored } from './phone'
 
 export function NewPersonPage() {
   return <ChurchGate>{(church) => (church.canEdit ? <Form church={church} /> : <ReadOnly church={church} />)}</ChurchGate>
@@ -24,6 +25,7 @@ function Form({ church }: { church: Church }) {
   const { create } = usePersonActions()
   const [name, setName] = useState((useLocation().state as { name?: string } | null)?.name ?? '')
   const [phone, setPhone] = useState('')
+  const [phoneProblem, setPhoneError] = useState('')
   const [existing, setExisting] = useState<{ id: string; name: string } | null>(null)
   const [failure, setFailure] = useState('')
   const [sending, setSending] = useState(false)
@@ -31,11 +33,14 @@ function Form({ church }: { church: Church }) {
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!name.trim()) return
+    const invalid = phoneError(phone)
+    setPhoneError(invalid)
+    if (invalid) return
     setSending(true)
     setExisting(null)
     setFailure('')
     try {
-      const person = await create({ name: name.trim(), ...(phone.trim() ? { phone: phone.trim() } : {}) })
+      const person = await create({ name: name.trim(), ...(phone ? { phone: phoneStored(phone) as string } : {}) })
       void navigate(`/personas/${encodeURIComponent(person.id)}`, { replace: true })
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409 && caught.existing) setExisting(caught.existing)
@@ -62,7 +67,7 @@ function Form({ church }: { church: Church }) {
             Completa el nombre para distinguirla, o <Link className="font-semibold underline" to={`/personas/${encodeURIComponent(existing.id)}`}>abre su ficha</Link>.
           </Notice>
         )}
-        <TextField label="Teléfono (opcional)" type="tel" inputMode="tel" autoComplete="off" value={phone} maxLength={30} onChange={(event) => setPhone(event.target.value)} />
+        <PhoneField value={phone} error={phoneProblem || undefined} onChange={(digits) => { setPhone(digits); setPhoneError('') }} />
         <p className="m-0 text-[0.8125rem] text-text-3">El nombre y el teléfono son información general: se ven en todas las iglesias donde participe. Sus roles y turnos se configuran en cada iglesia.</p>
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
         <Button type="submit" variant="primary" block loading={sending} disabled={!name.trim()}>Agregar persona</Button>
