@@ -2,8 +2,8 @@ export type Meridiem = 'am' | 'pm'
 export type Time12 = { hour: number; minute: number; meridiem: Meridiem }
 
 export const MINUTES = [0, 15, 30, 45] as const
-/** 12 va antes que la 1, como en un reloj. */
-export const HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const
+/** Posiciones de la rueda: 0 = 12 a.m. ("00"), 1–11, y 12 = 12 p.m. al final. */
+export const HOURS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
