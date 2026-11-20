@@ -46,7 +46,7 @@ function Calendar({ church }: { church: Church }) {
   const open = services.find((service) => service.id === openId)
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} share={church.canEdit} />
       <main className="flex-1 pb-4">
         <div className="flex items-center gap-1 px-4 py-3">

@@ -15,7 +15,7 @@ export function AccessPage() {
 
 function ReadOnly({ church }: { church: Church }) {
   return (
-    <main className="mx-auto min-h-dvh max-w-[480px]">
+    <main className="mx-auto min-h-dvh max-w-[480px] lg:max-w-[720px]">
       <TopBar name={church.name} />
       <PageHeader title="Accesos" back="/ajustes" backLabel="Volver a ajustes" />
       <div className="p-4">
@@ -32,7 +32,7 @@ function Members({ church }: { church: Church }) {
   const [toast, setToast] = useState('')
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings />
       <PageHeader title="Accesos" back="/ajustes" backLabel="Volver a ajustes" />
       <div className="grid flex-1 content-start gap-4 p-4">

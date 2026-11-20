@@ -39,7 +39,7 @@ export function LyricsEditPage() {
 
   if (lyrics?.canEdit) return <Editor key={query.dataUpdatedAt} songId={songId} lyrics={lyrics} title={nav.title} back={nav.back} serviceKey={nav.key} />
   return (
-    <div className="mx-auto min-h-dvh max-w-[480px]">
+    <div className="mx-auto min-h-dvh max-w-[480px] lg:max-w-[720px]">
       <EditHeader title="Editar letra" onBack={() => void navigate(viewPath, { state: { title: nav.title, back: nav.back, key: nav.key } })} />
       <main className="grid gap-4 p-4">
         {query.isPending && <p role="status" className="m-0 text-text-2">Cargando la letra…</p>}
@@ -145,7 +145,7 @@ function Editor({ songId, lyrics, title, back, serviceKey }: { songId: string; l
   const leave = () => void navigate(viewPath, { state: { title, back, key: serviceKey } })
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <EditHeader title="Editar letra" onBack={() => (dirty ? setLeaving(true) : leave())} />
       <main className="flex-1 pb-4">
         <LyricsHeader title={title} lyrics={lyrics} />
@@ -218,7 +218,7 @@ function Editor({ songId, lyrics, title, back, serviceKey }: { songId: string; l
         </div>
       </main>
       {notice && (
-        <div className="fixed inset-x-0 bottom-32 z-40 mx-auto max-w-[480px] px-4">
+        <div className="fixed inset-x-0 bottom-32 z-40 mx-auto max-w-[480px] lg:max-w-[720px] px-4">
           <Toast message={notice.message} onUndo={notice.restore} onDismiss={() => setNotice(null)} />
         </div>
       )}

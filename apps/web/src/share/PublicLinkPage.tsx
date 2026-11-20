@@ -99,7 +99,7 @@ export function PublicLinkPage() {
       .sort((a, b) => a.date.localeCompare(b.date) || compareSlots(a.slot, b.slot))
     : []
   return (
-    <main className="mx-auto min-h-dvh max-w-[480px] px-4 pt-6 pb-10">
+    <main className="mx-auto min-h-dvh max-w-[480px] lg:max-w-[720px] px-4 pt-6 pb-10">
       {view.isPending && <p role="status" className="text-text-2">Cargando…</p>}
       {view.isError && status === 429 && (
         <div className="grid gap-3">

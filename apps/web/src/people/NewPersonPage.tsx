@@ -12,7 +12,7 @@ export function NewPersonPage() {
 
 function ReadOnly({ church }: { church: Church }) {
   return (
-    <main className="mx-auto max-w-[480px]">
+    <main className="mx-auto max-w-[480px] lg:max-w-[720px]">
       <TopBar name={church.name} />
       <PageHeader title="Persona nueva" back="/personas" backLabel="Volver a personas" />
       <div className="p-4"><Notice title="Solo lectura">Agregar personas requiere ser editor o administrador de tu iglesia.</Notice></div>
@@ -50,7 +50,7 @@ function Form({ church }: { church: Church }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
       <PageHeader title="Persona nueva" back="/personas" backLabel="Volver a personas" />
       <form onSubmit={(event) => void submit(event)} noValidate className="grid flex-1 content-start gap-4 p-4">

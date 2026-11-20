@@ -22,7 +22,7 @@ const failureText = (error: unknown) => {
 
 export function NewLinkPage() {
   return <ChurchGate>{(church) => (church.canEdit ? <Form church={church} /> : (
-    <main className="mx-auto max-w-[480px]">
+    <main className="mx-auto max-w-[480px] lg:max-w-[720px]">
       <TopBar name={church.name} />
       <PageHeader title="Enlace del ministerio" back="/compartir" backLabel="Volver a compartir" />
       <div className="p-4"><Notice title="Solo para quien edita">Crear enlaces requiere administrar o editar servicios en tu iglesia.</Notice></div>
@@ -71,7 +71,7 @@ function Form({ church }: { church: Church }) {
 
   const versions = (['PRAISE', 'PREACHING', 'FULL'] as const).filter((item) => item !== 'PREACHING' || church.usesPreaching)
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
       <PageHeader title={congregation ? 'Enlace para congregantes' : 'Enlace del ministerio'} back="/compartir" backLabel="Volver a compartir" />
       <form onSubmit={(event) => { event.preventDefault(); if (summary) void submit() }} noValidate className="grid flex-1 content-start gap-5 p-4">
