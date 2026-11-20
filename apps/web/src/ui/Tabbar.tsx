@@ -23,7 +23,8 @@ export function Tabbar({
   const tab =
     'relative flex min-h-16 flex-col items-center justify-start gap-0.5 rounded-md border-0 bg-transparent pt-0.5 ' +
     'text-xs leading-tight font-medium cursor-pointer'
-  const [first, ...rest] = items
+  const half = Math.ceil(items.length / 2)
+  const [before, after] = [items.slice(0, half), items.slice(half)]
   const destination = (item: TabItem) => (
     <button
       key={item.id}
@@ -48,10 +49,11 @@ export function Tabbar({
       aria-label={label}
       className={cx(
         'grid border-t border-line bg-surface px-2 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]',
-        action ? 'grid-cols-[1fr_76px_1fr]' : 'auto-cols-fr grid-flow-col',
+        !action && 'auto-cols-fr grid-flow-col',
       )}
+      style={action ? { display: 'grid', gridTemplateColumns: `repeat(${before.length}, 1fr) 76px repeat(${after.length}, 1fr)` } : undefined}
     >
-      {first && destination(first)}
+      {before.map(destination)}
       {action && (
         <button
           type="button"
@@ -66,7 +68,7 @@ export function Tabbar({
           {action.label}
         </button>
       )}
-      {rest.map(destination)}
+      {after.map(destination)}
     </nav>
   )
 }

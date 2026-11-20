@@ -63,6 +63,8 @@ Mockup: [letras.html](design/pantallas/letras.html) (ver [diseño](design.md#let
 - **403, 404 y otros fallos:** mensajes propios al leer y al guardar; el texto escrito no se pierde.
 - La UI oculta lo no permitido, pero la API sigue siendo la que decide.
 
+La biblioteca (`/canciones`) lista y busca canciones (hasta 50 por búsqueda); `GET /api/songs/access` indica si quien consulta puede crear (`/canciones/nueva`). Editar o borrar título y autor sigue pendiente: la API no lo permite. Mockup: [canciones.html](design/pantallas/canciones.html).
+
 ## Verificación
 
 Pantallas: pruebas de componente (`apps/web/src/lyrics/*.test.tsx` y el enlace desde `SetlistPage.test.tsx`) con textos inventados y un servidor ficticio en memoria con versión y 409. API: pruebas puras de reglas (`lyrics-rules.test.ts`) e integración sobre PostgreSQL aislado (`test/lyrics.integration.ts`, con `pnpm test:db`): permisos por tipo de cuenta, concurrencia, restricciones de base, publicación y fuga de datos en la vista pública.
