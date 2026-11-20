@@ -196,3 +196,16 @@ test('an existing name is not created again: the form asks for the full name or 
   expect(await screen.findByText('Calendario')).toBeTruthy()
   expect(JSON.parse(String(posted(calls).find((call) => call.url === '/api/services')!.init!.body)).directorId).toBe('p1')
 })
+
+test('arrives with the date chosen from the calendar and its habitual title and hour', async () => {
+  stubApi({})
+  mount(<Routes><Route path="/servicios/nuevo" element={<ServiceFormPage />} /></Routes>, '/servicios/nuevo?fecha=2026-11-13')
+  await waitFor(() => expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe('Servicio de viernes'))
+  expect(screen.getByRole('button', { name: /vie 13 nov/ }).getAttribute('aria-pressed')).toBe('true')
+})
+
+test('a date outside the habitual ones arrives in «Otra fecha»', async () => {
+  stubApi({})
+  mount(<Routes><Route path="/servicios/nuevo" element={<ServiceFormPage />} /></Routes>, '/servicios/nuevo?fecha=2026-11-17')
+  expect(((await screen.findByLabelText('Día del servicio')) as HTMLInputElement).value).toBe('2026-11-17')
+})

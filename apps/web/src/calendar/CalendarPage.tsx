@@ -196,6 +196,7 @@ const markFailure = (error: unknown) => {
 /** Detalle de una fecha sin servicio: marcar o desmarcar «No hay culto» (la API decide los permisos). */
 function DaySheet({ date, item, canEdit, onDone }: { date: string; item: ClosedDate | undefined; canEdit: boolean; onDone: (message: string) => void }) {
   const { mark, unmark } = useClosedDateActions()
+  const navigate = useNavigate()
   const [reason, setReason] = useState('')
   const [sending, setSending] = useState(false)
   const [failure, setFailure] = useState('')
@@ -218,8 +219,9 @@ function DaySheet({ date, item, canEdit, onDone }: { date: string; item: ClosedD
         canEdit && <Button variant="secondary" block loading={sending} onClick={() => void run(() => unmark(date), 'Fecha desmarcada')}>Desmarcar fecha</Button>
       ) : (
         <>
+          {canEdit && <Button variant="primary" block onClick={() => void navigate(`/servicios/nuevo?fecha=${date}`)}>Crear servicio</Button>}
           <TextField label="Motivo (opcional)" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={120} help="Por ejemplo, un feriado." />
-          <Button variant="primary" block loading={sending} onClick={() => void run(() => mark(date, reason.trim()), 'Fecha marcada como «No hay culto»')}>Marcar «No hay culto»</Button>
+          <Button variant="secondary" block loading={sending} onClick={() => void run(() => mark(date, reason.trim()), 'Fecha marcada como «No hay culto»')}>Marcar «No hay culto»</Button>
         </>
       )}
     </div>
