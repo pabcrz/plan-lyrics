@@ -37,6 +37,9 @@ export function songRoutes(config: SessionConfig, db?: PrismaClient) {
     return c.json(rows)
   }))
 
+  // Lets the library screen show «Nueva» only to who can create songs (the POST below still decides).
+  routes.get('/api/songs/access', guarded(db, 'songs_access_failed', async (c, db) => c.json({ canCreate: await canEditLibrary(db, c.get('clerkSubject')) })))
+
   // Only the owner and library editors create songs; church roles never grant it (the most restrictive reading,
   // because producto does not say who may add a song while preparing a setlist).
   routes.post('/api/songs', guarded(db, 'song_creation_failed', async (c, db) => {

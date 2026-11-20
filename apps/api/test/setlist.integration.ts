@@ -52,6 +52,7 @@ test('only the owner or a library editor creates songs; the church role never gr
   const song = { title: 'Canción de ejemplo', author: 'Autora Uno' }
   for (const subject of ['member', 'editor', 'admin']) expect((await call(subject, 'POST', '/api/songs', song)).status).toBe(403)
   expect(await db.song.count()).toBe(0)
+  for (const [subject, canCreate] of [['member', false], ['combined', true]] as const) expect(await (await call(subject, 'GET', '/api/songs/access')).json()).toEqual({ canCreate })
   const created = await call('combined', 'POST', '/api/songs', { title: '  Canción  de ejemplo ', author: 'Autora Uno' })
   expect(created.status).toBe(201)
   expect(await created.json()).toEqual({ id: expect.any(String), title: 'Canción de ejemplo', author: 'Autora Uno' })
