@@ -23,11 +23,11 @@ describe('newPersonBody', () => {
   test('trims and collapses the name; phone is optional and blank means none', () => {
     expect(newPersonBody.parse({ name: '  Juan   Pérez ' })).toEqual({ name: 'Juan Pérez' })
     expect(newPersonBody.parse({ name: 'Juan Pérez', phone: ' ' })).toEqual({ name: 'Juan Pérez', phone: null })
-    expect(newPersonBody.parse({ name: 'Juan Pérez', phone: '+52 (55) 1234-5678' }).phone).toBe('+52 (55) 1234-5678')
+    expect(newPersonBody.parse({ name: 'Juan Pérez', phone: '+525512345678' }).phone).toBe('+525512345678')
   })
   test('rejects an empty name, a bad phone and unknown fields such as the church', () => {
     expect(newPersonBody.safeParse({ name: ' ' }).success).toBe(false)
-    expect(newPersonBody.safeParse({ name: 'Ana', phone: 'abc' }).success).toBe(false)
+    for (const phone of ['abc', '5512345678', '+52 55 1234 5678', '+5255123456', '+52551234567890']) expect(newPersonBody.safeParse({ name: 'Ana', phone }).success).toBe(false)
     expect(newPersonBody.safeParse({ name: 'Ana', churchId: 'church-b' }).success).toBe(false)
     expect(newPersonBody.safeParse({ name: 'Ana', userId: 'x' }).success).toBe(false)
   })

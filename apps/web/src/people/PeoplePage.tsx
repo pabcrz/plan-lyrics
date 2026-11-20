@@ -54,7 +54,7 @@ function Directory({ church }: { church: Church }) {
                 <button type="button" onClick={() => void navigate(`/personas/${encodeURIComponent(person.id)}`)}
                   className="flex min-h-14 w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-3 text-left hover:bg-surface-2">
                   <Avatar name={person.name} />
-                  <b className="flex-1 text-[0.9375rem] font-semibold">{person.name}</b>
+                  <b className="flex-1 text-[0.9375rem] font-semibold">{person.name}{person.isYou && <span className="ml-2 rounded-full border border-line-strong bg-surface-2 px-2 text-[0.8125rem] font-medium text-text-2">Tú</span>}</b>
                   {person.hasAccount && <span className="rounded-full border border-pub-bd bg-pub-bg px-2.5 text-[0.8125rem] font-medium text-pub-fg">Con cuenta</span>}
                 </button>
               </li>

@@ -14,7 +14,7 @@ export type Service = {
 }
 
 /** Persona del directorio de la iglesia activa (lista). */
-export type Person = { id: string; name: string; hasAccount: boolean }
+export type Person = { id: string; name: string; hasAccount: boolean; isYou: boolean }
 /** Ficha: datos personales generales y lo que el servidor sabe de ella en esta iglesia. */
 export type PersonDetail = Person & { phone: string | null; sharedWithOtherChurches: boolean; upcomingServices: number }
 

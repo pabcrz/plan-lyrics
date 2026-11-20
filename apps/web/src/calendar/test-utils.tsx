@@ -30,7 +30,7 @@ type Handler =(url: string, init?: RequestInit) => { status?: number; body?: unk
 
 /** Doble de fetch por ruta; devuelve las peticiones hechas para poder inspeccionarlas. */
 export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
-  id: 'p1', name: 'Ana Ramírez', phone: null, hasAccount: false, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
+  id: 'p1', name: 'Ana Ramírez', phone: null, hasAccount: false, isYou: false, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
 })
 
 export function stubApi(routes: {
@@ -158,7 +158,7 @@ export function stubApi(routes: {
     }
     if (url === '/api/people') {
       const list = routes.directory ?? people.map((person) => detail(person))
-      return reply(200, list.map(({ id, name, hasAccount }) => ({ id, name, hasAccount })))
+      return reply(200, list.map(({ id, name, hasAccount, isYou }) => ({ id, name, hasAccount, isYou })))
     }
     if (url.startsWith('/api/people/')) {
       const id = decodeURIComponent(url.split('/').pop() ?? '')
