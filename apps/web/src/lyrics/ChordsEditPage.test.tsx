@@ -95,10 +95,10 @@ test('marks on the plain line where the chord lands, apart from the chord paddin
   expect(sheet().getByRole('img', { name: 'Cae al final, después de «Segunda línea de la misma estrofa»' })).toBeInTheDocument()
 })
 
-test('moves the chord by tapping a letter of the reference line', async () => {
+test('moves the chord by touching a letter of the reference line', async () => {
   edit()
   fireEvent.click((await section(2)).getByRole('button', { name: 'Agregar acorde a la línea 2' }))
-  const tap = (at: number) => fireEvent.click(screen.getByRole('img').querySelector(`[data-at="${at}"]`)!)
+  const tap = (at: number) => fireEvent.pointerDown(screen.getByRole('img').querySelector(`[data-at="${at}"]`)!)
   tap(8)
   expect(sheet().getByText('Posición 8 de 33')).toBeInTheDocument()
   tap(0)
