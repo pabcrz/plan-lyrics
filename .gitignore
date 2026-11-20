@@ -21,3 +21,6 @@ test-results/
 .playwright-cli/
 .local/
 apps/api/src/generated/
+.neon
+.vercel
+.env*
