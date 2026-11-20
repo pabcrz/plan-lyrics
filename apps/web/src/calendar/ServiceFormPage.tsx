@@ -18,7 +18,7 @@ export function ServiceFormPage() {
 
 function ReadOnly() {
   return (
-    <main className="mx-auto max-w-[480px]">
+    <main className="mx-auto max-w-[480px] lg:max-w-[720px]">
       <TopBar />
       <PageHeader title="Nuevo servicio" />
       <div className="p-4"><Notice title="Solo lectura">Crear servicios requiere ser editor o administrador de tu iglesia.</Notice></div>
@@ -127,7 +127,7 @@ function Form({ church }: { church: Church }) {
   const initialTime = time ?? (slot === 'AFTERNOON' ? '17:00' : slot === 'MORNING' ? '09:00' : '10:00')
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
       <PageHeader title="Nuevo servicio" />
       <form onSubmit={(event) => void submit(event)} noValidate className="grid flex-1 content-start gap-5 p-4">

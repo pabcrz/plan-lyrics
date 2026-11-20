@@ -14,7 +14,7 @@ function Loader({ church }: { church: Church }) {
   const person = usePerson(personId)
   const missing = person.error instanceof ApiError && person.error.status === 404
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
       <PageHeader title="Persona" back="/personas" backLabel="Volver a personas" />
       {person.isPending && <p role="status" className="p-4">Cargando persona…</p>}

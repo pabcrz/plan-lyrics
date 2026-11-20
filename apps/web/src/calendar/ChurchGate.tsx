@@ -96,7 +96,7 @@ export function ChurchGate({ children }: { children: (church: Church) => ReactNo
   if (church.data) return <>{children(church.data)}</>
   const status = church.error instanceof ApiError ? church.error.status : 0
   return (
-    <main className="min-h-dvh">
+    <main className="mx-auto min-h-dvh max-w-[480px] lg:max-w-[720px]">
       <TopBar />
       <div className="grid gap-4 p-4">
         {church.isPending && <p role="status">Cargando tu iglesia…</p>}

@@ -20,7 +20,7 @@ function Directory({ church }: { church: Church }) {
   const add = () => void navigate('/personas/nueva', { state: { name: query.trim() } })
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
       <main className="grid flex-1 content-start gap-3 p-4">
         <div className="flex items-center gap-3">

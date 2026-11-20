@@ -101,7 +101,7 @@ export function LyricsPage() {
   const go = (suffix: string) => void navigate(`/canciones/${encodeURIComponent(songId)}/letra/${suffix}`, { state: editState })
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <PageHeader title="Letra" backLabel="Volver" back={back} />
       <main className="flex-1 pb-4">
         {query.isPending && <p role="status" className="m-0 p-4 text-text-2">Cargando la letra…</p>}
@@ -141,7 +141,7 @@ export function LyricsPage() {
         )}
       </main>
       {toast && (
-        <div className="fixed inset-x-0 bottom-24 z-40 mx-auto max-w-[480px] px-4">
+        <div className="fixed inset-x-0 bottom-24 z-40 mx-auto max-w-[480px] lg:max-w-[720px] px-4">
           <Toast message="Letra guardada" onDismiss={() => setToast(false)} />
         </div>
       )}

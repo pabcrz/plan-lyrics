@@ -34,7 +34,7 @@ export function BatchPage() {
 
 function ReadOnly() {
   return (
-    <main className="mx-auto max-w-[480px]">
+    <main className="mx-auto max-w-[480px] lg:max-w-[720px]">
       <TopBar />
       <Header title="Lote mensual" back="/" label="Volver al calendario" />
       <div className="p-4"><Notice title="Solo lectura">Crear servicios requiere ser editor o administrador de tu iglesia.</Notice></div>
@@ -215,7 +215,7 @@ function Batch({ church }: { church: Church }) {
   const stepNumber = step === 'period' ? `1/${total}` : step === 'directors' ? `2/${total}` : step === 'preachers' ? `3/${total}` : step === 'review' ? `${total}/${total}` : undefined
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
       <Header title="Lote mensual" label={back ? (step === 'directors' ? 'Volver al período' : step === 'preachers' ? 'Volver a directores' : usesPreaching ? 'Volver a predicadores' : 'Volver a directores') : 'Volver al calendario'} step={stepNumber} onBack={back} />
       <div className="grid flex-1 content-start gap-5 p-4">

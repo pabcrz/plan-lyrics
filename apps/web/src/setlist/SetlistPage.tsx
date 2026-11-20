@@ -29,7 +29,7 @@ export function SetlistPage() {
   if (query.data) return <Editor key={serviceId} setlist={query.data} />
   const missing = query.error instanceof ApiError && query.error.status === 404
   return (
-    <div className="mx-auto min-h-dvh max-w-[480px]">
+    <div className="mx-auto min-h-dvh max-w-[480px] lg:max-w-[720px]">
       <PageHeader title="Setlist" backLabel="Volver al calendario" />
       <main className="grid gap-4 p-4">
         {query.isPending && <p role="status" className="m-0 text-text-2">Cargando el setlist…</p>}
@@ -114,7 +114,7 @@ function Editor({ setlist }: { setlist: Setlist }) {
   const editing = sheet?.kind === 'edit' ? entries.find((entry) => entry.id === sheet.id) : undefined
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <PageHeader title="Setlist" backLabel="Volver al calendario" back={`/?mes=${monthOf(service.date)}`} />
       <main className="flex-1 pb-4">
         <div className="relative px-4 pt-2 pb-4">
@@ -181,7 +181,7 @@ function Editor({ setlist }: { setlist: Setlist }) {
         </div>
       </main>
       {notice && (
-        <div className="fixed inset-x-0 bottom-24 z-40 mx-auto max-w-[480px] px-4">
+        <div className="fixed inset-x-0 bottom-24 z-40 mx-auto max-w-[480px] lg:max-w-[720px] px-4">
           <Toast message={notice.message} onUndo={notice.restore} onDismiss={() => setNotice(null)} />
         </div>
       )}

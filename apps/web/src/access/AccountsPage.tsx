@@ -12,7 +12,7 @@ export function AccountsPage() {
   const access = useAccess()
   const allowed = Boolean(access.data?.owner || access.data?.accountManager)
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar />
       <PageHeader title="Cuentas" />
       <div className="grid flex-1 content-start gap-5 p-4">

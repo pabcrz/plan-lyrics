@@ -70,7 +70,7 @@ export function SettingsPage() {
 
 function ReadOnly({ church }: { church: Church }) {
   return (
-    <main className="mx-auto max-w-[480px]">
+    <main className="mx-auto max-w-[480px] lg:max-w-[720px]">
       <TopBar name={church.name} />
       <PageHeader title="Ajustes de la iglesia" />
       <div className="grid gap-5 p-4">
@@ -151,7 +151,7 @@ function Settings({ church }: { church: Church }) {
 
   const wheelSlot = wheel?.slot
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings />
       <PageHeader title="Ajustes de la iglesia" />
       <form onSubmit={(event) => { event.preventDefault(); void submit() }} noValidate className="grid flex-1 content-start gap-5 p-4">

@@ -37,7 +37,7 @@ export function ChordsEditPage() {
 
   if (lyrics?.canEdit && lyrics.sections.length > 0) return <Editor key={query.dataUpdatedAt} songId={songId} lyrics={lyrics} nav={nav} />
   return (
-    <div className="mx-auto min-h-dvh max-w-[480px]">
+    <div className="mx-auto min-h-dvh max-w-[480px] lg:max-w-[720px]">
       <EditHeader title="Editar acordes" onBack={() => void navigate(viewPath, { state })} />
       <main className="grid gap-4 p-4">
         {query.isPending && <p role="status" className="m-0 text-text-2">Cargando la letra…</p>}
@@ -135,7 +135,7 @@ function Editor({ songId, lyrics, nav }: { songId: string; lyrics: Lyrics; nav: 
   const sheetLine = editing && withChord(editing)
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <EditHeader title="Editar acordes" onBack={() => (dirty ? setLeaving(true) : leave())} />
       <main className="flex-1 pb-4">
         <LyricsHeader title={nav.title} lyrics={lyrics} />
