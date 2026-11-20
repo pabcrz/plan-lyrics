@@ -83,13 +83,13 @@ function Column<T extends number | string>({
 const meridiemText = (m: Meridiem) => (m === 'am' ? 'a.m.' : 'p.m.')
 
 /**
- * Rueda de hora: horas, minutos cada 15 y a.m./p.m. (12 antes de la 1). Controlada.
+ * Rueda de hora: horas, minutos cada 15 y a.m./p.m. (00 = 12 a.m. al inicio, 12 = 12 p.m. al final). Controlada.
  * `hours` y `meridiems` permiten restringir, p. ej. la mañana de un domingo con dos servicios.
  */
 export function TimeWheel({
   value,
   onChange,
-  hours = HOURS,
+  hours = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
   meridiems = ['am', 'pm'],
 }: {
   value: Time12
@@ -97,13 +97,24 @@ export function TimeWheel({
   hours?: ReadonlyArray<number>
   meridiems?: ReadonlyArray<Meridiem>
 }) {
+  // 12 a.m. es la posición 0 y 12 p.m. la 12: así la rueda sube 00, 1…11, 12.
+  const items = HOURS.filter(
+    (h) => hours.includes(h || 12) && (h === 0 ? meridiems.includes('am') : h !== 12 || meridiems.includes('pm')),
+  )
+  const position = value.hour === 12 && value.meridiem === 'am' ? 0 : value.hour
   return (
     <div
       role="group"
       aria-label="Hora"
       className="relative my-2 mb-4 grid grid-cols-[1fr_16px_1fr_1fr] items-center before:pointer-events-none before:absolute before:inset-x-0 before:top-[88px] before:h-11 before:border-y-2 before:border-accent before:opacity-55 before:content-['']"
     >
-      <Column label="Hora" items={hours} value={value.hour} text={String} onPick={(hour) => onChange({ ...value, hour })} />
+      <Column
+        label="Hora"
+        items={items}
+        value={position}
+        text={(h) => (h === 0 ? '00' : String(h))}
+        onPick={(h) => onChange(h === 0 ? { ...value, hour: 12, meridiem: 'am' } : h === 12 ? { ...value, hour: 12, meridiem: 'pm' } : { ...value, hour: h })}
+      />
       <span aria-hidden="true" className="text-center text-xl font-semibold text-text-3">
         :
       </span>

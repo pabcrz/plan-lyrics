@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import {
   Button, Notice, PersonPicker, Segmented, Sheet, TextField, TimeWheel, Field, inputClass,
   fold, format12h, from24h, to24h, type Person, type Time12,
@@ -31,8 +31,11 @@ function Form({ church }: { church: Church }) {
   const create = useCreateService()
   const today = todayIn()
   const options = upcomingDates(church, today, 4)
-  const [choice, setChoice] = useState('') // una fecha habitual, «other» o vacío
-  const [other, setOther] = useState('')
+  // Desde el calendario llega `?fecha=YYYY-MM-DD`: esa fecha queda elegida de entrada.
+  const requested = useSearchParams()[0].get('fecha') ?? ''
+  const preset = /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : ''
+  const [choice, setChoice] = useState(preset ? (options.includes(preset) ? preset : 'other') : '') // una fecha habitual, «other» o vacío
+  const [other, setOther] = useState(preset)
   const [slot, setSlot] = useState<Slot | ''>('')
   const [title, setTitle] = useState('')
   const [time, setTime] = useState<string | null>(null)
@@ -78,6 +81,14 @@ function Form({ church }: { church: Church }) {
     setSlot(first)
     prefill(target, first)
   }
+
+  const presetApplied = useRef(false)
+  useEffect(() => {
+    if (!preset || loading || presetApplied.current) return
+    presetApplied.current = true
+    pickDate(preset, options.includes(preset) ? preset : 'other')
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se aplica una sola vez, al terminar de cargar el mes
+  }, [loading])
 
   /** Alta desde el selector: el servidor aplica la regla del nombre completo; la persona queda en el directorio. */
   async function addPerson(name: string) {

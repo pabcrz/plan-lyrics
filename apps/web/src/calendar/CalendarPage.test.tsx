@@ -95,6 +95,16 @@ test('shows a closed date in the grid, the agenda and the day detail with the «
   expect(within(sheet).queryByText('Cancelado')).toBeNull()
 })
 
+test('a free future date offers «Crear servicio» as the main action, before marking «No hay culto»', async () => {
+  stubApi({ services })
+  mount(<CalendarPage />)
+  fireEvent.click(await screen.findByRole('button', { name: /25 de noviembre: sin servicio/ }))
+  const sheet = await screen.findByRole('dialog')
+  const names = within(sheet).getAllByRole('button').map((button) => button.textContent)
+  expect(names.indexOf('Crear servicio')).toBeGreaterThanOrEqual(0)
+  expect(names.indexOf('Crear servicio')).toBeLessThan(names.indexOf('Marcar «No hay culto»'))
+})
+
 test('an editor marks a free future date with a reason and the calendar reloads', async () => {
   const calls = stubApi({ services })
   mount(<CalendarPage />)
