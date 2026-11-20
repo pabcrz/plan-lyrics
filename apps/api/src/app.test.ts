@@ -42,3 +42,32 @@ test('logs an unknown code for errors without a safe code', async () => {
     expect(JSON.parse(errors.mock.calls[0].join(' '))).toEqual({ event: 'church_access_failed', code: 'unknown' })
   } finally { errors.mockRestore() }
 })
+
+test('POST /api/churches is owner-only, validates the name and founds the church with an ADMIN membership', async () => {
+  const { sessionFixture } = await import('../test/session-fixture.mjs')
+  const { createApp } = await import('./app.js')
+  const fixture = sessionFixture()
+  const created: unknown[] = []
+  const database = {
+    $queryRaw: () => Promise.resolve([{ owner: true, accountManager: false }]),
+    $transaction: (run: (tx: unknown) => unknown) => run({
+      user: { findUnique: () => Promise.resolve({ id: 'u1', memberships: [] }) },
+      church: { create: (args: unknown) => { created.push(args); return Promise.resolve({ id: 'c1', name: 'Mi iglesia' }) } },
+    }),
+  } as never
+  const post = (body: unknown) => createApp(fixture.config, database).request('/api/churches', {
+    method: 'POST', body: JSON.stringify(body),
+    headers: { Authorization: `Bearer ${fixture.token('fixture-owner')}`, 'Content-Type': 'application/json' },
+  })
+  expect((await post({ name: '  ' })).status).toBe(400)
+  const ok = await post({ name: ' Mi iglesia ' })
+  expect(ok.status).toBe(201)
+  expect(created).toEqual([{ data: { name: 'Mi iglesia', memberships: { create: { userId: 'u1', role: 'ADMIN' } } }, select: { id: true, name: true } }])
+
+  const stranger = { $queryRaw: () => Promise.resolve([{ owner: false, accountManager: true }]) } as never
+  const denied = await createApp(fixture.config, stranger).request('/api/churches', {
+    method: 'POST', body: JSON.stringify({ name: 'X' }),
+    headers: { Authorization: `Bearer ${fixture.token('fixture-owner')}`, 'Content-Type': 'application/json' },
+  })
+  expect(denied.status).toBe(404)
+})
