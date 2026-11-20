@@ -1,7 +1,7 @@
 import { createApp } from './app.js'
 import { connectDatabase } from './database.js'
 import { identityProviderFromEnv } from './identity-provider.js'
-import { authorizedPartyWarning } from './session.js'
+import { authorizedOrigins, authorizedPartyWarning } from './session.js'
 import { secretIsUsable } from './share-token.js'
 import { parseWebOrigins } from './web-origins.js'
 
@@ -18,7 +18,7 @@ export function createAppFromEnv(env: Environment) {
   if (!database) warnings.push('DATABASE_URL is not set: church access routes respond 503')
   const partyWarning = authorizedPartyWarning(env.CLERK_AUTHORIZED_PARTY)
   if (partyWarning) warnings.push(partyWarning)
-  const identity = identityProviderFromEnv(env.CLERK_SECRET_KEY, env.CLERK_AUTHORIZED_PARTY?.trim() || undefined)
+  const identity = identityProviderFromEnv(env.CLERK_SECRET_KEY, env.CLERK_AUTHORIZED_PARTY?.trim() ? authorizedOrigins(env.CLERK_AUTHORIZED_PARTY)?.[0] : undefined)
   if (!identity) warnings.push('CLERK_SECRET_KEY is not set: creating accounts and sending invitations respond 503')
   if (!secretIsUsable(env.SHARE_LINK_SECRET)) warnings.push('SHARE_LINK_SECRET is missing or shorter than 32 characters: ministry links cannot be created')
   const web = parseWebOrigins(env.WEB_ORIGIN)
