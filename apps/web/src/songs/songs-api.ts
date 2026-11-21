@@ -20,3 +20,22 @@ export function useCreateSong() {
 }
 
 export const lyricsPath = (songId: string) => `/canciones/${encodeURIComponent(songId)}/letra`
+
+export function useUpdateSong() {
+  const api = useApiFetch()
+  const client = useQueryClient()
+  return useCallback(async (songId: string, song: { title: string; author: string }) => {
+    const saved = await api<Song>(`/api/songs/${encodeURIComponent(songId)}`, { method: 'PATCH', body: song })
+    await client.invalidateQueries({ queryKey: ['songs'] })
+    return saved
+  }, [api, client])
+}
+
+export function useDeleteSong() {
+  const api = useApiFetch()
+  const client = useQueryClient()
+  return useCallback(async (songId: string) => {
+    await api<void>(`/api/songs/${encodeURIComponent(songId)}`, { method: 'DELETE' })
+    await client.invalidateQueries({ queryKey: ['songs'] })
+  }, [api, client])
+}

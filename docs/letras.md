@@ -63,7 +63,7 @@ Mockup: [letras.html](design/pantallas/letras.html) (ver [diseño](design.md#let
 - **403, 404 y otros fallos:** mensajes propios al leer y al guardar; el texto escrito no se pierde.
 - La UI oculta lo no permitido, pero la API sigue siendo la que decide.
 
-La biblioteca (`/canciones`) lista y busca canciones (hasta 50 por búsqueda); `GET /api/songs/access` indica si quien consulta puede crear (`/canciones/nueva`). Editar o borrar título y autor sigue pendiente: la API no lo permite. Mockup: [canciones.html](design/pantallas/canciones.html).
+La biblioteca (`/canciones`) lista y busca canciones (hasta 50 por búsqueda); `GET /api/songs/access` indica si quien consulta puede crear (`/canciones/nueva`). Quien edita la biblioteca cambia el título o el autor (`PATCH /api/songs/:songId`, mismo id, `409` si choca con otra canción) desde `/canciones/:songId/editar` (en escritorio es el panel derecho de la biblioteca, sin cambiar de página), y elimina (`DELETE`) solo una canción creada por error: sin letra y fuera de todo setlist, de lo contrario `409 Song in use`. Mockup: [canciones.html](design/pantallas/canciones.html).
 
 ## Verificación
 
