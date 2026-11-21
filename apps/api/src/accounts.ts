@@ -67,10 +67,11 @@ export function accountRoutes(config: SessionConfig, db?: PrismaClient, identity
   }))
 
   // Creates the account at the provider (which e-mails the invitation) and the bare local user: no church,
-  // role or capability. Inviting the same address again resends the invitation and changes nothing locally.
+  // role or capability. An address that already has an account is refused before the provider is called.
   routes.post('/api/accounts', managed('account_invitation_failed', async (c, db) => {
     const body = inviteBody.safeParse(await c.req.json().catch(() => undefined))
     if (!body.success) return c.json({ error: 'Invalid request' }, 400)
+    if (await db.user.findUnique({ where: { email: body.data.email }, select: { id: true } })) return c.json({ error: 'Email registered' }, 409)
     if (!identity) return c.json({ error: IDENTITY_UNAVAILABLE }, 503)
     let subject: string
     try {
