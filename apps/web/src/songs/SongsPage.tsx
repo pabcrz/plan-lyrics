@@ -5,7 +5,7 @@ import { cx } from '../ui/cx'
 import { AppShell } from '../calendar/AppShell'
 import { ChurchGate } from '../calendar/ChurchGate'
 import type { Church } from '../calendar/model'
-import { useSongs } from '../setlist/setlist-api'
+import { songLabel, useSongs } from '../setlist/setlist-api'
 import { lyricsPath, useLibraryAccess } from './songs-api'
 
 // El servidor devuelve como máximo 50 canciones por búsqueda.
@@ -83,11 +83,11 @@ function Library({ church }: { church: Church }) {
                     {/* Escritorio con permiso: elegir abre el panel de edición, que ofrece la letra; en móvil abre la letra. */}
                     <button type="button" aria-current={editing === song.id ? 'true' : undefined} onClick={() => (desktop && canCreate ? edit(song) : void navigate(lyricsPath(song.id)))}
                       className="flex min-h-16 min-w-0 flex-1 cursor-pointer items-center gap-3 border-0 bg-transparent px-4 text-left hover:bg-surface-2">
-                      <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-2">{song.author}</small></span>
+                      <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-2">{song.author || 'Sin autor'}</small></span>
                       {!canCreate && <Icon name="right" className="text-text-3" />}
                     </button>
                     {canCreate && (
-                      <span className="lg:hidden"><Button variant="quiet" icon aria-label={`Editar ${song.title}, ${song.author}`} onClick={() => edit(song)}><Icon name="more" /></Button></span>
+                      <span className="lg:hidden"><Button variant="quiet" aria-label={`Editar ${songLabel(song)}`} onClick={() => edit(song)}><Icon name="edit" width={16} height={16} />Editar</Button></span>
                     )}
                   </li>
                 ))}
