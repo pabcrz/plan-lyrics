@@ -96,7 +96,7 @@ function Library({ church }: { church: Church }) {
             {songs.data && rows.length === 0 && (
               <div className="grid justify-items-center gap-2 py-6 text-center">
                 <h2 className="m-0 font-display text-lg font-bold">{term ? 'Sin resultados' : 'Aún no hay canciones'}</h2>
-                <p className="m-0 text-text-2">{term ? 'Prueba con otro título o autor.' : 'La biblioteca la edita quien tenga ese acceso.'}</p>
+                <p className="m-0 text-text-2">{term ? 'Prueba con otro título o autor.' : canCreate ? 'Agrega la primera con «Nueva».' : 'La biblioteca la edita quien tenga ese acceso.'}</p>
                 {term && canCreate && <Button variant="secondary" onClick={add}>Agregar «{term}»</Button>}
               </div>
             )}
