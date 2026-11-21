@@ -1,0 +1,29 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "docs/design/pantallas/acordes.html",
+          "docs/design/pantallas/inicio.html",
+          "docs/design/pantallas/servicio.html"
+        ],
+        "createdAt": "2026-11-21T19:43:49.542Z",
+        "reason": "Falso positivo: el menú Más y la hoja inferior son superposiciones modales dentro del marco del dispositivo (.app), no tarjetas anidadas; el marco simula la pantalla del teléfono"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/design/pantallas/acordes.html",
+          "docs/design/pantallas/canciones.html"
+        ],
+        "createdAt": "2026-11-21T19:43:49.616Z",
+        "reason": "Falso positivo: .app es el marco del dispositivo (pantalla completa) y .foot tiene 12/16 px de relleno; el detector invalida calc() con env(safe-area-inset-bottom)"
+      }
+    ]
+  }
+}

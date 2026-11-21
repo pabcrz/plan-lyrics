@@ -21,14 +21,14 @@ const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const DAY_NAMES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
 const slotText = { SINGLE: '', MORNING: ' por la mañana', AFTERNOON: ' por la tarde' } as const
 type Entry = { time: string; title: string }
-type Form = { name: string; sundayDouble: boolean; usesPreaching: boolean; selected: number[]; entries: Record<string, Entry> }
+type Form = { name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; selected: number[]; entries: Record<string, Entry> }
 
 const keyOf = (weekday: number, slot: Slot) => `${weekday}.${slot}`
 const slotsOf = (weekday: number, double: boolean): Slot[] => (weekday === 0 && double ? ['MORNING', 'AFTERNOON'] : ['SINGLE'])
 
 function toForm(church: ChurchSettings): Form {
   return {
-    name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching,
+    name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation,
     selected: [...new Set(church.days.map((day) => day.weekday))].sort(),
     entries: Object.fromEntries(church.days.map((day) => [keyOf(day.weekday, day.slot), { time: day.time, title: day.title }])),
   }
@@ -40,13 +40,13 @@ function toSettings(form: Form): ChurchSettings {
     const entry = form.entries[keyOf(weekday, slot)] ?? { time: '19:00', title: '' }
     return { weekday, slot, time: entry.time, title: entry.title.trim() }
   }))
-  return { name: form.name.trim(), sundayDouble: form.sundayDouble, usesPreaching: form.usesPreaching, days }
+  return { name: form.name.trim(), sundayDouble: form.sundayDouble, usesPreaching: form.usesPreaching, usesRotation: form.usesRotation, days }
 }
 
 const slotOrder: Record<Slot, number> = { SINGLE: 0, MORNING: 1, AFTERNOON: 2 }
 /** Forma comparable de lo guardado: mismo orden y mismos campos que `toSettings`. */
 const comparable = (settings: ChurchSettings): ChurchSettings => ({
-  name: settings.name, sundayDouble: settings.sundayDouble, usesPreaching: settings.usesPreaching,
+  name: settings.name, sundayDouble: settings.sundayDouble, usesPreaching: settings.usesPreaching, usesRotation: settings.usesRotation,
   days: settings.days.map(({ weekday, slot, time, title }) => ({ weekday, slot, time, title })).sort((a, b) => a.weekday - b.weekday || slotOrder[a.slot] - slotOrder[b.slot]),
 })
 
@@ -207,6 +207,10 @@ function Settings({ church }: { church: Church }) {
         <Switch checked={form.usesPreaching} onCheckedChange={(on) => change((prev) => ({ ...prev, usesPreaching: on }))} label="Usa predicación"
           description={form.usesPreaching ? 'El servicio y el lote mensual muestran la predicación: predicador, tema, citas y notas.' : 'Sin predicación: la sección se oculta en el servicio y en el lote, y la API no acepta cambios.'} />
 
+        <Switch checked={form.usesRotation} onCheckedChange={(on) => change((prev) => ({ ...prev, usesRotation: on }))} label="Usa rotación de turnos"
+          description={form.usesRotation ? 'Cada rol puede rotar a sus personas entre servicios, en orden y de forma cíclica.' : 'Sin rotación: los servicios nuevos solo llevan a los habituales de cada rol. Lo ya configurado se conserva.'} />
+        <RotationExample />
+
         <details className="rounded-lg border border-line bg-surface">
           <summary className="min-h-touch-lg cursor-pointer px-3 py-3 font-semibold">Roles musicales y combinaciones</summary>
           <div className="grid gap-5 px-3 pb-4"><RolesSettings editable /></div>
@@ -229,5 +233,19 @@ function Settings({ church }: { church: Church }) {
         )}
       </Sheet>
     </main>
+  )
+}
+
+/** Cómo rota un rol, con personas inventadas, para decidir si activarlo. */
+function RotationExample() {
+  return (
+    <div className="grid gap-2 rounded-lg border border-line bg-surface p-3">
+      <p className="m-0 text-sm font-semibold">Así funciona la rotación, con un ejemplo</p>
+      <p className="m-0 text-[0.8125rem] text-text-2">En el rol «Voces», con Luis, Mariana y Juan en ese orden, cada servicio le toca a uno y, al terminar la lista, vuelve a empezar:</p>
+      <ol aria-label="Ejemplo de rotación" className="m-0 grid list-none gap-1 p-0 text-sm">
+        {['1.er servicio · Luis', '2.º servicio · Mariana', '3.er servicio · Juan', '4.º servicio · Luis, otra vez'].map((line) => <li key={line}>{line}</li>)}
+      </ol>
+      <p className="m-0 text-[0.8125rem] text-text-3">Se activa aquí y se configura en cada rol. Puedes apagarla cuando quieras: los servicios que ya existen no cambian.</p>
+    </div>
   )
 }

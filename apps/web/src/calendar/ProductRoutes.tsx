@@ -3,6 +3,7 @@ import { AccessPage } from '../access/AccessPage'
 import { AccountsPage } from '../access/AccountsPage'
 import { BatchPage } from './BatchPage'
 import { HomePage } from './HomePage'
+import { ShellLayout } from './ShellLayout'
 import { ParticipationsPage, RoleParticipationPage } from './ParticipationsPage'
 import { SettingsPage } from './SettingsPage'
 import { ServiceFormPage } from './ServiceFormPage'
@@ -28,6 +29,7 @@ function RedirectToService() {
 export function ProductRoutes() {
   return (
     <Routes>
+      <Route element={<ShellLayout />}>
       <Route path="/servicios/nuevo" element={<ServiceFormPage />} />
       <Route path="/servicios/lote" element={<BatchPage />} />
       <Route path="/servicios/:serviceId" element={<ServicePage />} />
@@ -53,6 +55,7 @@ export function ProductRoutes() {
       <Route path="/calendario" element={<Navigate to="/" replace />} />
       <Route path="/" element={<HomePage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
     </Routes>
   )
 }

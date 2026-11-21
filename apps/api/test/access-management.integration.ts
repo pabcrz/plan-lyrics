@@ -126,9 +126,16 @@ test('inviting an e-mail that already has an account is refused before the provi
   expect(await db.user.count({ where: { clerkSubject: 'fixture-invited-repetida' } })).toBe(1)
 })
 
-test('an e-mail already used by another account conflicts without writes', async () => {
-  inviteByEmail.mockResolvedValueOnce({ subject: 'fixture-invited-otro' })
-  await unchanged(() => call('owner', 'POST', '/api/accounts', { email: 'acc-a1@example.com' }), 409, { error: 'Conflict' })
+test('a concurrent registration of the same e-mail conflicts without a second account', async () => {
+  // The other registration lands while the provider is called: the first e-mail check passed, the insert then clashes on the e-mail.
+  inviteByEmail.mockImplementationOnce(async () => {
+    await db.user.create({ data: { clerkSubject: 'fixture-invited-concurrente', email: 'carrera@example.com' } })
+    return { subject: 'fixture-invited-carrera' }
+  })
+  const response = await call('owner', 'POST', '/api/accounts', { email: 'carrera@example.com' })
+  expect(response.status).toBe(409)
+  expect(await response.json()).toEqual({ error: 'Conflict' })
+  expect(await db.user.count({ where: { email: 'carrera@example.com' } })).toBe(1)
 })
 
 test('signing in grants nothing: an invited account sees no church and no management', async () => {

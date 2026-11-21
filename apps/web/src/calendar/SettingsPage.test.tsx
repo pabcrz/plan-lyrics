@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router'
 import { afterEach, expect, test, vi } from 'vitest'
 import { SettingsPage } from './SettingsPage'
@@ -45,7 +45,7 @@ test('saves a name, a new day and the preaching switch, then confirms and discar
   fireEvent.click(save())
   expect(await screen.findByText('Cambios guardados')).toBeTruthy()
   expect(sent(calls)).toEqual({
-    name: 'Nueva Betel', sundayDouble: false, usesPreaching: true,
+    name: 'Nueva Betel', sundayDouble: false, usesPreaching: true, usesRotation: true,
     days: [
       { weekday: 0, slot: 'SINGLE', time: '10:00', title: 'Servicio dominical' },
       { weekday: 2, slot: 'SINGLE', time: '19:00', title: 'Servicio de martes' },
@@ -133,4 +133,15 @@ test('a non-administrator only sees a read-only notice', async () => {
   page()
   expect(await screen.findByText('Solo lectura')).toBeTruthy()
   expect(screen.queryByLabelText('Nombre de la iglesia')).toBeNull()
+})
+
+test('the rotation switch is saved with the settings and explains itself with an example', async () => {
+  const calls = stubApi({ church: { ...church, usesRotation: false } })
+  mount(<SettingsPage />)
+  const toggle = await screen.findByRole('switch', { name: 'Usa rotación de turnos' })
+  expect(toggle.getAttribute('aria-checked')).toBe('false')
+  expect(within(screen.getByRole('list', { name: 'Ejemplo de rotación' })).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['1.er servicio · Luis', '2.º servicio · Mariana', '3.er servicio · Juan', '4.º servicio · Luis, otra vez'])
+  fireEvent.click(toggle)
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+  await waitFor(() => expect(calls.some((call) => call.init?.method === 'PUT' && JSON.parse(String(call.init.body)).usesRotation === true)).toBe(true))
 })

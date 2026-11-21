@@ -123,3 +123,15 @@ test('on desktop an editor picks a song and edits it beside the list, keeping th
   fireEvent.click(await screen.findByText('Himno ficticio'))
   expect(await screen.findByText('Letra')).toBeTruthy()
 })
+
+test('an empty library invites an editor to add the first song, and tells a reader who edits it', async () => {
+  const kept = library.splice(0, library.length)
+  stub(true)
+  app('/canciones')
+  expect(await screen.findByText('Agrega la primera con «Nueva».')).toBeTruthy()
+  cleanup()
+  stub(false)
+  app('/canciones')
+  expect(await screen.findByText('La biblioteca la edita quien tenga ese acceso.')).toBeTruthy()
+  library.push(...kept)
+})

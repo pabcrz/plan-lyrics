@@ -1,0 +1,57 @@
+import { useState } from 'react'
+import { Link, Outlet, useLocation } from 'react-router'
+import { UserButton } from '@clerk/react'
+import { Button, Icon } from '../ui'
+import { cx } from '../ui/cx'
+import { NewSheet, SECTIONS, extras, type Section } from './AppShell'
+import { useChurch } from './api'
+
+/** Sección del menú a la que pertenece una ruta; las pantallas de crear servicio cuelgan de Inicio y las de configuración, de «Más». */
+const sectionOf = (pathname: string): Section | null =>
+  pathname === '/' || pathname.startsWith('/servicios') ? 'home'
+    : pathname.startsWith('/canciones') ? 'songs'
+      : pathname.startsWith('/personas') ? 'people' : null
+const SETTINGS = ['/ajustes', '/accesos', '/cuentas']
+
+/**
+ * Marco común de todas las pantallas de la aplicación en escritorio (≥1024 px, la frontera de `lg:`): la barra lateral con las secciones,
+ * «Nuevo servicio» y «Más» está en cada pantalla, también en las secundarias. Móvil no cambia: cada pantalla pone sus propias barras.
+ * Sin iglesia cargada (o con error) no hay barra lateral y cada pantalla explica qué pasa.
+ */
+export function ShellLayout() {
+  const church = useChurch().data
+  const { pathname } = useLocation()
+  const [creating, setCreating] = useState(false)
+  const current = sectionOf(pathname)
+  const extra = church ? extras(church) : []
+  const link = 'flex min-h-11 items-center gap-3 rounded-md px-3 font-medium no-underline hover:bg-surface-2 hover:text-text'
+  const item = (active: boolean) => cx(link, active ? 'bg-accent-soft text-accent-soft-text' : 'text-text-2')
+  return (
+    <div className={cx('group/app', church && 'lg:grid lg:grid-cols-[248px_minmax(0,1fr)]')} data-frame={church ? '' : undefined}>
+      {church && (
+        <aside className="sticky top-0 hidden h-dvh flex-col gap-1 border-r border-line bg-surface p-4 lg:flex">
+          <div className="flex items-center gap-3 px-2 pb-4">
+            <span className="grid size-8 place-items-center rounded-md bg-accent text-sm font-bold text-on-accent" aria-hidden="true">{church.name.charAt(0).toUpperCase()}</span>
+            <span className="font-display text-lg font-bold">{church.name}</span>
+          </div>
+          {church.canEdit && <Button variant="primary" block onClick={() => setCreating(true)}><Icon name="plus" />Nuevo servicio</Button>}
+          <nav aria-label="Secciones" className="grid gap-1 pt-3">
+            {SECTIONS.map((section) => (
+              <Link key={section.id} to={section.path} aria-current={section.id === current ? 'page' : undefined} className={item(section.id === current)}>
+                <Icon name={section.icon} />{section.label}
+              </Link>
+            ))}
+            {extra.length > 0 && <p className="m-0 px-3 pt-4 pb-1 text-xs font-semibold tracking-wide text-text-3">Más</p>}
+            {extra.map((entry) => {
+              const active = entry.path === '/ajustes' ? SETTINGS.includes(pathname) : pathname === entry.path || pathname.startsWith(`${entry.path}/`)
+              return <Link key={entry.path} to={entry.path} aria-current={active ? 'page' : undefined} className={item(active)}>{entry.label}</Link>
+            })}
+          </nav>
+          <div className="mt-auto flex items-center gap-3 border-t border-line px-2 pt-3 text-sm text-text-2"><UserButton />Cuenta</div>
+          <NewSheet open={creating} onClose={() => setCreating(false)} />
+        </aside>
+      )}
+      <div className="min-w-0"><Outlet /></div>
+    </div>
+  )
+}
