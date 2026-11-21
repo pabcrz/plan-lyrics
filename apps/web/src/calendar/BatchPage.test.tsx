@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { BatchPage } from './BatchPage'
-import { CalendarPage } from './CalendarPage'
+import { HomePage } from './HomePage'
 import type { PeriodEntry, Previous } from './batch'
 import { church, detail, mount, stubApi } from './test-utils'
 
@@ -47,7 +47,7 @@ const toReview = async (...names: string[]) => {
 
 test('the creation selector offers an individual service or a monthly batch', async () => {
   stubApi({})
-  mount(<Routes><Route path="/servicios/lote" element={<p>Pantalla del lote</p>} /><Route path="*" element={<CalendarPage />} /></Routes>, '/')
+  mount(<Routes><Route path="/servicios/lote" element={<p>Pantalla del lote</p>} /><Route path="/" element={<HomePage />} /></Routes>, '/')
   fireEvent.click(await screen.findByRole('button', { name: 'Nuevo' }))
   const dialog = screen.getByRole('dialog', { name: 'Nuevo' })
   expect(within(dialog).getByRole('button', { name: /Servicio individual/ })).toBeTruthy()
