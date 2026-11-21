@@ -155,6 +155,12 @@ function Settings({ church }: { church: Church }) {
       <TopBar name={church.name} settings />
       <PageHeader title="Ajustes de la iglesia" />
       <form onSubmit={(event) => { event.preventDefault(); void submit() }} noValidate className="grid flex-1 content-start gap-5 p-4">
+        <div className="grid gap-2">
+          <ParticipationsLink />
+          <AccessLink />
+          <AccountsLink />
+        </div>
+
         <TextField label="Nombre de la iglesia" value={form.name} maxLength={120} onChange={(event) => change((prev) => ({ ...prev, name: event.target.value }))} error={errors.name} />
 
         <fieldset className="m-0 grid gap-2 border-0 p-0">
@@ -201,10 +207,10 @@ function Settings({ church }: { church: Church }) {
         <Switch checked={form.usesPreaching} onCheckedChange={(on) => change((prev) => ({ ...prev, usesPreaching: on }))} label="Usa predicación"
           description={form.usesPreaching ? 'El servicio y el lote mensual muestran la predicación: predicador, tema, citas y notas.' : 'Sin predicación: la sección se oculta en el servicio y en el lote, y la API no acepta cambios.'} />
 
-        <ParticipationsLink />
-        <AccessLink />
-        <AccountsLink />
-        <RolesSettings editable />
+        <details className="rounded-lg border border-line bg-surface">
+          <summary className="min-h-touch-lg cursor-pointer px-3 py-3 font-semibold">Roles musicales y combinaciones</summary>
+          <div className="grid gap-5 px-3 pb-4"><RolesSettings editable /></div>
+        </details>
 
         <p className="m-0 text-[0.8125rem] text-text-3">Guardar no cambia los servicios ya creados; solo lo que se precarga a partir de ahora.</p>
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
