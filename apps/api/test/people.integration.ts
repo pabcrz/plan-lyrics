@@ -36,8 +36,8 @@ test('lists only the active church people, alphabetically, with the account stat
   try {
     const listed = await (await call('member', 'GET', '/api/people')).json()
     expect(listed).toEqual([
-      { id: 'person-a', name: 'Director person-a', hasAccount: true },
-      { id: 'person-no-account', name: 'Fixture Participant', hasAccount: false },
+      { id: 'person-a', name: 'Director person-a', hasAccount: true, isYou: false },
+      { id: 'person-no-account', name: 'Fixture Participant', hasAccount: false, isYou: false },
     ])
     expect((await call('b-editor', 'GET', '/api/people').then(r => r.json())).map((p: { id: string }) => p.id)).toEqual(['person-b', 'person-no-account'])
   } finally { await db.person.update({ where: { id: 'person-a' }, data: { userId: null } }) }
