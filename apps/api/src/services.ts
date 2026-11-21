@@ -106,8 +106,11 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
   }))
 
   routes.get('/api/people', guarded('people_failed', async (c, db, church) => {
-    const links = await db.churchPerson.findMany({ where: activeLink(church.churchId), select: { roleIds: true, person: { select: personSelect } } })
-    return c.json(links.map(link => ({ id: link.person.id, name: link.person.name, hasAccount: link.person.userId !== null, roleIds: link.roleIds }))
+    const [links, me] = await Promise.all([
+      db.churchPerson.findMany({ where: activeLink(church.churchId), select: { roleIds: true, person: { select: personSelect } } }),
+      db.user.findUnique({ where: { clerkSubject: c.get('clerkSubject') }, select: { id: true } }),
+    ])
+    return c.json(links.map(link => ({ id: link.person.id, name: link.person.name, hasAccount: link.person.userId !== null, isYou: me !== null && link.person.userId === me.id, roleIds: link.roleIds }))
       .sort((a, b) => a.name.localeCompare(b.name, 'es')))
   }))
 
@@ -116,11 +119,12 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     const personId = c.req.param('personId')
     const link = await db.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId }, select: { roleIds: true, person: { select: personSelect } } })
     if (!link) return c.json({ error: 'Not found' }, 404)
-    const [elsewhere, upcoming] = await Promise.all([
+    const [me, elsewhere, upcoming] = await Promise.all([
+      db.user.findUnique({ where: { clerkSubject: c.get('clerkSubject') }, select: { id: true } }),
       db.churchPerson.count({ where: { personId, removedAt: null, churchId: { not: church.churchId } } }),
       db.service.count({ where: { churchId: church.churchId, directorId: personId, status: { not: 'CANCELLED' }, date: { gte: new Date(`${todayInZone(now())}T00:00:00Z`) } } }),
     ])
-    return c.json({ ...presentPerson(link.person, link.roleIds), sharedWithOtherChurches: elsewhere > 0, upcomingServices: upcoming })
+    return c.json({ ...presentPerson(link.person, link.roleIds), isYou: me !== null && link.person.userId === me.id, sharedWithOtherChurches: elsewhere > 0, upcomingServices: upcoming })
   }))
 
   // Same full name (ignoring case and accents) is never created twice: the caller must complete the name.

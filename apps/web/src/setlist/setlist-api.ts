@@ -20,7 +20,6 @@ export const songLabel = (song: Pick<Song, 'title' | 'author'>) => (song.author 
 
 export const entryLabel = (entry: Entry) => entry.song?.title ?? entry.moment ?? ''
 
-export const tonalities = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'] as const
 
 /** Origen de un enlace de referencia manual; el servidor vuelve a validarlo. */
 export function referenceOrigin(value: string): 'YouTube' | 'Spotify' | null {

@@ -45,9 +45,9 @@ test('lists only the active church people, alphabetically, with the account stat
 })
 
 test('an editor and an admin add people without an account; a member cannot', async () => {
-  const first = await add('editor', { name: '  Prueba   Uno ', phone: '55 1234 5678' })
+  const first = await add('editor', { name: '  Prueba   Uno ', phone: '+525512341234' })
   expect(first.status).toBe(201)
-  expect(await first.json()).toMatchObject({ name: 'Prueba Uno', phone: '55 1234 5678', hasAccount: false })
+  expect(await first.json()).toMatchObject({ name: 'Prueba Uno', phone: '+525512341234', hasAccount: false })
   expect((await add('admin', { name: 'Prueba Dos' })).status).toBe(201)
   expect((await add('member', { name: 'Prueba Tres' })).status).toBe(403)
   expect((await add(undefined, { name: 'Prueba Tres' })).status).toBe(401)
@@ -72,7 +72,7 @@ test('a name that matches an existing person (ignoring case and accents) is not 
   expect(await dup.json()).toMatchObject({ error: 'Name exists', existing: { name: 'Prueba Pérez' } })
   expect(await db.person.count({ where: { name: { startsWith: 'Prueba ' } } })).toBe(1)
   // Phone never disambiguates; completing the name does.
-  expect((await add('editor', { name: 'Prueba Pérez', phone: '999 999 9999' })).status).toBe(409)
+  expect((await add('editor', { name: 'Prueba Pérez', phone: '+529999999999' })).status).toBe(409)
   expect((await add('editor', { name: 'Prueba Pérez Rodríguez' })).status).toBe(201)
 })
 
@@ -86,7 +86,7 @@ test('reads one person with account state, upcoming services and sharing, hiding
   await db.service.create({ data: { churchId: 'church-a', directorId: 'person-no-account', title: 'Culto', date: new Date('2026-11-20T00:00:00Z') } })
   await db.service.create({ data: { churchId: 'church-a', directorId: 'person-no-account', title: 'Pasado', date: new Date('2026-11-06T00:00:00Z') } })
   const shared = await (await call('member', 'GET', '/api/people/person-no-account')).json()
-  expect(shared).toEqual({ id: 'person-no-account', name: 'Fixture Participant', phone: null, hasAccount: false, sharedWithOtherChurches: true, upcomingServices: 1 })
+  expect(shared).toEqual({ id: 'person-no-account', name: 'Fixture Participant', phone: null, hasAccount: false, isYou: false, sharedWithOtherChurches: true, upcomingServices: 1 })
   const own = await (await call('member', 'GET', '/api/people/person-a')).json()
   expect(own).toMatchObject({ sharedWithOtherChurches: false, upcomingServices: 0 })
   expect((await call('member', 'GET', '/api/people/person-b')).status).toBe(404)
@@ -94,10 +94,10 @@ test('reads one person with account state, upcoming services and sharing, hiding
 })
 
 test('personal data is general: a shared person is edited from either church and both see it', async () => {
-  const edited = await call('editor', 'PATCH', '/api/people/person-no-account', { name: 'Prueba Compartido', phone: '555-0100' })
+  const edited = await call('editor', 'PATCH', '/api/people/person-no-account', { name: 'Prueba Compartido', phone: '+525550100000' })
   expect(edited.status).toBe(200)
-  expect(await edited.json()).toMatchObject({ name: 'Prueba Compartido', phone: '555-0100' })
-  expect((await call('b-editor', 'GET', '/api/people/person-no-account').then(r => r.json())).phone).toBe('555-0100')
+  expect(await edited.json()).toMatchObject({ name: 'Prueba Compartido', phone: '+525550100000' })
+  expect((await call('b-editor', 'GET', '/api/people/person-no-account').then(r => r.json())).phone).toBe('+525550100000')
   expect((await call('b-editor', 'PATCH', '/api/people/person-no-account', { phone: null })).status).toBe(200)
   expect((await call('member', 'GET', '/api/people/person-no-account').then(r => r.json())).phone).toBeNull()
 })

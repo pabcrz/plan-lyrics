@@ -2,7 +2,10 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation } from 'react-router'
 import { Button, Icon, Notice, Segmented, Sheet, TextField, inputClass } from '../ui'
 import { ApiError } from '../calendar/api'
-import { entryLabel, referenceOrigin, songLabel, tonalities, useSongs, type Entry, type Song } from './setlist-api'
+import { ChordLine, linesOf } from '../lyrics/ChordParts'
+import { keysOfMode, parseKey } from '../lyrics/chords'
+import { useLyrics, useTransposedLyrics } from '../lyrics/lyrics-api'
+import { entryLabel, referenceOrigin, songLabel, useSongs, type Entry, type Song } from './setlist-api'
 
 const MOMENTS = ['Oración', 'Ofrenda', 'Anuncios', 'Lectura bíblica', 'Predicación', 'Santa cena']
 
@@ -160,7 +163,53 @@ function MomentTab({ onAdd }: { onAdd: (name: string) => Promise<boolean> }) {
   )
 }
 
-const split = (key: string | null) => ({ root: key ? key.replace(/m$/, '') : '', minor: Boolean(key?.endsWith('m')) })
+/** Un par de líneas con acordes de la letra, en la tonalidad elegida; la letra guardada no cambia. */
+function KeyPreview({ songId, selected, base }: { songId: string; selected: string; base: string }) {
+  const stored = useLyrics(songId)
+  const moved = useTransposedLyrics(songId, selected === base ? null : { toKey: selected })
+  const lyrics = selected === base ? stored.data : moved.data
+  const section = lyrics?.sections.find((item) => item.chordPro)
+  if (moved.isError && selected !== base) return <p role="alert" className="m-0 text-[0.8125rem] text-text-3">No se pudo calcular la vista previa en {selected}.</p>
+  if (!lyrics || !section) return null
+  return (
+    <section aria-label={`Vista previa en ${selected}`} className="grid gap-1 rounded-md border border-line bg-surface-2 p-3">
+      <small className="text-[0.8125rem] text-text-3">Vista previa en {selected}</small>
+      {linesOf(section).filter((line) => line.text).slice(0, 2).map((line, index) => <ChordLine key={index} line={line} />)}
+    </section>
+  )
+}
+
+/**
+ * Tonalidad de una canción en este servicio. Si la letra tiene tonalidad guardada solo se ofrecen las del mismo modo
+ * (la transposición exige el mismo modo) y se ve una vista previa; si no, el modo se elige libremente.
+ */
+function KeyPicker({ song, selected, onSelect }: { song: Song; selected: string | null; onSelect: (key: string | null) => void }) {
+  const stored = useLyrics(song.id).data?.key
+  const base = typeof stored === 'string' && parseKey(stored) ? stored : null
+  const [freeMinor, setFreeMinor] = useState(Boolean(selected?.endsWith('m')))
+  const minor = base ? parseKey(base)!.minor : freeMinor
+  const root = selected?.replace(/m$/, '') ?? null
+  const mismatch = base && selected && parseKey(selected) && parseKey(selected)!.minor !== minor
+  return (
+    <div role="group" aria-label="Tonalidad en este servicio" className="grid gap-2">
+      <span className="text-sm font-semibold">Tonalidad en este servicio</span>
+      {!base && <Segmented label="Modo" value={minor ? 'minor' : 'major'} onChange={(value) => { setFreeMinor(value === 'minor'); if (root) onSelect(`${root}${value === 'minor' ? 'm' : ''}`) }} options={[{ value: 'major', label: 'Mayor' }, { value: 'minor', label: 'Menor' }]} />}
+      <div className="grid grid-cols-4 gap-1.5">
+        {keysOfMode(minor).map((name) => (
+          <button key={name} type="button" aria-pressed={selected === name} onClick={() => onSelect(selected === name ? null : name)}
+            className={`min-h-touch cursor-pointer rounded-md border font-mono text-[0.9375rem] font-semibold ${selected === name ? 'border-accent bg-accent text-on-accent' : 'border-line-strong bg-surface text-text'}`}>
+            {name}
+          </button>
+        ))}
+      </div>
+      <p className="m-0 text-[0.8125rem] text-text-3">
+        {base ? `La canción está en ${base} (${minor ? 'menor' : 'mayor'}), así que solo se ofrecen tonalidades ${minor ? 'menores' : 'mayores'}. ` : ''}Toca de nuevo la tonalidad elegida para quitarla.
+      </p>
+      {mismatch && <p className="m-0 text-[0.8125rem] font-medium">{selected} es de otro modo que la base ({base}): no se transpone y la letra se muestra en {base}.</p>}
+      {base && selected && !mismatch && <KeyPreview songId={song.id} selected={selected} base={base} />}
+    </div>
+  )
+}
 
 /** Edición de una entrada: tonalidad y enlace de una canción, nombre de un momento; quien no edita solo la lee. */
 export function EditSheet({ entry, canEdit, onClose, onRemove, onSave }: {
@@ -170,9 +219,7 @@ export function EditSheet({ entry, canEdit, onClose, onRemove, onSave }: {
   onRemove: () => void
   onSave: (patch: { key?: string | null; link?: string | null; moment?: string }) => Promise<void>
 }) {
-  const initial = split(entry.key)
-  const [root, setRoot] = useState(initial.root)
-  const [minor, setMinor] = useState(initial.minor)
+  const [selected, setSelected] = useState(entry.key)
   const [link, setLink] = useState(entry.link ?? '')
   const [name, setName] = useState(entry.moment ?? '')
   const [error, setError] = useState('')
@@ -189,7 +236,7 @@ export function EditSheet({ entry, canEdit, onClose, onRemove, onSave }: {
   async function save() {
     const patch: { key?: string | null; link?: string | null; moment?: string } = {}
     if (song) {
-      const key = root ? `${root}${minor ? 'm' : ''}` : null
+      const key = selected
       const value = link.trim()
       if (value && !referenceOrigin(value)) { setError('Pega un enlace de YouTube o Spotify.'); return }
       if (key !== entry.key) patch.key = key
@@ -210,26 +257,14 @@ export function EditSheet({ entry, canEdit, onClose, onRemove, onSave }: {
       <div className="grid gap-4">
         {song && <p className="m-0 text-sm text-text-2">{song.author || 'Sin autor'} · de la biblioteca compartida; aquí solo cambian la tonalidad y el enlace de este servicio.</p>}
         {song && (
-          <Link to={`/canciones/${encodeURIComponent(song.id)}/letra`} state={{ title: song.title, back: location.pathname }}
+          <Link to={`/canciones/${encodeURIComponent(song.id)}/letra`} state={{ title: song.title, back: location.pathname, key: entry.key ?? undefined }}
             className="inline-flex min-h-touch items-center gap-1.5 font-semibold text-accent underline">
             <Icon name="music" width={16} height={16} />Ver letra
           </Link>
         )}
         {song && canEdit && (
           <>
-            <div role="group" aria-label="Tonalidad en este servicio" className="grid gap-2">
-              <span className="text-sm font-semibold">Tonalidad en este servicio</span>
-              <Segmented label="Modo" value={minor ? 'minor' : 'major'} onChange={(value) => setMinor(value === 'minor')} options={[{ value: 'major', label: 'Mayor' }, { value: 'minor', label: 'Menor' }]} />
-              <div className="grid grid-cols-4 gap-1.5">
-                {tonalities.map((note) => (
-                  <button key={note} type="button" aria-pressed={root === note} onClick={() => setRoot(root === note ? '' : note)}
-                    className={`min-h-touch cursor-pointer rounded-md border font-mono text-[0.9375rem] font-semibold ${root === note ? 'border-accent bg-accent text-on-accent' : 'border-line-strong bg-surface text-text'}`}>
-                    {note}{minor ? 'm' : ''}
-                  </button>
-                ))}
-              </div>
-              <p className="m-0 text-[0.8125rem] text-text-3">Toca de nuevo la tonalidad elegida para quitarla.</p>
-            </div>
+            <KeyPicker song={song} selected={selected} onSelect={setSelected} />
             <TextField label={<>Enlace de referencia <span className="font-normal text-text-3">(opcional)</span></>} type="url" inputMode="url" autoComplete="off" placeholder="YouTube o Spotify"
               value={link} onChange={(event) => { setLink(event.target.value); setError('') }} error={error}
               help="Se abre desde el setlist; no se reproduce dentro de la app." />

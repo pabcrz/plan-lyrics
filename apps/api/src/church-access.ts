@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type { PrismaClient } from './generated/prisma/client.ts'
 
 export async function readChurch(db: PrismaClient, subject: string, id: string) {
@@ -13,4 +14,18 @@ export async function readChurch(db: PrismaClient, subject: string, id: string) 
     )
   `
   return rows[0]
+}
+
+export const newChurchBody = z.strictObject({ name: z.string().trim().min(1).max(120) })
+
+/**
+ * The platform owner founds a church and becomes its administrator. The active church is the caller's only
+ * membership, so an owner who already belongs to one gets `false` instead of a second church.
+ */
+export async function createChurch(db: PrismaClient, userSubject: string, name: string) {
+  return db.$transaction(async tx => {
+    const user = await tx.user.findUnique({ where: { clerkSubject: userSubject }, select: { id: true, memberships: { select: { churchId: true } } } })
+    if (!user || user.memberships.length > 0) return false
+    return tx.church.create({ data: { name, memberships: { create: { userId: user.id, role: 'ADMIN' } } }, select: { id: true, name: true } })
+  })
 }

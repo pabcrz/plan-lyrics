@@ -64,7 +64,7 @@ const canShareFiles = (file: File) => typeof navigator !== 'undefined' && typeof
 /** Marco común: opciones, vista previa y acciones; lo que no es la hoja no se imprime. */
 function Frame({ church, title, intro, options, paper, actions }: { church: Church; title: string; intro: string; options: ReactNode; paper: ReactNode; actions: ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <div className="no-print"><TopBar name={church.name} settings={church.canConfigure} /><PageHeader title={title} back="/compartir" backLabel="Volver a compartir" /></div>
       <main className="grid flex-1 content-start gap-5 p-4">
         <div className="no-print grid gap-5">
@@ -261,10 +261,10 @@ export function DocumentPage() {
   return (
     <ChurchGate>
       {(church) => !church.canEdit ? (
-        <main className="mx-auto max-w-[480px]"><TopBar name={church.name} /><PageHeader title="Compartir" back="/compartir" backLabel="Volver a compartir" />
+        <main className="mx-auto max-w-[480px] lg:max-w-[720px]"><TopBar name={church.name} /><PageHeader title="Compartir" back="/compartir" backLabel="Volver a compartir" />
           <div className="p-4"><Notice title="Solo para quien edita">Crear documentos para compartir requiere administrar o editar servicios en tu iglesia.</Notice></div></main>
       ) : Screen ? <Screen church={church} /> : (
-        <main className="mx-auto max-w-[480px]"><TopBar name={church.name} /><PageHeader title="Compartir" back="/compartir" backLabel="Volver a compartir" />
+        <main className="mx-auto max-w-[480px] lg:max-w-[720px]"><TopBar name={church.name} /><PageHeader title="Compartir" back="/compartir" backLabel="Volver a compartir" />
           <div className="grid gap-3 p-4"><Notice title="No existe ese documento">Elige uno desde Compartir.</Notice><Link to="/compartir" className="text-accent">Volver a compartir</Link></div></main>
       )}
     </ChurchGate>

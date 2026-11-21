@@ -39,7 +39,7 @@ export function RoleParticipationPage() {
 
 function Shell({ church, title, back, backLabel, children }: { church: Church; title: string; back: string; backLabel: string; children: ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} />
       <PageHeader title={title} back={back} backLabel={backLabel} />
       <div className="grid flex-1 content-start gap-5 p-4">{children}</div>

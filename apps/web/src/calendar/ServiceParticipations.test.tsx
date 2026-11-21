@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { CalendarPage } from './CalendarPage'
+import { ServicePage } from '../setlist/ServicePage'
 import type { Assignment, Turn, Who } from './participations-api'
 import { church, defaultRoles, detail, mount, service, stubApi } from './test-utils'
 
@@ -32,9 +32,9 @@ const base = {
 
 async function openService(over: Parameters<typeof stubApi>[0] = {}) {
   const calls = stubApi({ ...base, ...over })
-  mount(<Routes><Route path="*" element={<CalendarPage />} /></Routes>)
-  fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Servicio de viernes/ }))
-  const sheet = await screen.findByRole('dialog', { name: 'Servicio de viernes' })
+  mount(<Routes><Route path="/servicios/:serviceId" element={<ServicePage />} /></Routes>, '/servicios/s1')
+  await screen.findByRole('heading', { level: 1, name: 'Servicio de viernes' })
+  const sheet = screen.getByRole('main')
   await waitFor(() => expect(within(sheet).queryByText('Cargando participaciones…')).toBeNull())
   return { calls, sheet: within(sheet) }
 }

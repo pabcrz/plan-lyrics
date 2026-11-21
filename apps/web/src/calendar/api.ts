@@ -5,9 +5,16 @@ import type { Church, ChurchSettings, ClosedDate, Person, PersonDetail, Service,
 import { apiUrl } from '../api-url'
 
 export class ApiError extends Error {
-  constructor(readonly status: number, readonly code = '', readonly issues: string[] = [], readonly existing?: { id: string; name: string }, readonly services?: number) {
+  constructor(readonly status: number, readonly code = '', readonly issues: string[] = [], readonly existing?: { id: string; name: string }, readonly services?: number, readonly affected: Array<{ position: number; kind: string; label: string | null }> = []) {
     super(`API ${status}`)
   }
+}
+
+/** Secciones que la API nombra al rechazar un guardado que perdería acordes (`chords_would_be_lost`). */
+function affectedSections(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item: { position?: unknown; kind?: unknown; label?: unknown }) =>
+    typeof item?.position === 'number' && typeof item.kind === 'string' ? [{ position: item.position, kind: item.kind, label: typeof item.label === 'string' ? item.label : null }] : [])
 }
 
 /** Petición con el Bearer de Clerk; sin cookies ni caché. La API decide siempre los permisos. */
@@ -32,6 +39,7 @@ export function useApiFetch() {
         Array.isArray(issues) ? issues.filter((item): item is string => typeof item === 'string') : [],
         typeof existing?.id === 'string' && typeof existing.name === 'string' ? { id: existing.id, name: existing.name } : undefined,
         typeof (body as { services?: unknown } | null)?.services === 'number' ? (body as { services: number }).services : undefined,
+        affectedSections((body as { sections?: unknown } | null)?.sections),
       )
     }
     return (response.status === 204 ? undefined : await response.json()) as T

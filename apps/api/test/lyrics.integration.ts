@@ -38,7 +38,7 @@ const path = (songId: string) => `/api/songs/${songId}/lyrics`
 const verse = (text = 'Primera línea inventada\nSegunda línea inventada') => ({ kind: 'VERSE', text })
 const chorus = (text = 'Coro inventado', repeat = 1) => ({ kind: 'CHORUS', text, repeat })
 const put = (subject: string | undefined, songId: string, body: unknown) => call(subject, 'PUT', path(songId), body)
-type Lyrics = { version: number; published: boolean; canEdit: boolean; sections: Array<{ kind: string; label: string | null; text: string; repeat: number }> }
+type Lyrics = { version: number; published: boolean; key: string | null; canEdit: boolean; sections: Array<{ kind: string; label: string | null; text: string; chordPro: string | null; repeat: number }> }
 const read = async (subject: string, songId: string) => json<Lyrics>(await call(subject, 'GET', path(songId)))
 
 test('everyone who sees the library reads the lyrics, the internal data included, and an empty song answers an empty lyrics', async () => {
@@ -47,7 +47,7 @@ test('everyone who sees the library reads the lyrics, the internal data included
     const response = await call(subject, 'GET', path(song.id))
     expect(response.status, subject).toBe(200)
     expect(response.headers.get('cache-control')).toBe('no-store')
-    expect(await json(response)).toEqual({ title: song.title, version: 0, published: false, canEdit: ['library', 'owner'].includes(subject), sections: [] })
+    expect(await json(response)).toEqual({ title: song.title, version: 0, published: false, key: null, canEdit: ['library', 'owner'].includes(subject), sections: [] })
   }
   await put('library', song.id, { version: 0, sections: [verse(), chorus()] })
   expect((await read('member', song.id)).sections.map(section => section.kind)).toEqual(['VERSE', 'CHORUS'])
@@ -85,12 +85,12 @@ test('a new lyrics keeps its sections in order, with kind, label and repeat, and
   ] })
   expect(response.status).toBe(200)
   const saved = await json<Lyrics>(response)
-  expect(saved).toEqual({ title: song.title, version: 1, published: false, canEdit: true, sections: [
-    { kind: 'INTRO', label: null, text: 'Intro inventada', repeat: 1 },
-    { kind: 'VERSE', label: 'Estrofa 1', text: 'Verso uno\nVerso dos', repeat: 1 },
-    { kind: 'CHORUS', label: null, text: 'Coro uno', repeat: 2 },
-    { kind: 'BRIDGE', label: null, text: 'Puente inventado', repeat: 1 },
-    { kind: 'CLOSING', label: null, text: 'Cierre inventado', repeat: 1 },
+  expect(saved).toEqual({ title: song.title, version: 1, published: false, key: null, canEdit: true, sections: [
+    { kind: 'INTRO', label: null, text: 'Intro inventada', chordPro: null, repeat: 1 },
+    { kind: 'VERSE', label: 'Estrofa 1', text: 'Verso uno\nVerso dos', chordPro: null, repeat: 1 },
+    { kind: 'CHORUS', label: null, text: 'Coro uno', chordPro: null, repeat: 2 },
+    { kind: 'BRIDGE', label: null, text: 'Puente inventado', chordPro: null, repeat: 1 },
+    { kind: 'CLOSING', label: null, text: 'Cierre inventado', chordPro: null, repeat: 1 },
   ] })
   expect(await read('member', song.id)).toEqual({ ...saved, canEdit: false })
 })

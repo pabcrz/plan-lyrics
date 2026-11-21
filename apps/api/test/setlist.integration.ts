@@ -52,6 +52,7 @@ test('only the owner or a library editor creates songs; the church role never gr
   const song = { title: 'Canción de ejemplo', author: 'Autora Uno' }
   for (const subject of ['member', 'editor', 'admin']) expect((await call(subject, 'POST', '/api/songs', song)).status).toBe(403)
   expect(await db.song.count()).toBe(0)
+  for (const [subject, canCreate] of [['member', false], ['combined', true]] as const) expect(await (await call(subject, 'GET', '/api/songs/access')).json()).toEqual({ canCreate })
   const created = await call('combined', 'POST', '/api/songs', { title: '  Canción  de ejemplo ', author: 'Autora Uno' })
   expect(created.status).toBe(201)
   expect(await created.json()).toEqual({ id: expect.any(String), title: 'Canción de ejemplo', author: 'Autora Uno' })
@@ -71,6 +72,29 @@ test('identity is title + author: the same title with another author is a differ
     expect((await call('combined', 'POST', '/api/songs', bad)).status).toBe(400)
   }
   expect(await db.song.count()).toBe(2)
+})
+
+test('only the owner or a library editor renames or deletes a song; one in a setlist is never deleted', async () => {
+  const [one, two] = [await newSong('Canción uno', 'Autora Uno'), await newSong('Canción dos', 'Autor Dos')]
+  const service = await newService()
+  expect((await call('editor', 'PATCH', `/api/songs/${one.id}`, { title: 'Nuevo', author: 'Autor' })).status).toBe(403)
+  expect((await call('editor', 'DELETE', `/api/songs/${one.id}`)).status).toBe(403)
+  const renamed = await call('combined', 'PATCH', `/api/songs/${one.id}`, { title: ' Canción  UNO ', author: 'Autora Uno Bis' })
+  expect(renamed.status).toBe(200)
+  expect(await renamed.json()).toEqual({ id: one.id, title: 'Canción UNO', author: 'Autora Uno Bis' })
+  expect((await call('combined', 'PATCH', `/api/songs/${one.id}`, { title: 'Canción uno', author: 'Autora Uno Bis' })).status).toBe(200)
+  const clash = await call('combined', 'PATCH', `/api/songs/${one.id}`, { title: 'canción DOS', author: 'autor dos' })
+  expect(clash.status).toBe(409)
+  expect(await clash.json()).toMatchObject({ error: 'Song exists', existing: { id: two.id } })
+  expect((await call('combined', 'PATCH', `/api/songs/${one.id}`, { title: 'Sin autor' })).status).toBe(400)
+  expect((await call('combined', 'PATCH', '/api/songs/no-existe', { title: 'Tema', author: 'Autor' })).status).toBe(404)
+  await call('editor', 'POST', `/api/services/${service.id}/setlist/entries`, { songId: one.id })
+  const used = await call('combined', 'DELETE', `/api/songs/${one.id}`)
+  expect(used.status).toBe(409)
+  expect(await used.json()).toEqual({ error: 'Song in use' })
+  expect((await call('combined', 'DELETE', `/api/songs/${two.id}`)).status).toBe(204)
+  expect((await call('combined', 'DELETE', `/api/songs/${two.id}`)).status).toBe(404)
+  expect(await db.song.count()).toBe(1)
 })
 
 test('an editor prepares the setlist; the order is saved on the server and a member only reads', async () => {

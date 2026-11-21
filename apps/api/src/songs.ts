@@ -37,6 +37,9 @@ export function songRoutes(config: SessionConfig, db?: PrismaClient) {
     return c.json(rows)
   }))
 
+  // Lets the library screen show «Nueva» only to who can create songs (the POST below still decides).
+  routes.get('/api/songs/access', guarded(db, 'songs_access_failed', async (c, db) => c.json({ canCreate: await canEditLibrary(db, c.get('clerkSubject')) })))
+
   // Only the owner and library editors create songs; church roles never grant it (the most restrictive reading,
   // because producto does not say who may add a song while preparing a setlist).
   routes.post('/api/songs', guarded(db, 'song_creation_failed', async (c, db) => {
@@ -52,6 +55,41 @@ export function songRoutes(config: SessionConfig, db?: PrismaClient) {
     } catch (error) {
       if (safeErrorCode(error) !== 'P2002') throw error
       return c.json({ error: 'Song exists', existing: await existing() }, 409)
+    }
+  }))
+
+  // Same restriction as creating. Changing title/author keeps the id, so setlists and lyrics follow the song.
+  routes.patch('/api/songs/:songId', guarded(db, 'song_update_failed', async (c, db) => {
+    if (!await canEditLibrary(db, c.get('clerkSubject'))) return c.json({ error: 'Forbidden' }, 403)
+    const body = newSongBody.safeParse(await c.req.json().catch(() => undefined))
+    if (!body.success) return c.json({ error: 'Invalid request' }, 400)
+    const id = c.req.param('songId')
+    const keys = { titleKey: nameKey(body.data.title), authorKey: nameKey(body.data.author) }
+    const clash = async () => db.song.findUnique({ where: { titleKey_authorKey: keys }, select: songSelect })
+    const other = await clash()
+    if (other && other.id !== id) return c.json({ error: 'Song exists', existing: other }, 409)
+    try {
+      return c.json(await db.song.update({ where: { id }, data: { ...body.data, ...keys }, select: songSelect }))
+    } catch (error) {
+      const code = safeErrorCode(error)
+      if (code === 'P2025') return c.json({ error: 'Not found' }, 404)
+      if (code !== 'P2002') throw error
+      return c.json({ error: 'Song exists', existing: await clash() }, 409)
+    }
+  }))
+
+  // A song with lyrics or in any setlist is never deleted (the database restricts both): only one created by mistake goes.
+  routes.delete('/api/songs/:songId', guarded(db, 'song_deletion_failed', async (c, db) => {
+    if (!await canEditLibrary(db, c.get('clerkSubject'))) return c.json({ error: 'Forbidden' }, 403)
+    const id = c.req.param('songId')
+    try {
+      await db.song.delete({ where: { id } })
+      return c.body(null, 204)
+    } catch (error) {
+      const code = safeErrorCode(error)
+      if (code === 'P2025') return c.json({ error: 'Not found' }, 404)
+      if (code === 'P2003') return c.json({ error: 'Song in use' }, 409)
+      throw error
     }
   }))
   return routes

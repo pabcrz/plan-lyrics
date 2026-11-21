@@ -14,7 +14,7 @@ export function SharePage() {
 
 function ReadOnly({ church }: { church: Church }) {
   return (
-    <main className="mx-auto max-w-[480px]">
+    <main className="mx-auto max-w-[480px] lg:max-w-[720px]">
       <TopBar name={church.name} />
       <PageHeader title="Compartir" />
       <div className="p-4"><Notice title="Solo para quien edita">Crear y gestionar lo que se comparte requiere administrar o editar servicios en tu iglesia.</Notice></div>
@@ -90,7 +90,7 @@ function Home({ church }: { church: Church }) {
   // La hoja lee el enlace de la lista viva: tras revocar o reactivar muestra siempre lo que dice el servidor.
   const open = links.data?.find((link) => link.id === openId) ?? null
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
       <PageHeader title="Compartir" backLabel="Cerrar y volver al calendario" />
       <main className="grid flex-1 content-start gap-5 p-4">

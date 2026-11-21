@@ -3,14 +3,14 @@ import { church as baseChurch } from '../calendar/test-utils'
 import type { Church } from '../calendar/model'
 import type { Account, Accounts, Candidate, Member, Members } from './access-api'
 
-export const admin = (over: Partial<Member> = {}): Member => ({ userId: 'u-admin', role: 'ADMIN', self: true, protected: false, person: { id: 'p-admin', name: 'Ana Ramírez' }, ...over })
+export const admin = (over: Partial<Member> = {}): Member => ({ userId: 'u-admin', role: 'ADMIN', self: true, protected: false, email: null, person: { id: 'p-admin', name: 'Ana Ramírez' }, ...over })
 export const members: Member[] = [
   admin(),
-  { userId: 'u-editor', role: 'EDITOR', self: false, protected: false, person: { id: 'p-editor', name: 'Luis Herrera' } },
-  { userId: 'u-member', role: 'MEMBER', self: false, protected: false, person: null },
-  { userId: 'u-owner', role: 'MEMBER', self: false, protected: true, person: { id: 'p-owner', name: 'Pablo Cruz' } },
+  { userId: 'u-editor', role: 'EDITOR', self: false, protected: false, email: null, person: { id: 'p-editor', name: 'Luis Herrera' } },
+  { userId: 'u-member', role: 'MEMBER', self: false, protected: false, email: null, person: null },
+  { userId: 'u-owner', role: 'MEMBER', self: false, protected: true, email: null, person: { id: 'p-owner', name: 'Pablo Cruz' } },
 ]
-export const candidates: Candidate[] = [{ personId: 'p-new', name: 'Marta Solís' }]
+export const candidates: Candidate[] = [{ personId: 'p-new', name: 'Marta Solís', email: null }]
 
 export const account = (over: Partial<Account> = {}): Account => ({ id: 'a1', email: 'ana@example.com', accountManager: false, libraryEditor: false, owner: false, person: { id: 'p1', name: 'Ana Ramírez' }, ...over })
 export const accountList: Account[] = [
@@ -49,7 +49,7 @@ export function stubAccess(routes: Stub = {}) {
     if (url === '/api/members' && method === 'POST') {
       const base = (typeof current === 'object' ? current : { members, candidates }) as Members
       const person = base.candidates.find((item) => item.personId === body.personId)
-      const created: Member = { userId: `u-${body.personId}`, role: body.role, self: false, protected: false, person: person ? { id: person.personId, name: person.name } : null }
+      const created: Member = { userId: `u-${body.personId}`, role: body.role, self: false, protected: false, email: null, person: person ? { id: person.personId, name: person.name } : null }
       current = { members: [...base.members, created], candidates: base.candidates.filter((item) => item.personId !== body.personId) }
       return reply(201, created)
     }

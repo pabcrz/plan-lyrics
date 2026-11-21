@@ -296,10 +296,10 @@ describe('time helpers', () => {
 describe('TimeWheel', () => {
   const value: Time12 = { hour: 7, minute: 30, meridiem: 'pm' }
 
-  test('lists 12 before 1, minutes every 15 and a.m./p.m., marking the current value', () => {
+  test('lists 00 first and 12 last, minutes every 15 and a.m./p.m., marking the current value', () => {
     render(<TimeWheel value={value} onChange={vi.fn()} />)
     const hours = within(screen.getByRole('listbox', { name: 'Hora' })).getAllByRole('option').map((o) => o.textContent)
-    expect(hours).toEqual(['12', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'])
+    expect(hours).toEqual(['00', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
     const minutes = within(screen.getByRole('listbox', { name: 'Minutos' })).getAllByRole('option').map((o) => o.textContent)
     expect(minutes).toEqual(['00', '15', '30', '45'])
     expect(screen.getByRole('option', { name: '7' })).toHaveAttribute('aria-selected', 'true')
@@ -316,6 +316,16 @@ describe('TimeWheel', () => {
     expect(onChange).toHaveBeenLastCalledWith({ hour: 8, minute: 30, meridiem: 'pm' })
     fireEvent.keyDown(screen.getByRole('listbox', { name: 'a.m. o p.m.' }), { key: 'ArrowUp' })
     expect(onChange).toHaveBeenLastCalledWith({ hour: 7, minute: 30, meridiem: 'am' })
+  })
+
+  test('12 after 11 is p.m. and 00 is a.m.', () => {
+    const onChange = vi.fn()
+    render(<TimeWheel value={{ hour: 11, minute: 0, meridiem: 'am' }} onChange={onChange} />)
+    const hourList = within(screen.getByRole('listbox', { name: 'Hora' }))
+    fireEvent.click(hourList.getByRole('option', { name: '12' }))
+    expect(onChange).toHaveBeenLastCalledWith({ hour: 12, minute: 0, meridiem: 'pm' })
+    fireEvent.click(hourList.getByRole('option', { name: '00' }))
+    expect(onChange).toHaveBeenLastCalledWith({ hour: 12, minute: 0, meridiem: 'am' })
   })
 
   test('can be restricted to the morning with hours before 12', () => {

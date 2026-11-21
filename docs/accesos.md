@@ -10,7 +10,7 @@ Implementa los [accesos acordados](producto.md#accesos-acordados) y el [alta de 
 | --- | --- | --- |
 | `GET /api/access` | cualquier sesión | Tus propias capacidades `{ owner, accountManager }`. Solo sirve para decidir qué ofrecer. |
 | `GET /api/accounts` | superadmin, gestor | Cuentas (`id`, `email`, capacidades, persona vinculada) y personas sin cuenta, **solo por nombre** (sin teléfono ni iglesias). |
-| `POST /api/accounts` `{ email }` | superadmin, gestor | Crea la cuenta en el proveedor, envía la invitación y crea el usuario local **sin iglesia, rol ni capacidad**. Repetir el correo reenvía la invitación sin duplicar (`200`). |
+| `POST /api/accounts` `{ email }` | superadmin, gestor | Crea la cuenta en el proveedor, envía la invitación y crea el usuario local **sin iglesia, rol ni capacidad**. Si el correo ya tiene una cuenta responde `409 {"error":"Email registered"}` antes de llamar al proveedor: no se reenvía la invitación ni se duplica nada. |
 | `PUT /api/accounts/:userId/person` `{ personId }` | superadmin, gestor | Vincula la cuenta a una persona. `409` si la persona o la cuenta ya están vinculadas. No crea membresías. |
 | `DELETE /api/accounts/:userId/person` | superadmin, gestor | Desvincula. Solo quita el vínculo: membresías y capacidades no cambian. |
 | `PUT /api/users/:userId/account-manager` `{ enabled }` | solo superadmin | Otorga o retira la capacidad de gestor (ruta previa). |

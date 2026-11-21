@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router'
-import { Button, Icon, Notice, StatusChip, Toast, format12h, from24h, type ServiceStatus } from '../ui'
-import { PageHeader } from '../calendar/ChurchGate'
-import { ApiError } from '../calendar/api'
-import { formatLongDay, monthOf } from '../calendar/dates'
+import { Link, useParams } from 'react-router'
+import { Avatar, Button, Icon, Notice, StatusChip, Toast, format12h, from24h, type ServiceStatus } from '../ui'
+import { AppShell } from '../calendar/AppShell'
+import { ChurchGate } from '../calendar/ChurchGate'
+import { ApiError, useServices } from '../calendar/api'
+import { formatLongDay, monthOf, todayIn } from '../calendar/dates'
+import type { Church } from '../calendar/model'
+import { PreachingSection } from '../calendar/PreachingSection'
+import { ServiceParticipations } from '../calendar/ServiceParticipations'
 import { AddSheet, EditSheet } from './SetlistSheets'
 import { moveItem, useDragReorder, type Rect } from './reorder'
 import { entryLabel, referenceOrigin, useSetlist, useSetlistActions, type Entry, type NewEntry, type Setlist } from './setlist-api'
@@ -23,32 +27,69 @@ export function failureText(error: unknown) {
   return 'No se pudo guardar el cambio. Inténtalo de nuevo.'
 }
 
-export function SetlistPage() {
+export function ServicePage() {
+  return <ChurchGate>{(church) => <Screen church={church} />}</ChurchGate>
+}
+
+/** Pantalla del servicio: datos, setlist, participaciones y predicación juntos; qué se puede cambiar lo decide el servidor. */
+function Screen({ church }: { church: Church }) {
   const { serviceId = '' } = useParams()
   const query = useSetlist(serviceId)
-  if (query.data) return <Editor key={serviceId} setlist={query.data} />
+  const month = query.data ? monthOf(query.data.service.date) : ''
+  // La dirección y lo demás del servicio vienen de la lista del mes (no hay lectura de un servicio suelto).
+  const service = useServices(month ? [month] : []).services.find((item) => item.id === serviceId)
   const missing = query.error instanceof ApiError && query.error.status === 404
+  const setlist = query.data
+  const back = setlist && monthOf(setlist.service.date) !== monthOf(todayIn()) ? `/?mes=${monthOf(setlist.service.date)}` : '/'
+
   return (
-    <div className="mx-auto min-h-dvh max-w-[480px]">
-      <PageHeader title="Setlist" backLabel="Volver al calendario" />
-      <main className="grid gap-4 p-4">
-        {query.isPending && <p role="status" className="m-0 text-text-2">Cargando el setlist…</p>}
+    <AppShell church={church} current="home" wide>
+      <main className="grid flex-1 content-start gap-4 p-4 lg:px-6">
+        <Link to={back} className="flex min-h-11 w-fit items-center gap-1 font-semibold text-accent no-underline hover:underline lg:hidden"><Icon name="right" className="-scale-x-100" />Inicio</Link>
+        {query.isPending && <p role="status" className="m-0 text-text-2">Cargando el servicio…</p>}
         {missing && <Notice title="No encontramos este servicio">No existe en tu iglesia o ya no está disponible.</Notice>}
         {query.isError && !missing && (
           <>
-            <Notice tone="warn" icon="alert" role="alert" title="No se pudo cargar el setlist">Revisa tu conexión e inténtalo de nuevo.</Notice>
+            <Notice tone="warn" icon="alert" role="alert" title="No se pudo cargar el servicio">Revisa tu conexión e inténtalo de nuevo.</Notice>
             <Button variant="secondary" onClick={() => void query.refetch()}>Reintentar</Button>
           </>
         )}
+        {setlist && (
+          <>
+            <header className="grid justify-items-start gap-2">
+              <StatusChip status={setlist.service.status.toLowerCase() as ServiceStatus} />
+              <h1 className="m-0 font-display text-[1.75rem] leading-[1.1] font-bold tracking-tight">{setlist.service.title}</h1>
+              <p className="m-0 flex flex-wrap gap-x-3 text-[0.9375rem] text-text-2">
+                <span>{capitalize(formatLongDay(setlist.service.date).replace(',', ''))}</span>
+                <span>{setlist.service.time ? format12h(from24h(setlist.service.time)) : 'Sin hora fija'}{slotText[setlist.service.slot]}</span>
+              </p>
+              {service && (
+                <div className="flex items-center gap-3">
+                  <Avatar name={service.director.name} />
+                  <span><small className="block text-[0.8125rem] text-text-3">Dirige</small><b className="font-semibold">{service.director.name}</b></span>
+                </div>
+              )}
+            </header>
+            <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+              <SetlistSection key={serviceId} setlist={setlist} />
+              {service && (
+                <div className="grid gap-4">
+                  <div className="rounded-lg border border-line bg-surface p-4"><ServiceParticipations service={service} canEdit={setlist.canEdit} /></div>
+                  {church.usesPreaching && <div className="rounded-lg border border-line bg-surface p-4"><PreachingSection service={service} canEdit={setlist.canEdit} /></div>}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </main>
-    </div>
+    </AppShell>
   )
 }
 
 type Sheet = { kind: 'add' } | { kind: 'edit'; id: string } | null
 type Undo = { message: string; restore?: () => void }
 
-function Editor({ setlist }: { setlist: Setlist }) {
+function SetlistSection({ setlist }: { setlist: Setlist }) {
   const { service, entries, canEdit, canCreateSongs } = setlist
   const actions = useSetlistActions(service.id)
   const [sheet, setSheet] = useState<Sheet>(null)
@@ -114,30 +155,24 @@ function Editor({ setlist }: { setlist: Setlist }) {
   const editing = sheet?.kind === 'edit' ? entries.find((entry) => entry.id === sheet.id) : undefined
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
-      <PageHeader title="Setlist" backLabel="Volver al calendario" back={`/?mes=${monthOf(service.date)}`} />
-      <main className="flex-1 pb-4">
-        <div className="relative px-4 pt-2 pb-4">
-          <div aria-hidden="true" className="pointer-events-none absolute top-2 right-0 h-[25px] w-[100px] bg-[repeating-linear-gradient(to_bottom,var(--line-strong)_0_1px,transparent_1px_6px)] mask-[linear-gradient(to_right,transparent,#000)]" />
-          <StatusChip status={service.status.toLowerCase() as ServiceStatus} />
-          <h1 className="mt-3 mb-1.5 font-display text-[1.625rem] leading-[1.1] font-bold tracking-tight">{service.title}</h1>
-          <p className="m-0 flex flex-wrap gap-x-3 text-[0.9375rem] text-text-2">
-            <span>{capitalize(formatLongDay(service.date).replace(',', ''))}</span>
-            <span>{service.time ? format12h(from24h(service.time)) : 'Sin hora fija'}{slotText[service.slot]}</span>
-          </p>
-        </div>
-        <p aria-live="polite" className="m-0 px-4 pb-2 text-[0.8125rem] text-text-3">{summary}</p>
-        <p role="status" aria-live="assertive" className="sr-only">{announcement}</p>
-        {failure && <div className="px-4 pb-3"><Notice tone="warn" icon="alert" role="alert">{failure}</Notice></div>}
+    <section aria-labelledby="setlist-title" className="grid content-start gap-3 rounded-lg border border-line bg-surface p-4">
+      <div className="flex items-center gap-3">
+        <h2 id="setlist-title" className="m-0 flex-1 font-display text-[1.0625rem] font-bold">
+          Setlist<small aria-live="polite" className="block font-body text-[0.8125rem] font-normal text-text-3">{summary}</small>
+        </h2>
+        {canEdit && <Button variant="secondary" onClick={() => setSheet({ kind: 'add' })}><Icon name="plus" width={18} height={18} />Agregar</Button>}
+      </div>
+      <p role="status" aria-live="assertive" className="sr-only">{announcement}</p>
+      {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
 
         {entries.length === 0 ? (
-          <div className="mx-4 mb-4 grid gap-1 rounded-lg border border-dashed border-line-strong bg-surface p-4 text-[0.9375rem]">
+          <div className="grid gap-1 text-[0.9375rem]">
             <p className="m-0 font-bold">El setlist está vacío</p>
             <p className="m-0">{canEdit ? 'Agrega canciones de la biblioteca y los momentos del servicio, en el orden en que ocurren.' : 'Quien edita los servicios todavía no lo ha preparado.'}</p>
           </div>
         ) : (
           <>
-            <ul aria-label="Setlist" className="mx-4 mb-3 list-none overflow-hidden rounded-lg border border-line bg-surface p-0">
+            <ul aria-label="Setlist" className="m-0 list-none overflow-hidden rounded-md border border-line p-0">
               {entries.map((entry, index) => {
                 const moment = entry.kind === 'MOMENT'
                 const origin = entry.link ? referenceOrigin(entry.link) : null
@@ -173,25 +208,15 @@ function Editor({ setlist }: { setlist: Setlist }) {
                 )
               })}
             </ul>
-            {canEdit && <p className="m-0 px-4 pb-2 text-[0.8125rem] text-text-3">Arrastra el asa para reordenar. Con teclado, usa las flechas arriba y abajo sobre el asa.</p>}
+            {canEdit && <p className="m-0 text-[0.8125rem] text-text-3">Arrastra el asa para reordenar. Con teclado, usa las flechas arriba y abajo sobre el asa.</p>}
           </>
         )}
-        <div className="px-4 pt-2">
-          <Notice title="Lo interno no se publica">Los tonos, el BPM y las notas son solo para el equipo. La vista pública muestra títulos y letras.</Notice>
-        </div>
-      </main>
+      <Notice title="Lo interno no se publica">Los tonos, el BPM y las notas son solo para el equipo. La vista pública muestra títulos y letras.</Notice>
       {notice && (
-        <div className="fixed inset-x-0 bottom-24 z-40 mx-auto max-w-[480px] px-4">
+        <div className="fixed inset-x-0 bottom-24 z-40 mx-auto max-w-[480px] lg:max-w-[720px] px-4">
           <Toast message={notice.message} onUndo={notice.restore} onDismiss={() => setNotice(null)} />
         </div>
       )}
-      <div className="sticky bottom-0 grid gap-1 border-t border-line bg-surface px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
-        {canEdit ? (
-          <Button block onClick={() => setSheet({ kind: 'add' })}><Icon name="plus" width={18} height={18} />Agregar al setlist</Button>
-        ) : (
-          <p className="m-0 text-center text-sm text-text-2">Solo quien edita los servicios puede cambiar el setlist.</p>
-        )}
-      </div>
       {sheet?.kind === 'add' && (
         <AddSheet entries={entries} canCreateSongs={canCreateSongs} onClose={() => setSheet(null)} createSong={actions.createSong}
           onAddSong={(song) => addEntry({ songId: song.id }, song.title, true)} onAddMoment={(name) => addEntry({ moment: name }, name, false)} />
@@ -200,6 +225,6 @@ function Editor({ setlist }: { setlist: Setlist }) {
         <EditSheet entry={editing} canEdit={canEdit} onClose={() => setSheet(null)} onRemove={() => void removeEntry(editing, entries.indexOf(editing))}
           onSave={async (patch) => { if (await perform(() => actions.edit(editing.id, patch))) setSheet(null) }} />
       )}
-    </div>
+    </section>
   )
 }

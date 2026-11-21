@@ -30,7 +30,7 @@ type Handler =(url: string, init?: RequestInit) => { status?: number; body?: unk
 
 /** Doble de fetch por ruta; devuelve las peticiones hechas para poder inspeccionarlas. */
 export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
-  id: 'p1', name: 'Ana Ramírez', phone: null, email: null, hasAccount: false, roleIds: defaultRoles.map((role) => role.id), sharedWithOtherChurches: false, upcomingServices: 0, ...over,
+  id: 'p1', name: 'Ana Ramírez', phone: null, email: null, hasAccount: false, isYou: false, roleIds: defaultRoles.map((role) => role.id), sharedWithOtherChurches: false, upcomingServices: 0, ...over,
 })
 
 export function stubApi(routes: {
@@ -125,6 +125,12 @@ export function stubApi(routes: {
       const result = routes.preachingChange?.(url, init)
       return result?.status && result.status >= 400 ? reply(result.status, result.body ?? { error: 'x' }) : reply(200, { swapped: [] })
     }
+    // Pantalla del servicio: un setlist vacío con los datos del servicio de la lista, para quien solo prueba las otras secciones.
+    if (url.startsWith('/api/services/') && url.endsWith('/setlist') && init?.method !== 'POST') {
+      const found = (routes.services ?? []).find((item) => item.id === decodeURIComponent(url.split('/')[3] ?? ''))
+      if (!found) return reply(404, { error: 'Not found' })
+      return reply(200, { service: { id: found.id, title: found.title, date: found.date, slot: found.slot, time: found.time, status: found.status }, version: 1, canEdit: (routes.church && typeof routes.church !== 'number' ? routes.church : church).canEdit, canCreateSongs: false, entries: [] })
+    }
     if (url.startsWith('/api/services/') && url.endsWith('/assignments')) {
       const serviceId = decodeURIComponent(url.split('/')[3] ?? '')
       if (init?.method === 'POST') {
@@ -158,7 +164,7 @@ export function stubApi(routes: {
     }
     if (url === '/api/people') {
       const list = routes.directory ?? people.map((person) => detail(person))
-      return reply(200, list.map(({ id, name, hasAccount, roleIds }) => ({ id, name, hasAccount, roleIds })))
+      return reply(200, list.map(({ id, name, hasAccount, isYou, roleIds }) => ({ id, name, hasAccount, isYou, roleIds })))
     }
     if (/^\/api\/people\/[^/]+\/roles$/.test(url) && init?.method === 'PUT') return reply(200, { roleIds: JSON.parse(String(init.body)).roleIds })
     if (url.startsWith('/api/people/')) {

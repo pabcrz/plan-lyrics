@@ -4,6 +4,7 @@ import { Button, Notice, TextField } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, usePersonActions } from '../calendar/api'
 import type { Church } from '../calendar/model'
+import { PhoneField, phoneError, phoneStored } from './phone'
 
 export function NewPersonPage() {
   return <ChurchGate>{(church) => (church.canEdit ? <Form church={church} /> : <ReadOnly church={church} />)}</ChurchGate>
@@ -11,7 +12,7 @@ export function NewPersonPage() {
 
 function ReadOnly({ church }: { church: Church }) {
   return (
-    <main className="mx-auto max-w-[480px]">
+    <main className="mx-auto max-w-[480px] lg:max-w-[720px]">
       <TopBar name={church.name} />
       <PageHeader title="Persona nueva" back="/personas" backLabel="Volver a personas" />
       <div className="p-4"><Notice title="Solo lectura">Agregar personas requiere ser editor o administrador de tu iglesia.</Notice></div>
@@ -25,6 +26,7 @@ function Form({ church }: { church: Church }) {
   const [name, setName] = useState((useLocation().state as { name?: string } | null)?.name ?? '')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [phoneProblem, setPhoneError] = useState('')
   const [existing, setExisting] = useState<{ id: string; name: string } | null>(null)
   const [failure, setFailure] = useState('')
   const [sending, setSending] = useState(false)
@@ -32,11 +34,14 @@ function Form({ church }: { church: Church }) {
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!name.trim()) return
+    const invalid = phoneError(phone)
+    setPhoneError(invalid)
+    if (invalid) return
     setSending(true)
     setExisting(null)
     setFailure('')
     try {
-      const person = await create({ name: name.trim(), ...(phone.trim() ? { phone: phone.trim() } : {}), ...(email.trim() ? { email: email.trim() } : {}) })
+      const person = await create({ name: name.trim(), ...(phone ? { phone: phoneStored(phone) as string } : {}), ...(email.trim() ? { email: email.trim() } : {}) })
       void navigate(`/personas/${encodeURIComponent(person.id)}`, { replace: true })
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409 && caught.existing) setExisting(caught.existing)
@@ -46,7 +51,7 @@ function Form({ church }: { church: Church }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
       <PageHeader title="Persona nueva" back="/personas" backLabel="Volver a personas" />
       <form onSubmit={(event) => void submit(event)} noValidate className="grid flex-1 content-start gap-4 p-4">
@@ -63,7 +68,7 @@ function Form({ church }: { church: Church }) {
             Completa el nombre para distinguirla, o <Link className="font-semibold underline" to={`/personas/${encodeURIComponent(existing.id)}`}>abre su ficha</Link>.
           </Notice>
         )}
-        <TextField label="Teléfono (opcional)" type="tel" inputMode="tel" autoComplete="off" value={phone} maxLength={30} onChange={(event) => setPhone(event.target.value)} />
+        <PhoneField value={phone} error={phoneProblem || undefined} onChange={(digits) => { setPhone(digits); setPhoneError('') }} />
         <TextField label="Correo (opcional)" type="email" inputMode="email" autoComplete="off" value={email} maxLength={254} onChange={(event) => setEmail(event.target.value)} />
         <p className="m-0 text-[0.8125rem] text-text-3">El nombre, el teléfono y el correo son información general: se ven en todas las iglesias donde participe. Sus roles y turnos se configuran en cada iglesia.</p>
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}

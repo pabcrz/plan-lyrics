@@ -5,6 +5,7 @@ import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, usePerson, usePersonActions } from '../calendar/api'
 import { useRoles } from '../calendar/roles-api'
 import type { Church, PersonDetail } from '../calendar/model'
+import { PhoneField, phoneDigits, phoneError, phoneStored } from './phone'
 
 export function PersonPage() {
   return <ChurchGate>{(church) => <Loader church={church} />}</ChurchGate>
@@ -15,7 +16,7 @@ function Loader({ church }: { church: Church }) {
   const person = usePerson(personId)
   const missing = person.error instanceof ApiError && person.error.status === 404
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings={church.canConfigure} />
       <PageHeader title="Persona" back="/personas" backLabel="Volver a personas" />
       {person.isPending && <p role="status" className="p-4">Cargando persona…</p>}
@@ -31,32 +32,67 @@ function Loader({ church }: { church: Church }) {
   )
 }
 
+const shownPhone = (digits: string) => (digits.length === 10 ? `+52 ${digits}` : digits || 'Sin teléfono')
+const YouBadge = () => <span className="w-fit rounded-full border border-line-strong bg-surface-2 px-2.5 text-[0.8125rem] font-medium text-text-2">Tú</span>
+
+/** Vista de quien no administra: solo cómo contactar a la persona. */
+function Contact({ name, phone, isYou }: { name: string; phone: string; isYou: boolean }) {
+  return (
+    <div className="grid flex-1 content-start gap-5 p-4">
+      <div className="flex items-center gap-3">
+        <Avatar name={name} className="size-12 text-base" />
+        <div className="grid gap-1">
+          <h1 className="m-0 font-display text-xl font-bold tracking-tight">{name}</h1>
+          {isYou && <YouBadge />}
+        </div>
+      </div>
+      <p className="m-0 text-[0.9375rem]"><span className="text-text-3">Teléfono: </span>{shownPhone(phone)}</p>
+      {phone.length === 10 && !isYou && (
+        <a href={`https://wa.me/52${phone}`} target="_blank" rel="noopener noreferrer"
+          className="inline-flex min-h-touch-lg w-full items-center justify-center rounded-md border border-transparent bg-accent px-6 text-[0.9375rem] font-semibold text-on-accent no-underline hover:bg-accent-hover">
+          Contactar por WhatsApp
+        </a>
+      )}
+      {isYou && <Notice>Este es tu perfil. Tu nombre y tu teléfono los gestiona el administrador de tu iglesia.</Notice>}
+    </div>
+  )
+}
+
 function Record({ church, person }: { church: Church; person: PersonDetail }) {
   const navigate = useNavigate()
   const { update, remove } = usePersonActions()
   const [name, setName] = useState(person.name)
-  const [phone, setPhone] = useState(person.phone ?? '')
+  const [phone, setPhone] = useState(phoneDigits(person.phone))
   const [email, setEmail] = useState(person.email ?? '')
-  const [saved, setSaved] = useState({ name: person.name, phone: person.phone ?? '', email: person.email ?? '' })
+  const [saved, setSaved] = useState({ name: person.name, phone: phoneDigits(person.phone), email: person.email ?? '' })
   const [nameError, setNameError] = useState('')
+  const [phoneProblem, setPhoneProblem] = useState('')
   const [failure, setFailure] = useState('')
   const [sending, setSending] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [done, setDone] = useState(false)
-  const dirty = name.trim() !== saved.name || phone.trim() !== saved.phone || email.trim() !== saved.email
+  const dirty = name.trim() !== saved.name || phone !== saved.phone || email.trim() !== saved.email
   const edit = church.canEdit
 
   async function save() {
     if (!name.trim()) return setNameError('Escribe el nombre de la persona.')
+    const invalid = phone !== saved.phone ? phoneError(phone) : ''
+    setPhoneProblem(invalid)
+    if (invalid) return
     setSending(true)
     setNameError('')
     setFailure('')
     setDone(false)
     try {
-      const result = await update(person.id, { name: name.trim(), phone: phone.trim() || null, email: email.trim() || null })
-      setSaved({ name: result.name, phone: result.phone ?? '', email: result.email ?? '' })
+      // Solo lo que cambió: un teléfono anterior sin formato no bloquea corregir el nombre.
+      const result = await update(person.id, {
+        ...(name.trim() !== saved.name ? { name: name.trim() } : {}),
+        ...(phone !== saved.phone ? { phone: phoneStored(phone) } : {}),
+        ...(email.trim() !== saved.email ? { email: email.trim() || null } : {}),
+      })
+      setSaved({ name: result.name, phone: phoneDigits(result.phone), email: result.email ?? '' })
       setName(result.name)
-      setPhone(result.phone ?? '')
+      setPhone(phoneDigits(result.phone))
       setEmail(result.email ?? '')
       setDone(true)
     } catch (caught) {
@@ -70,6 +106,7 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
     setPhone(saved.phone)
     setEmail(saved.email)
     setNameError('')
+    setPhoneProblem('')
     setFailure('')
   }
   async function confirmRemoval() {
@@ -84,6 +121,8 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
     }
   }
 
+  if (!edit) return <Contact name={saved.name} phone={saved.phone} isYou={person.isYou} />
+
   return (
     <>
       <div className="grid flex-1 content-start gap-5 p-4">
@@ -91,6 +130,7 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
           <Avatar name={saved.name} className="size-12 text-base" />
           <div className="grid gap-1">
             <h1 className="m-0 font-display text-xl font-bold tracking-tight">{saved.name}</h1>
+            {person.isYou && <YouBadge />}
             {person.hasAccount && <span className="w-fit rounded-full border border-pub-bd bg-pub-bg px-2.5 text-[0.8125rem] font-medium text-pub-fg">Con cuenta</span>}
           </div>
         </div>
@@ -101,15 +141,14 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
             <>
               <TextField label="Nombre completo" value={name} maxLength={120} autoComplete="off" error={nameError || undefined}
                 onChange={(event) => { setName(event.target.value); setNameError(''); setDone(false) }} />
-              <TextField label="Teléfono (opcional)" type="tel" inputMode="tel" autoComplete="off" maxLength={30} value={phone}
-                onChange={(event) => { setPhone(event.target.value); setDone(false) }} />
+              <PhoneField value={phone} error={phoneProblem || undefined} onChange={(digits) => { setPhone(digits); setPhoneProblem(''); setDone(false) }} />
               <TextField label="Correo (opcional)" type="email" inputMode="email" autoComplete="off" maxLength={254} value={email}
                 onChange={(event) => { setEmail(event.target.value); setDone(false) }} />
             </>
           ) : (
             <dl className="m-0 grid gap-1 text-[0.9375rem]">
               <div><dt className="text-[0.8125rem] text-text-3">Nombre completo</dt><dd className="m-0">{saved.name}</dd></div>
-              <div><dt className="text-[0.8125rem] text-text-3">Teléfono</dt><dd className="m-0">{saved.phone || 'Sin teléfono'}</dd></div>
+              <div><dt className="text-[0.8125rem] text-text-3">Teléfono</dt><dd className="m-0">{shownPhone(saved.phone)}</dd></div>
               <div><dt className="text-[0.8125rem] text-text-3">Correo</dt><dd className="m-0">{saved.email || 'Sin correo'}</dd></div>
             </dl>
           )}
