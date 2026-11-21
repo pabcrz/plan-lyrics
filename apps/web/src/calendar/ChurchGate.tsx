@@ -12,7 +12,7 @@ import type { Church } from './model'
 export function TopBar({ name, settings, share }: { name?: string; settings?: boolean; share?: boolean }) {
   const navigate = useNavigate()
   return (
-    <div className="flex min-h-14 items-center gap-3 border-b border-line px-4">
+    <div className="flex min-h-14 items-center gap-3 border-b border-line px-4 lg:group-data-[frame]/app:hidden">
       <span className="grid size-8 place-items-center rounded-md bg-accent text-sm font-bold text-on-accent" aria-hidden="true">
         {name?.charAt(0).toUpperCase() ?? ''}
       </span>
