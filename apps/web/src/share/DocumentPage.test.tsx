@@ -46,7 +46,7 @@ test('the setlist image previews the date and the numbered songs with their auth
   expect([...select.options].map((option) => option.value)).toEqual(['s1', 's2'])
   fireEvent.click(screen.getByRole('button', { name: 'Descargar imagen' }))
   await waitFor(() => expect(canvas.downloads).toEqual(['setlist-2026-11-20.png']))
-  expect(canvas.drawn).toEqual(['Setlist · vie 20 nov', 'Betel', '1', 'Canción de ejemplo (Autora Uno)', '2', 'Himno ficticio (Autor Dos)'])
+  expect(canvas.drawn).toEqual(['Setlist · vie 20 nov', 'Betel · Dirige: Ana Torres', '1', 'Canción de ejemplo (Autora Uno)', '2', 'Himno ficticio (Autor Dos)'])
 })
 
 test('a service without songs says so and cannot be turned into an image', async () => {

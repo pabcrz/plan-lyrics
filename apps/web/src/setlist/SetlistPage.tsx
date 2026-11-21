@@ -145,7 +145,7 @@ function Editor({ setlist }: { setlist: Setlist }) {
                 const dragging = drag?.from === index
                 return (
                   <li key={entry.id} ref={(node) => { if (node) rows.current.set(entry.id, node); else rows.current.delete(entry.id) }} style={rowStyle(index)}
-                    className={`relative grid min-h-[68px] items-center gap-1 border-b border-line py-0 pl-3 transition-transform duration-(--t-fast) ease-out last:border-b-0 ${canEdit ? 'grid-cols-[28px_1fr_44px] pr-1' : 'grid-cols-[28px_1fr] pr-3'} ${moment ? 'bg-surface-2' : 'bg-surface'} ${dragging ? 'z-10 bg-surface shadow-3 outline-[1.5px] -outline-offset-[1.5px] outline-accent' : ''}`}>
+                    className={`relative grid min-h-[68px] items-center gap-1 border-b border-line py-0 pl-3 transition-transform duration-(--t-fast) ease-out last:border-b-0 ${canEdit ? 'grid-cols-[28px_1fr_44px] pr-1' : 'grid-cols-[28px_1fr] pr-3'} ${dragging ? '' : moment ? 'bg-surface-2' : 'bg-surface'} ${dragging ? 'z-10 bg-accent-soft shadow-2' : ''}`}>
                     <span className="text-center font-mono text-[0.8125rem] text-text-3 tabular-nums">{index + 1}</span>
                     <button type="button" onClick={() => setSheet({ kind: 'edit', id: entry.id })} aria-label={`${canEdit ? 'Editar' : 'Ver'} ${label}`}
                       className="block min-h-14 w-full min-w-0 cursor-pointer rounded-md border-0 bg-transparent px-2 py-2 text-left hover:bg-surface-2">
@@ -155,7 +155,7 @@ function Editor({ setlist }: { setlist: Setlist }) {
                           <span className="inline-flex items-center gap-1"><Icon name="clock" width={13} height={13} />Momento</span>
                         ) : (
                           <>
-                            <span>{entry.song?.author}</span>
+                            {entry.song?.author && <span>{entry.song.author}</span>}
                             {entry.key ? <span className="rounded-sm bg-accent-soft px-2 py-0.5 font-mono font-medium text-accent-soft-text">{entry.key}</span> : <span className="text-text-3">Sin tonalidad</span>}
                             {origin && <span className="inline-flex items-center gap-1"><Icon name="link" width={13} height={13} />{origin}</span>}
                           </>
