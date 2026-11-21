@@ -37,7 +37,7 @@ function Manager() {
 
   return (
     <>
-      <Invite onSent={(email) => setToast(`Invitación enviada a ${email}`)} />
+      <Invite taken={(accounts.data?.accounts ?? []).flatMap((account) => (account.email ? [account.email.toLowerCase()] : []))} onSent={(email) => setToast(`Invitación enviada a ${email}`)} />
       <section className="grid gap-3" aria-labelledby="accounts-list">
         <h2 id="accounts-list" className="m-0 font-display text-lg font-bold">Cuentas</h2>
         {accounts.isPending && <p role="status">Cargando cuentas…</p>}
@@ -93,7 +93,7 @@ function Manager() {
   )
 }
 
-function Invite({ onSent }: { onSent: (email: string) => void }) {
+function Invite({ taken, onSent }: { taken: string[]; onSent: (email: string) => void }) {
   const { invite } = useAccountActions()
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
@@ -104,6 +104,7 @@ function Invite({ onSent }: { onSent: (email: string) => void }) {
     event.preventDefault()
     setFailure('')
     if (!looksLikeEmail(email)) return setError('Escribe un correo válido.')
+    if (taken.includes(email.trim().toLowerCase())) return setError('Ese correo ya tiene una cuenta.')
     setError('')
     setSending(true)
     try {

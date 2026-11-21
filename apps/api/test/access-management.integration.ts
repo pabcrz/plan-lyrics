@@ -117,12 +117,12 @@ test('a provider failure creates nothing and leaks no detail; a missing provider
   expect(await response.json()).toEqual({ error: 'Identity provider unavailable' })
 })
 
-test('inviting the same e-mail again resends the invitation without duplicating the account', async () => {
-  const first = await (await call('owner', 'POST', '/api/accounts', { email: 'repetida@example.com' })).json()
+test('inviting an e-mail that already has an account is refused before the provider is called', async () => {
+  await call('owner', 'POST', '/api/accounts', { email: 'repetida@example.com' })
   const again = await call('accounts', 'POST', '/api/accounts', { email: 'REPETIDA@example.com' })
-  expect(again.status).toBe(200)
-  expect(await again.json()).toEqual(first)
-  expect(inviteByEmail).toHaveBeenCalledTimes(2)
+  expect(again.status).toBe(409)
+  expect(await again.json()).toEqual({ error: 'Email registered' })
+  expect(inviteByEmail).toHaveBeenCalledTimes(1)
   expect(await db.user.count({ where: { clerkSubject: 'fixture-invited-repetida' } })).toBe(1)
 })
 
