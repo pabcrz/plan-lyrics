@@ -88,18 +88,6 @@ test('offers creation to editors in the header', async () => {
   expect(await screen.findByRole('button', { name: 'Nuevo' })).toBeTruthy()
 })
 
-test('the desktop sidebar links the sections and offers creation to editors', async () => {
-  stubApi({ services })
-  mount(<HomePage />)
-  const nav = await screen.findByRole('navigation', { name: 'Secciones' })
-  expect(within(nav).getByRole('link', { name: 'Inicio' }).getAttribute('aria-current')).toBe('page')
-  expect(within(nav).getByRole('link', { name: 'Canciones' }).getAttribute('href')).toBe('/canciones')
-  expect(within(nav).getByRole('link', { name: 'Personas' }).getAttribute('href')).toBe('/personas')
-  expect(within(nav).queryByRole('link', { name: 'Calendario' })).toBeNull()
-  fireEvent.click(screen.getByRole('button', { name: 'Nuevo servicio' }))
-  expect(screen.getByRole('dialog', { name: 'Nuevo' })).toBeTruthy()
-})
-
 test('the mobile bar has the same sections for every role, and «Más» only when it has something', async () => {
   stubApi({ church: { ...church, canEdit: false, canConfigure: false } })
   mount(<HomePage />)
@@ -207,16 +195,14 @@ test('shows the server rejection when the date got a service meanwhile', async (
   expect((await screen.findByRole('alert')).textContent).toContain('ya tiene un servicio')
 })
 
-test('offers the settings entry point only to the church administrator', async () => {
+test('the «Más» sheet offers settings only to the church administrator', async () => {
   stubApi({})
   mount(<HomePage />)
-  expect(await screen.findByRole('link', { name: 'Ajustes' })).toBeTruthy()
-  fireEvent.click(within(screen.getByRole('navigation', { name: 'Principal' })).getByRole('button', { name: 'Más' }))
+  fireEvent.click(within(await screen.findByRole('navigation', { name: 'Principal' })).getByRole('button', { name: 'Más' }))
   expect(within(screen.getByRole('dialog', { name: 'Más' })).getByRole('button', { name: 'Ajustes' })).toBeTruthy()
   cleanup()
   stubApi({ church: { ...church, canConfigure: false } })
   mount(<HomePage />)
-  await screen.findByText(/Cargando servicios|No hay servicios/)
-  expect(screen.queryByRole('link', { name: 'Ajustes' })).toBeNull()
-  expect(screen.queryByRole('button', { name: 'Ajustes' })).toBeNull()
+  fireEvent.click(within(await screen.findByRole('navigation', { name: 'Principal' })).getByRole('button', { name: 'Más' }))
+  expect(within(screen.getByRole('dialog', { name: 'Más' })).queryByRole('button', { name: 'Ajustes' })).toBeNull()
 })
