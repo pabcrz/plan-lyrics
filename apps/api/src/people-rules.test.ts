@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { findSameName, newPersonBody, nameKey, personPatch } from './people-rules.js'
+import { findSameName, newPersonBody, nameKey, personPatch, personRolesBody } from './people-rules.js'
 
 describe('nameKey', () => {
   test('ignores case, accents and extra spaces', () => {
@@ -38,5 +38,23 @@ describe('personPatch', () => {
     expect(personPatch.safeParse({}).success).toBe(false)
     expect(personPatch.safeParse({ phone: null }).success).toBe(true)
     expect(personPatch.safeParse({ name: 'Ana Ramírez', roles: ['x'] }).success).toBe(false)
+  })
+})
+
+describe('person email', () => {
+  test('is optional, lowercased, and empty means no email', () => {
+    expect(newPersonBody.parse({ name: 'Ana Ramírez', email: ' Ana@Example.com ' }).email).toBe('ana@example.com')
+    expect(newPersonBody.parse({ name: 'Ana Ramírez', email: '  ' }).email).toBeNull()
+    expect(personPatch.parse({ email: null }).email).toBeNull()
+    expect(newPersonBody.safeParse({ name: 'Ana Ramírez', email: 'no-es-correo' }).success).toBe(false)
+  })
+})
+
+describe('person roles', () => {
+  test('is a list of distinct role ids; empty means no roles', () => {
+    expect(personRolesBody.parse({ roleIds: ['a', 'b'] }).roleIds).toEqual(['a', 'b'])
+    expect(personRolesBody.parse({ roleIds: [] }).roleIds).toEqual([])
+    expect(personRolesBody.safeParse({ roleIds: ['a', 'a'] }).success).toBe(false)
+    expect(personRolesBody.safeParse({ roleIds: ['a'], churchId: 'x' }).success).toBe(false)
   })
 })

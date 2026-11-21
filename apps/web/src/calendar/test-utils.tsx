@@ -15,22 +15,22 @@ export const church: Church = {
     { weekday: 0, slot: 'SINGLE', time: '10:00', title: 'Servicio dominical' },
   ],
 }
-export const people = [{ id: 'p1', name: 'Ana Ramírez' }, { id: 'p2', name: 'Luis Herrera' }]
+export const defaultRoles: MusicalRole[] = [
+  { id: 'r-drums', name: 'Batería' }, { id: 'r-guitar', name: 'Guitarra' }, { id: 'r-piano', name: 'Piano' }, { id: 'r-voices', name: 'Voces' },
+]
+export const people = [{ id: 'p1', name: 'Ana Ramírez' }, { id: 'p2', name: 'Luis Herrera' }].map((person) => ({ ...person, roleIds: defaultRoles.map((role) => role.id) }))
 export const service = (over: Partial<Service>): Service => ({
   id: 's1', title: 'Servicio de viernes', date: '2026-11-13', slot: 'SINGLE', time: '19:30', status: 'PUBLISHED',
   director: people[0], ...over,
 })
 
-export const defaultRoles: MusicalRole[] = [
-  { id: 'r-drums', name: 'Batería' }, { id: 'r-guitar', name: 'Guitarra' }, { id: 'r-piano', name: 'Piano' }, { id: 'r-voices', name: 'Voces' },
-]
 export const defaultRestrictions: RoleRestriction[] = [{ id: 'x1', first: 'DIRIGIR', second: 'r-drums' }]
 
 type Handler =(url: string, init?: RequestInit) => { status?: number; body?: unknown } | undefined
 
 /** Doble de fetch por ruta; devuelve las peticiones hechas para poder inspeccionarlas. */
 export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
-  id: 'p1', name: 'Ana Ramírez', phone: null, hasAccount: false, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
+  id: 'p1', name: 'Ana Ramírez', phone: null, email: null, hasAccount: false, roleIds: defaultRoles.map((role) => role.id), sharedWithOtherChurches: false, upcomingServices: 0, ...over,
 })
 
 export function stubApi(routes: {
@@ -158,8 +158,9 @@ export function stubApi(routes: {
     }
     if (url === '/api/people') {
       const list = routes.directory ?? people.map((person) => detail(person))
-      return reply(200, list.map(({ id, name, hasAccount }) => ({ id, name, hasAccount })))
+      return reply(200, list.map(({ id, name, hasAccount, roleIds }) => ({ id, name, hasAccount, roleIds })))
     }
+    if (/^\/api\/people\/[^/]+\/roles$/.test(url) && init?.method === 'PUT') return reply(200, { roleIds: JSON.parse(String(init.body)).roleIds })
     if (url.startsWith('/api/people/')) {
       const id = decodeURIComponent(url.split('/').pop() ?? '')
       if (init?.method === 'PATCH') {

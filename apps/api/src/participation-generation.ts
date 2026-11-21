@@ -10,11 +10,21 @@ export const planSelect = { roleId: true, rotationOn: true, mode: true, startsOn
 
 /** Plans of every role of the church that has habitual people or a rotation, ready to generate from. */
 async function loadPlans(tx: Tx, churchId: string): Promise<RolePlan[]> {
-  const roles = await tx.musicalRole.findMany({ where: { churchId, plan: { isNot: null } }, orderBy: { name: 'asc' }, select: { id: true, name: true, plan: { select: planSelect } } })
-  return roles.flatMap(role => role.plan ? [{
-    roleId: role.id, roleName: role.name, habitualIds: role.plan.habitualIds, rotationOn: role.plan.rotationOn, mode: role.plan.mode,
-    startsOn: role.plan.startsOn ? day(role.plan.startsOn) : null, sequences: role.plan.sequences.map(sequence => ({ ...sequence })),
-  }] : [])
+  const [roles, links] = await Promise.all([
+    tx.musicalRole.findMany({ where: { churchId, plan: { isNot: null } }, orderBy: { name: 'asc' }, select: { id: true, name: true, plan: { select: planSelect } } }),
+    tx.churchPerson.findMany({ where: { churchId, removedAt: null }, select: { personId: true, roleIds: true } }),
+  ])
+  // Only people whose established roles include the role are proposed for it, however the plan was saved.
+  const canHold = (roleId: string) => new Set(links.filter(link => link.roleIds.includes(roleId)).map(link => link.personId))
+  return roles.flatMap(role => {
+    if (!role.plan) return []
+    const eligible = canHold(role.id)
+    return [{
+      roleId: role.id, roleName: role.name, habitualIds: role.plan.habitualIds.filter(id => eligible.has(id)), rotationOn: role.plan.rotationOn, mode: role.plan.mode,
+      startsOn: role.plan.startsOn ? day(role.plan.startsOn) : null,
+      sequences: role.plan.sequences.map(sequence => ({ ...sequence, memberIds: sequence.memberIds.filter(id => eligible.has(id)) })),
+    }]
+  })
 }
 
 export const activePeople = async (tx: Tx | PrismaClient, churchId: string) =>

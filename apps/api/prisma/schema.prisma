@@ -86,6 +86,8 @@ model Person {
   name String
   // General personal data, shared by every church the person belongs to; optional.
   phone String?
+  // Contact email, general like the phone; unrelated to the account email (User.email).
+  email String?
   userId String? @unique
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   churches ChurchPerson[]
@@ -140,6 +142,8 @@ model ChurchPerson {
   directedServices Service[]
   assignments Assignment[]
   preachings ServicePreaching[]
+  // Musical roles (MusicalRole ids, not foreign keys) this person may hold in this church; only an administrator changes them.
+  roleIds String[] @default([])
   // Removed from this church's directory: hidden from lists and pickers, kept for past services.
   removedAt DateTime?
   createdAt DateTime @default(now())
