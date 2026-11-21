@@ -16,6 +16,7 @@ import { PersonPage } from '../people/PersonPage'
 import { ChordsEditPage } from '../lyrics/ChordsEditPage'
 import { LyricsEditPage } from '../lyrics/LyricsEditPage'
 import { LyricsPage } from '../lyrics/LyricsPage'
+import { EditSongPage } from '../songs/EditSongPage'
 import { NewSongPage } from '../songs/NewSongPage'
 import { SongsPage } from '../songs/SongsPage'
 
@@ -25,8 +26,10 @@ export function ProductRoutes() {
       <Route path="/servicios/nuevo" element={<ServiceFormPage />} />
       <Route path="/servicios/lote" element={<BatchPage />} />
       <Route path="/servicios/:serviceId/setlist" element={<SetlistPage />} />
-      <Route path="/canciones" element={<SongsPage />} />
-      <Route path="/canciones/nueva" element={<NewSongPage />} />
+      <Route path="/canciones" element={<SongsPage />}>
+        <Route path="nueva" element={<NewSongPage />} />
+        <Route path=":songId/editar" element={<EditSongPage />} />
+      </Route>
       <Route path="/canciones/:songId/letra" element={<LyricsPage />} />
       <Route path="/canciones/:songId/letra/editar" element={<LyricsEditPage />} />
       <Route path="/canciones/:songId/letra/acordes" element={<ChordsEditPage />} />

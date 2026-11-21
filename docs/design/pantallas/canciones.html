@@ -533,6 +533,29 @@ a.tab { text-decoration: none; }
 .form { padding: 0 var(--s-4) var(--s-5); display: grid; gap: var(--s-4); }
 .form .foot { display: grid; gap: var(--s-2); background: none; border: 0; padding: 0; }
 .form .foot a.btn { color: var(--text); text-decoration: none; }
+
+/* ===== Escritorio (≥1024px): navegación arriba, lista a la izquierda y la canción a la derecha ===== */
+[hidden] { display: none !important; }
+.dnav, .cols > .pane-empty { display: none; }
+.cols { display: contents; }
+.srow[aria-current="true"] { background: var(--accent-soft); }
+@media (min-width: 1024px) {
+  .stage { padding: var(--s-5) var(--s-5) var(--s-7); }
+  .app { max-width: 1080px; height: 720px; border-radius: var(--r-lg); }
+  .dnav { display: flex; align-items: center; gap: var(--s-5); padding: 0 var(--s-5); min-height: 56px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .dnav b { font: 700 1.0625rem var(--font-display); margin-right: var(--s-3); }
+  .dnav a, .dnav span { color: var(--text-2); text-decoration: none; font-weight: 500; padding: var(--s-2) 0; border-bottom: 2px solid transparent; }
+  .dnav [aria-current] { color: var(--text); border-bottom-color: var(--accent); }
+  .cols { display: grid; grid-template-columns: minmax(340px, 400px) 1fr; flex: 1; min-height: 0; }
+  .cols > .view { display: flex; }
+  .cols > #v-l { border-right: 1px solid var(--line); }
+  #v-l .tabbar, #v-f .dbar { display: none; }
+  #v-f[data-empty] > .scroll { display: none; }
+  #v-f[data-empty] .pane-empty { display: grid; }
+  #v-f .form { max-width: 480px; margin: 0 auto; padding-top: var(--s-5); }
+}
+.pane-empty { display: none; place-items: center; align-content: center; gap: var(--s-2); flex: 1; text-align: center; color: var(--text-2); padding: var(--s-6); }
+.pane-empty .glyph { width: 56px; height: 56px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-soft-text); display: grid; place-items: center; }
 </style>
 </head>
 <body>
@@ -555,6 +578,8 @@ a.tab { text-decoration: none; }
 
 <div class="stage">
 <div class="app">
+  <header class="dnav"><b>Plan &amp; Lyrics</b><a href="calendario.html">Calendario</a><span aria-current="page">Canciones</span><a href="personas.html">Personas</a></header>
+  <div class="cols">
 
   <!-- ===== Lista ===== -->
   <section class="view on" id="v-l" aria-label="Biblioteca de canciones">
@@ -587,12 +612,13 @@ a.tab { text-decoration: none; }
   </section>
 
   <!-- ===== Nueva / editar ===== -->
-  <section class="view" id="v-f" aria-label="Datos de la canción">
+  <section class="view" id="v-f" data-empty aria-label="Datos de la canción">
     <div class="dbar">
       <button class="btn quiet icon" type="button" id="back" aria-label="Volver a canciones"><svg class="ico"><use href="#i-back"/></svg></button>
       <b id="ft">Nueva canción</b>
       <span class="ph"></span>
     </div>
+    <div class="pane-empty"><div class="glyph"><svg class="ico"><use href="#i-music"/></svg></div><h2>Elige una canción</h2><p>O toca «Nueva» para agregar una a la biblioteca.</p></div>
     <div class="scroll">
       <form class="form" id="form" novalidate>
         <div class="field"><label for="t">Título</label><input class="input" id="t" autocomplete="off"></div>
@@ -604,11 +630,14 @@ a.tab { text-decoration: none; }
         </div>
         <div class="foot">
           <button class="btn primary" type="submit">Guardar</button>
-          <a class="btn secondary" href="letras.html">Editar letra y acordes</a>
+          <a class="btn secondary" href="letras.html" id="letra">Abrir letra y acordes</a>
+          <button class="btn danger" type="button" id="del">Eliminar canción</button>
+          <small class="hintw" id="delhint">Solo se elimina una canción sin letra que no esté en ningún setlist.</small>
         </div>
       </form>
     </div>
   </section>
+  </div>
 </div>
 </div>
 
@@ -654,14 +683,15 @@ a.tab { text-decoration: none; }
       return '<button type="button" class="srow" data-i="' + S.indexOf(s) + '"><span><b>' + s.t + '</b><small>' + s.a + '</small></span><span class="meta">' + flag(s.l, 'Letra') + flag(s.c, 'Acordes') + '' + (s.k ? '<span class="key">' + s.k + '</span>' : '') + '</span></button>';
     }).join('');
   }
-  function open(i) { cur = i; var s = i == null ? { t: '', a: '', k: '' } : S[i]; $('#ft').textContent = i == null ? 'Nueva canción' : 'Editar canción'; $('#t').value = s.t; $('#a').value = s.a; key = s.k; minor = /m$/.test(key); renderKeys(); $('#v-l').classList.remove('on'); $('#v-f').classList.add('on'); $('#t').focus(); }
-  function close() { $('#v-f').classList.remove('on'); $('#v-l').classList.add('on'); render(); }
+  function open(i) { cur = i; $('#v-f').removeAttribute('data-empty'); $('#del').hidden = $('#delhint').hidden = $('#letra').hidden = i == null; render(); var s = i == null ? { t: '', a: '', k: '' } : S[i]; $('#ft').textContent = i == null ? 'Nueva canción' : 'Editar canción'; $('#t').value = s.t; $('#a').value = s.a; key = s.k; minor = /m$/.test(key); renderKeys(); $('#v-l').classList.remove('on'); $('#v-f').classList.add('on'); $('#t').focus(); }
+  function close() { cur = null; $('#v-f').classList.remove('on'); $('#v-l').classList.add('on'); $('#v-f').setAttribute('data-empty', ''); render(); }
 
   $('#q').addEventListener('input', function (e) { q = e.target.value; render(); });
   $('#chips').addEventListener('click', function (e) { if (e.target.dataset && e.target.classList.contains('fchip')) { filter = e.target.textContent; render(); } });
   $('#list').addEventListener('click', function (e) { var r = e.target.closest('.srow'); if (r) open(+r.dataset.i); });
   $('#add').addEventListener('click', function () { open(null); });
   $('#back').addEventListener('click', close);
+  $('#del').addEventListener('click', function () { if (cur != null && confirm('¿Eliminar «' + S[cur].t + '»? No se puede deshacer.')) { S.splice(cur, 1); close(); } });
   $('#form').addEventListener('submit', function (e) {
     e.preventDefault();
     var s = { t: $('#t').value.trim(), a: $('#a').value.trim(), k: key };
