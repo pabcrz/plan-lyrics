@@ -48,11 +48,11 @@ test('every member reads the library; search ignores case and accents and needs 
   expect((await call(undefined, 'GET', '/api/songs')).status).toBe(401)
 })
 
-test('only the owner or a library editor creates songs; the church role never grants it', async () => {
+test('the owner, library editors and church administrators and editors create songs; a plain member never does', async () => {
   const song = { title: 'Canción de ejemplo', author: 'Autora Uno' }
-  for (const subject of ['member', 'editor', 'admin']) expect((await call(subject, 'POST', '/api/songs', song)).status).toBe(403)
+  for (const subject of ['member']) expect((await call(subject, 'POST', '/api/songs', song)).status).toBe(403)
   expect(await db.song.count()).toBe(0)
-  for (const [subject, canCreate] of [['member', false], ['combined', true]] as const) expect(await (await call(subject, 'GET', '/api/songs/access')).json()).toEqual({ canCreate })
+  for (const [subject, canCreate] of [['member', false], ['editor', true], ['admin', true], ['combined', true]] as const) expect(await (await call(subject, 'GET', '/api/songs/access')).json()).toEqual({ canCreate })
   const created = await call('combined', 'POST', '/api/songs', { title: '  Canción  de ejemplo ', author: 'Autora Uno' })
   expect(created.status).toBe(201)
   expect(await created.json()).toEqual({ id: expect.any(String), title: 'Canción de ejemplo', author: 'Autora Uno' })
@@ -74,11 +74,11 @@ test('identity is title + author: the same title with another author is a differ
   expect(await db.song.count()).toBe(2)
 })
 
-test('only the owner or a library editor renames or deletes a song; one in a setlist is never deleted', async () => {
+test('whoever may edit the library renames or deletes a song, a plain member cannot; one in a setlist is never deleted', async () => {
   const [one, two] = [await newSong('Canción uno', 'Autora Uno'), await newSong('Canción dos', 'Autor Dos')]
   const service = await newService()
-  expect((await call('editor', 'PATCH', `/api/songs/${one.id}`, { title: 'Nuevo', author: 'Autor' })).status).toBe(403)
-  expect((await call('editor', 'DELETE', `/api/songs/${one.id}`)).status).toBe(403)
+  expect((await call('member', 'PATCH', `/api/songs/${one.id}`, { title: 'Nuevo', author: 'Autor' })).status).toBe(403)
+  expect((await call('member', 'DELETE', `/api/songs/${one.id}`)).status).toBe(403)
   const renamed = await call('combined', 'PATCH', `/api/songs/${one.id}`, { title: ' Canción  UNO ', author: 'Autora Uno Bis' })
   expect(renamed.status).toBe(200)
   expect(await renamed.json()).toEqual({ id: one.id, title: 'Canción UNO', author: 'Autora Uno Bis' })

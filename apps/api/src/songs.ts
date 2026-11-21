@@ -9,12 +9,12 @@ import { requireSession, type SessionConfig, type SessionEnvironment } from './s
 const songSelect = { id: true, title: true, author: true } as const
 
 /**
- * Who edits the shared library. Producto: the platform owner and the library editors, and no other
- * access (church administrators and service editors included). Never derived from the request.
+ * Who edits the shared library: the platform owner, the library editors and, by the product owner's decision, whoever
+ * administers or edits services in a church. A plain member never does. Never derived from the request.
  */
 export async function canEditLibrary(db: PrismaClient, subject: string) {
-  const user = await db.user.findUnique({ where: { clerkSubject: subject }, select: { libraryEditor: true, ownership: { select: { id: true } } } })
-  return Boolean(user && (user.libraryEditor || user.ownership))
+  const user = await db.user.findUnique({ where: { clerkSubject: subject }, select: { libraryEditor: true, ownership: { select: { id: true } }, memberships: { select: { role: true } } } })
+  return Boolean(user && (user.libraryEditor || user.ownership || user.memberships.some(({ role }) => role === 'ADMIN' || role === 'EDITOR')))
 }
 
 export function songRoutes(config: SessionConfig, db?: PrismaClient) {
@@ -40,8 +40,7 @@ export function songRoutes(config: SessionConfig, db?: PrismaClient) {
   // Lets the library screen show «Nueva» only to who can create songs (the POST below still decides).
   routes.get('/api/songs/access', guarded(db, 'songs_access_failed', async (c, db) => c.json({ canCreate: await canEditLibrary(db, c.get('clerkSubject')) })))
 
-  // Only the owner and library editors create songs; church roles never grant it (the most restrictive reading,
-  // because producto does not say who may add a song while preparing a setlist).
+  // Whoever may edit the library creates songs (see canEditLibrary).
   routes.post('/api/songs', guarded(db, 'song_creation_failed', async (c, db) => {
     if (!await canEditLibrary(db, c.get('clerkSubject'))) return c.json({ error: 'Forbidden' }, 403)
     const body = newSongBody.safeParse(await c.req.json().catch(() => undefined))
@@ -58,7 +57,7 @@ export function songRoutes(config: SessionConfig, db?: PrismaClient) {
     }
   }))
 
-  // Same restriction as creating. Changing title/author keeps the id, so setlists and lyrics follow the song.
+  // Same permission as creating. Changing title/author keeps the id, so setlists and lyrics follow the song.
   routes.patch('/api/songs/:songId', guarded(db, 'song_update_failed', async (c, db) => {
     if (!await canEditLibrary(db, c.get('clerkSubject'))) return c.json({ error: 'Forbidden' }, 403)
     const body = newSongBody.safeParse(await c.req.json().catch(() => undefined))

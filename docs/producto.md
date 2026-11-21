@@ -98,14 +98,14 @@ Quien recibe lo compartido no necesita crear una cuenta: pastores, familiares y 
 
 ### Accesos acordados
 
-La administración de una iglesia y la edición de la biblioteca compartida son responsabilidades independientes. Una persona puede combinar accesos; por ejemplo, ser administradora de una iglesia y editora de biblioteca. Ninguno de esos dos accesos implica el otro.
+La administración de una iglesia y la edición de la biblioteca compartida son responsabilidades distintas, pero quien administra una iglesia o edita servicios también puede editar la biblioteca (decisión explícita: «los editores también pueden editar la biblioteca»). Editar la biblioteca por sí solo no da administración alguna.
 
 | Acceso | Alcance acordado |
 | --- | --- |
 | Superadministrador | Existe uno solo: la persona propietaria del proyecto. Tiene acceso total a la plataforma, a todas las iglesias y a la biblioteca musical compartida, y puede modificar todos los roles. Ningún otro nivel equivale a este acceso global. |
-| Administrador de iglesia | Gestiona personas, servicios, asignaciones y configuración de su iglesia. No obtiene automáticamente permiso para editar la biblioteca compartida. |
+| Administrador de iglesia | Gestiona personas, servicios, asignaciones y configuración de su iglesia. También puede editar la biblioteca compartida. |
 | Editor de biblioteca (editor general) | Crea y modifica canciones compartidas, sus letras y acordes. No administra iglesias ni usuarios salvo que tenga también el acceso correspondiente. |
-| Editor de servicios | Crea y edita servicios, fechas, dirección, participantes y setlists, y ajusta tonos dentro de su iglesia. No administra miembros, accesos ni configuración de iglesia, ni obtiene automáticamente edición de la biblioteca compartida. |
+| Editor de servicios | Crea y edita servicios, fechas, dirección, participantes y setlists, y ajusta tonos dentro de su iglesia. No administra miembros, accesos ni configuración de iglesia, También puede editar la biblioteca compartida (canciones, letras y acordes). |
 | Integrante | Consulta la información interna que le corresponda, sin editar. |
 | Gestor de cuentas | Capacidad global que solo el superadministrador otorga y retira a personas concretas. Crea cuentas, envía invitaciones y vincula o desvincula la cuenta de una persona. No concede por sí sola acceso a iglesias, roles por iglesia ni edición de la biblioteca, y no equivale al superadministrador. |
 
@@ -153,9 +153,9 @@ No ampliar la primera entrega con confirmaciones de asistencia, servicios recurr
 - Existe un único superadministrador, correspondiente a la persona propietaria del proyecto, con acceso total a todas las iglesias y capacidad de modificar todos los roles.
 - Solo el superadministrador o un gestor de cuentas puede crear usuarios, invitarlos y vincular o desvincular la cuenta de una persona; no hay registro público. Un administrador de iglesia, editor o integrante sin esa capacidad no puede realizar esas altas.
 - Un gestor de cuentas sin otros accesos no puede ver ni modificar iglesias, roles por iglesia ni la biblioteca; solo el superadministrador le otorga o retira esa capacidad.
-- Un administrador de iglesia sin acceso editorial global no puede modificar la biblioteca compartida.
+- Un administrador de iglesia puede modificar la biblioteca compartida; un integrante no.
 - Un editor de biblioteca sin acceso administrativo no puede administrar iglesias ni usuarios; una persona con ambos accesos puede ejercer cada uno en su ámbito.
-- Un editor de servicios puede preparar setlists y ajustar tonos de su iglesia sin modificar la biblioteca compartida; un integrante no puede editar.
+- Un editor de servicios puede preparar setlists, ajustar tonos de su iglesia y modificar la biblioteca compartida; un integrante no puede editar.
 - Un enlace público permite consultar el setlist sin cuenta y no revela asignaciones privadas, BPM, acordes o notas internas.
 - En etapas posteriores, una modificación heredada se refleja donde no exista override y un override explícito permanece intacto.
 - En etapas posteriores, la vista de letras y la vista con acordes derivan de una misma fuente; la transposición conserva alineación.

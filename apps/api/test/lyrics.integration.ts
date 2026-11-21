@@ -62,9 +62,9 @@ test('without a session, without any access, or for a song that does not exist, 
   expect((await call('member', 'GET', path('does-not-exist'))).status).toBe(404)
 })
 
-test('only the owner and library editors write; church roles never do, and nothing is stored when refused', async () => {
+test('the owner, library editors and church administrators and editors write; a plain member never does, and nothing is stored when refused', async () => {
   const song = await newSong()
-  for (const subject of ['member', 'editor', 'admin', 'accounts', 'b-editor']) {
+  for (const subject of ['member', 'accounts']) {
     const response = await put(subject, song.id, { version: 0, sections: [verse()] })
     expect(response.status, subject).toBe(403)
   }
@@ -72,7 +72,7 @@ test('only the owner and library editors write; church roles never do, and nothi
   expect((await put('member', song.id, { nonsense: true })).status).toBe(403)
   expect((await put('member', 'does-not-exist', { version: 0, sections: [] })).status).toBe(403)
   expect(await db.songLyrics.count()).toBe(0)
-  for (const subject of ['library', 'owner', 'combined']) {
+  for (const subject of ['library', 'owner', 'combined', 'editor', 'admin', 'b-editor']) {
     await db.songLyrics.deleteMany()
     expect((await put(subject, song.id, { version: 0, sections: [verse()] })).status, subject).toBe(200)
   }
