@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { CalendarPage } from '../calendar/CalendarPage'
+import { HomePage } from '../calendar/HomePage'
 import { service as calendarService, mount } from '../calendar/test-utils'
 import { NewLinkPage } from './NewLinkPage'
 import { SharePage } from './SharePage'
@@ -215,16 +215,18 @@ test('the created sheet closes back to the list of links', async () => {
   expect(await screen.findByRole('heading', { name: 'Compartir' })).toBeTruthy()
 })
 
-test('the calendar offers «Compartir» to whoever edits and not to members', async () => {
+test('the menu offers «Compartir» to whoever edits and not to members', async () => {
   stubShare({})
-  mount(<Routes><Route path="/compartir" element={<p>Pantalla compartir</p>} /><Route path="*" element={<CalendarPage />} /></Routes>)
-  fireEvent.click(await screen.findByRole('button', { name: 'Compartir' }))
+  mount(<Routes><Route path="/compartir" element={<p>Pantalla compartir</p>} /><Route path="/" element={<HomePage />} /></Routes>, '/')
+  fireEvent.click(within(await screen.findByRole('navigation', { name: 'Principal' })).getByRole('button', { name: 'Más' }))
+  fireEvent.click(within(screen.getByRole('dialog', { name: 'Más' })).getByRole('button', { name: 'Compartir' }))
   expect(await screen.findByText('Pantalla compartir')).toBeTruthy()
   cleanup()
   stubShare({ church: { canEdit: false, canConfigure: false } })
-  mount(<CalendarPage />)
+  mount(<HomePage />)
   await screen.findByRole('heading', { level: 1 })
-  expect(screen.queryByRole('button', { name: 'Compartir' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Más' })).toBeNull()
+  expect(screen.queryByRole('link', { name: 'Compartir' })).toBeNull()
 })
 
 const putBody = (calls: ReturnType<typeof stubShare>['base']) => JSON.parse(String(calls.find((call) => call.init?.method === 'PUT')?.init?.body))

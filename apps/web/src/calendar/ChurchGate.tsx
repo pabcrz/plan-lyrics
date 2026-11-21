@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { UserButton } from '@clerk/react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Icon, Notice, Sheet, Tabbar, TextField } from '../ui'
+import { Button, Icon, Notice, TextField } from '../ui'
 import { AccountsLink } from '../access/AccessLinks'
 import { useAccess } from '../access/access-api'
 import { ApiError, useApiFetch, useChurch } from './api'
@@ -24,34 +24,8 @@ export function TopBar({ name, settings, share }: { name?: string; settings?: bo
   )
 }
 
-/** Navegación inferior principal: Calendario, Nuevo (solo quien edita) y Personas. */
-export function MainTabbar({ church, current }: { church: Pick<Church, 'canEdit'>; current: 'calendar' | 'songs' | 'people' }) {
-  const navigate = useNavigate()
-  const [choosing, setChoosing] = useState(false)
-  const option = (label: string, hint: string, path: string) => (
-    <button type="button" onClick={() => void navigate(path)}
-      className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-line bg-transparent px-4 text-left last:border-b-0 hover:bg-surface-2">
-      <span className="font-semibold">{label}<small className="block font-normal text-text-3">{hint}</small></span>
-      <Icon name="right" />
-    </button>
-  )
-  return (
-    <div className="sticky bottom-0">
-      <Tabbar label="Principal" current={current} onSelect={(id) => void navigate(id === 'people' ? '/personas' : id === 'songs' ? '/canciones' : '/')}
-        items={[{ id: 'calendar', label: 'Calendario', icon: 'calendar' }, { id: 'songs', label: 'Canciones', icon: 'music' }, { id: 'people', label: 'Personas', icon: 'users' }]}
-        action={church.canEdit ? { label: 'Nuevo', icon: 'plus', onAction: () => setChoosing(true) } : undefined} />
-      <Sheet open={choosing} onClose={() => setChoosing(false)} title="Nuevo">
-        <div className="overflow-hidden rounded-lg border border-line">
-          {option('Servicio individual', 'Una fecha, con su director.', '/servicios/nuevo')}
-          {option('Lote mensual', 'Varios servicios de un mes con una lista de directores.', '/servicios/lote')}
-        </div>
-      </Sheet>
-    </div>
-  )
-}
-
-/** Encabezado de una pantalla secundaria; vuelve al calendario salvo que se indique otro destino. */
-export function PageHeader({ title, back = '/', backLabel = 'Volver al calendario' }: { title: string; back?: string; backLabel?: string }) {
+/** Encabezado de una pantalla secundaria; vuelve al inicio salvo que se indique otro destino. */
+export function PageHeader({ title, back = '/', backLabel = 'Volver al inicio' }: { title: string; back?: string; backLabel?: string }) {
   const navigate = useNavigate()
   return (
     <div className="flex min-h-14 items-center gap-1 border-b border-line px-2">

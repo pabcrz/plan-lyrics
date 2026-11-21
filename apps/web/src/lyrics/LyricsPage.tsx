@@ -84,7 +84,7 @@ function KeyBar({ base, now, serviceKey, offset, onOffset, note }: {
 export function LyricsPage() {
   const { songId = '' } = useParams()
   const navigate = useNavigate()
-  const { title, back = '/', saved, key: serviceKey } = navState(useLocation().state)
+  const { title, back = '/canciones', saved, key: serviceKey } = navState(useLocation().state)
   const query = useLyrics(songId)
   const [toast, setToast] = useState(saved === true)
   const [offset, setOffset] = useState(0)
