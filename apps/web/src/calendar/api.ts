@@ -134,6 +134,21 @@ export function useCreateService() {
   }, [api, client])
 }
 
+export type ServicePatch = { title?: string; date?: string; slot?: 'MORNING' | 'AFTERNOON'; time?: string | null; status?: Status; directorId?: string }
+
+/** Corregir un servicio; el servidor decide permisos, fechas y combinaciones de roles, y todo lo que lo muestra se vuelve a leer. */
+export function useUpdateService() {
+  const api = useApiFetch()
+  const client = useQueryClient()
+  return useCallback(async (id: string, patch: ServicePatch) => {
+    try {
+      return await api<Service>(`/api/services/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
+    } finally {
+      await Promise.all(['services', 'setlist', 'assignments', 'closed'].map((key) => client.invalidateQueries({ queryKey: [key] })))
+    }
+  }, [api, client])
+}
+
 /** Fechas «No hay culto» de uno o varios meses (`YYYY-MM`). */
 export function useClosedDates(months: string[]) {
   const api = useApiFetch()

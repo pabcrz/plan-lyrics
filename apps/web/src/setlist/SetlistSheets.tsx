@@ -212,9 +212,11 @@ function KeyPicker({ song, selected, onSelect }: { song: Song; selected: string 
 }
 
 /** Edición de una entrada: tonalidad y enlace de una canción, nombre de un momento; quien no edita solo la lee. */
-export function EditSheet({ entry, canEdit, onClose, onRemove, onSave }: {
+export function EditSheet({ entry, canEdit, canEditSong = false, onClose, onRemove, onSave }: {
   entry: Entry
   canEdit: boolean
+  /** Quien edita la biblioteca puede corregir el título y el autor de la canción desde aquí. */
+  canEditSong?: boolean
   onClose: () => void
   onRemove: () => void
   onSave: (patch: { key?: string | null; link?: string | null; moment?: string }) => Promise<void>
@@ -260,6 +262,11 @@ export function EditSheet({ entry, canEdit, onClose, onRemove, onSave }: {
           <Link to={`/canciones/${encodeURIComponent(song.id)}/letra`} state={{ title: song.title, back: location.pathname, key: entry.key ?? undefined }}
             className="inline-flex min-h-touch items-center gap-1.5 font-semibold text-accent underline">
             <Icon name="music" width={16} height={16} />Ver letra
+          </Link>
+        )}
+        {song && canEditSong && (
+          <Link to={`/canciones/${encodeURIComponent(song.id)}/editar`} className="inline-flex min-h-touch items-center gap-1.5 font-semibold text-accent underline">
+            <Icon name="edit" width={16} height={16} />Editar título o autor
           </Link>
         )}
         {song && canEdit && (

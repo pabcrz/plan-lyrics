@@ -1,0 +1,64 @@
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { afterEach, expect, test, vi } from 'vitest'
+import { church, mount, people } from '../calendar/test-utils'
+import { EditServiceSheet, updateFailure } from './EditServiceSheet'
+import { ApiError } from '../calendar/api'
+
+vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-ficticio' }), UserButton: () => <button>Cuenta</button> }))
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+
+const service = { id: 's1', title: 'Servicio dominical', date: '2026-11-22', slot: 'SINGLE' as const, time: '10:00', status: 'DRAFT' as const }
+
+function open(reply: { status: number; body?: unknown } = { status: 200, body: {} }, over: Partial<typeof church> = {}, current = service) {
+  const calls: Array<{ method: string; url: string; body?: unknown }> = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    const method = init?.method ?? 'GET'
+    calls.push({ method, url, body: init?.body ? JSON.parse(String(init.body)) : undefined })
+    if (url === '/api/people') return new Response(JSON.stringify(people), { status: 200 })
+    return new Response(JSON.stringify(reply.body ?? {}), { status: reply.status })
+  }))
+  const onSaved = vi.fn()
+  mount(<EditServiceSheet church={{ ...church, ...over }} service={current} directorId="p1" onClose={() => undefined} onSaved={onSaved} />)
+  return { calls, onSaved }
+}
+const patches = (calls: Array<{ method: string; url: string; body?: unknown }>) => calls.filter((call) => call.method === 'PATCH')
+
+test('saving needs a change, and only what changed is sent: title, director and status', async () => {
+  const { calls, onSaved } = open()
+  const save = await screen.findByRole('button', { name: 'Guardar cambios' })
+  expect((save as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.change(screen.getByLabelText('Título'), { target: { value: ' Servicio de gracias ' } })
+  fireEvent.click(await screen.findByRole('button', { name: /Luis Herrera/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Publicado' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+  await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(patches(calls)).toEqual([{ method: 'PATCH', url: '/api/services/s1', body: { title: 'Servicio de gracias', status: 'PUBLISHED', directorId: 'p2' } }])
+})
+
+test('the date and an empty hour are sent; the slot only appears on a double Sunday', async () => {
+  const { calls, onSaved } = open({ status: 200, body: {} }, { sundayDouble: true })
+  expect(await screen.findByRole('group', { name: 'Franja' })).toBeTruthy()
+  fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-11-27' } })
+  expect(screen.queryByRole('group', { name: 'Franja' })).toBeNull()
+  fireEvent.change(screen.getByLabelText('Hora de inicio'), { target: { value: '' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+  await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(patches(calls)[0]?.body).toEqual({ date: '2026-11-27', time: null })
+})
+
+test('a refused change explains why and keeps the sheet open', async () => {
+  const { onSaved } = open({ status: 409, body: { error: 'Date closed' } })
+  fireEvent.change(await screen.findByLabelText('Fecha'), { target: { value: '2026-11-27' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+  expect((await screen.findByRole('alert')).textContent).toContain('No hay culto')
+  expect(onSaved).not.toHaveBeenCalled()
+})
+
+test('every refusal the server can give has its own message', () => {
+  const text = (status: number, code: string) => updateFailure(new ApiError(status, code))
+  expect(text(400, 'Date in the past')).toContain('fecha pasada')
+  expect(text(409, 'Date full')).toContain('máximo')
+  expect(text(409, 'Combination not allowed')).toContain('no puede dirigir')
+  expect(text(403, 'Forbidden')).toContain('permiso')
+  expect(text(404, 'Not found')).toContain('ya no existe')
+})

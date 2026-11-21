@@ -9,6 +9,7 @@ import type { Church } from '../calendar/model'
 import { PreachingSection } from '../calendar/PreachingSection'
 import { ServiceParticipations } from '../calendar/ServiceParticipations'
 import { AddSheet, EditSheet } from './SetlistSheets'
+import { EditServiceSheet } from './EditServiceSheet'
 import { moveItem, useDragReorder, type Rect } from './reorder'
 import { entryLabel, referenceOrigin, useSetlist, useSetlistActions, type Entry, type NewEntry, type Setlist } from './setlist-api'
 
@@ -40,6 +41,8 @@ function Screen({ church }: { church: Church }) {
   const service = useServices(month ? [month] : []).services.find((item) => item.id === serviceId)
   const missing = query.error instanceof ApiError && query.error.status === 404
   const setlist = query.data
+  const [editing, setEditing] = useState(false)
+  const [saved, setSaved] = useState(false)
   const back = setlist && monthOf(setlist.service.date) !== monthOf(todayIn()) ? `/?mes=${monthOf(setlist.service.date)}` : '/'
 
   return (
@@ -57,7 +60,11 @@ function Screen({ church }: { church: Church }) {
         {setlist && (
           <>
             <header className="grid justify-items-start gap-2">
-              <StatusChip status={setlist.service.status.toLowerCase() as ServiceStatus} />
+              <div className="flex w-full items-center justify-between gap-3">
+                <StatusChip status={setlist.service.status.toLowerCase() as ServiceStatus} />
+                {setlist.canEdit && <Button variant="secondary" onClick={() => setEditing(true)}><Icon name="edit" width={16} height={16} />Editar servicio</Button>}
+              </div>
+              {saved && <p role="status" className="m-0 text-[0.8125rem] font-medium text-pub-fg">Servicio actualizado</p>}
               <h1 className="m-0 font-display text-[1.75rem] leading-[1.1] font-bold tracking-tight">{setlist.service.title}</h1>
               <p className="m-0 flex flex-wrap gap-x-3 text-[0.9375rem] text-text-2">
                 <span>{capitalize(formatLongDay(setlist.service.date).replace(',', ''))}</span>
@@ -79,6 +86,10 @@ function Screen({ church }: { church: Church }) {
                 </div>
               )}
             </div>
+            {editing && (
+              <EditServiceSheet church={church} service={setlist.service} directorId={service?.director.id} onClose={() => setEditing(false)}
+                onSaved={() => { setEditing(false); setSaved(true) }} />
+            )}
           </>
         )}
       </main>
@@ -222,7 +233,7 @@ function SetlistSection({ setlist }: { setlist: Setlist }) {
           onAddSong={(song) => addEntry({ songId: song.id }, song.title, true)} onAddMoment={(name) => addEntry({ moment: name }, name, false)} />
       )}
       {editing && (
-        <EditSheet entry={editing} canEdit={canEdit} onClose={() => setSheet(null)} onRemove={() => void removeEntry(editing, entries.indexOf(editing))}
+        <EditSheet entry={editing} canEdit={canEdit} canEditSong={canCreateSongs} onClose={() => setSheet(null)} onRemove={() => void removeEntry(editing, entries.indexOf(editing))}
           onSave={async (patch) => { if (await perform(() => actions.edit(editing.id, patch))) setSheet(null) }} />
       )}
     </section>

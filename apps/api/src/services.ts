@@ -5,7 +5,8 @@ import { batchPeriod, createBatch } from './batches.js'
 import { generateForServices } from './participation-generation.js'
 import { checkSettings } from './settings-rules.js'
 import { findSameName, newPersonBody, personPatch, personRolesBody } from './people-rules.js'
-import { closedDateBody, dateCapacity, isoDate, monthQuery, newServiceBody, planSlot, todayInZone } from './service-rules.js'
+import { closedDateBody, dateCapacity, isoDate, monthQuery, newServiceBody, planEdit, planSlot, servicePatch, todayInZone } from './service-rules.js'
+import { DIRECTOR_KEY, combinationAllowed } from './role-rules.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 
 export const timeZone = 'America/Mexico_City'
@@ -233,6 +234,57 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     if (result === 'full') return c.json({ error: 'Date full' }, 409)
     if (result === 'closed') return c.json({ error: 'Date closed' }, 409)
     return c.json(present(result), 201)
+  }))
+
+  // Correcting a service: title, date, hour, status and director. Dates are checked like a creation (not in the past,
+  // not closed, not full), and a new director must not break a role combination the church forbids in this service.
+  routes.patch('/api/services/:serviceId', guarded('service_update_failed', async (c, db, church) => {
+    if (!church.canEdit) return c.json({ error: 'Forbidden' }, 403)
+    const body = servicePatch.safeParse(await c.req.json().catch(() => undefined))
+    if (!body.success) return c.json({ error: 'Invalid request' }, 400)
+    const id = c.req.param('serviceId')
+    const result = await db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
+      const current = await tx.service.findFirst({ where: { id, churchId: church.churchId }, select: { date: true, slot: true, time: true, directorId: true } })
+      if (!current) return 'missing' as const
+      const currentDate = current.date.toISOString().slice(0, 10)
+      // Title, status and director never re-plan the slot: a service created before the church enabled a double Sunday stays editable.
+      const touchesWhen = body.data.date !== undefined || body.data.slot !== undefined || body.data.time !== undefined
+      const plan = touchesWhen ? planEdit({ date: currentDate, slot: current.slot, time: current.time }, body.data, church.sundayDouble) : { date: currentDate, slot: current.slot, time: current.time }
+      if ('error' in plan) return 'invalid' as const
+      const dateValue = new Date(`${plan.date}T00:00:00Z`)
+      if (plan.date !== currentDate || plan.slot !== current.slot) {
+        if (plan.date !== currentDate) {
+          if (plan.date < todayInZone(now())) return 'past' as const
+          if (await tx.closedDate.findUnique({ where: { churchId_date: { churchId: church.churchId, date: dateValue } }, select: { date: true } })) return 'closed' as const
+        }
+        if (await tx.service.count({ where: { churchId: church.churchId, date: dateValue, id: { not: id } } }) >= dateCapacity(plan.date, church.sundayDouble)) return 'full' as const
+      }
+      const { directorId } = body.data
+      if (directorId && directorId !== current.directorId) {
+        if (!await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: directorId }, select: { personId: true } })) return 'invalid' as const
+        const [held, restrictions] = await Promise.all([
+          tx.assignment.findMany({ where: { serviceId: id, personId: directorId }, select: { roleId: true } }),
+          tx.roleRestriction.findMany({ where: { churchId: church.churchId }, select: { first: true, second: true } }),
+        ])
+        if (!combinationAllowed(restrictions, [...held.flatMap(row => row.roleId ? [row.roleId] : []), DIRECTOR_KEY])) return 'combination' as const
+      }
+      const updated = await tx.service.update({
+        where: { id },
+        data: { ...(body.data.title !== undefined ? { title: body.data.title } : {}), ...(body.data.status ? { status: body.data.status } : {}), ...(directorId ? { directorId } : {}), date: dateValue, slot: plan.slot, time: plan.time },
+        select: serviceSelect,
+      })
+      // A link of this single service follows its date.
+      if (plan.date !== currentDate) await tx.shareLink.updateMany({ where: { serviceId: id, churchId: church.churchId }, data: { fromDate: dateValue, toDate: dateValue } })
+      return updated
+    }).catch(error => { if (safeErrorCode(error) === 'P2002') return 'full' as const; throw error })
+    if (result === 'missing') return c.json({ error: 'Not found' }, 404)
+    if (result === 'invalid') return c.json({ error: 'Invalid request' }, 400)
+    if (result === 'past') return c.json({ error: 'Date in the past' }, 400)
+    if (result === 'closed') return c.json({ error: 'Date closed' }, 409)
+    if (result === 'full') return c.json({ error: 'Date full' }, 409)
+    if (result === 'combination') return c.json({ error: 'Combination not allowed' }, 409)
+    return c.json(present(result))
   }))
 
   // Monthly batch: the reviewed assignment is validated again and created atomically (see batches.ts).
