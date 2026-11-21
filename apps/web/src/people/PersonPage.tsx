@@ -161,7 +161,7 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
 
         <section className="grid gap-2" aria-labelledby="here">
           <h2 id="here" className="m-0 font-display text-lg font-bold">En {church.name}</h2>
-          <p className="m-0 text-[0.9375rem] text-text-2">Sus roles, turnos y participaciones se verán aquí cuando existan las participaciones.</p>
+          <p className="m-0 text-[0.9375rem] text-text-2">Sus roles y turnos se configuran en Participaciones y se ajustan en cada servicio.</p>
         </section>
 
         <section className="grid gap-2" aria-labelledby="account">

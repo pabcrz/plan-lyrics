@@ -93,6 +93,7 @@ function Batch({ church }: { church: Church }) {
   const hasPrevious = Boolean(previous && previous.directorIds.length > 0)
   const plan = assignmentFor(entries, directors.map((person) => person.id), { repeat, previousLast })
   const usesPreaching = church.usesPreaching
+  const loaded = church.usesRotation ? 'Las participaciones habituales y la rotación se cargan solas' : 'Las participaciones habituales se cargan solas'
   // Misma regla de reparto que la dirección, sin continuidad desde el lote anterior (producto no la define para predicación).
   const preacherPlan = assignmentFor(entries, preachers.map((person) => person.id), { repeat: repeatPreachers, previousLast: null })
 
@@ -371,7 +372,7 @@ function Batch({ church }: { church: Church }) {
               </Notice>
             )}
             {entries.length > free.length && <p className="m-0 text-[0.8125rem] text-text-3">{count(entries.length - free.length, 'fecha se saltó', 'fechas se saltaron')}: ya tienen servicio o no hay culto.</p>}
-            <p className="m-0 text-[0.8125rem] text-text-3">Cada servicio se crea como borrador con su director. Las participaciones habituales, la rotación y el setlist llegan después y se agregan a mano.</p>
+            <p className="m-0 text-[0.8125rem] text-text-3">Cada servicio se crea como borrador con su director. {loaded}; el setlist se arma después.</p>
             {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
             <Button variant="primary" block loading={sending} disabled={included.length === 0} onClick={create}>
               {included.length > 0 ? `Crear ${count(included.length, 'servicio', 'servicios')}` : 'Sin servicios para crear'}
@@ -385,7 +386,7 @@ function Batch({ church }: { church: Church }) {
             <div role="status" className="grid justify-items-center gap-1 text-center">
               <span className="grid size-12 place-items-center rounded-full bg-accent-soft text-accent"><Icon name="check" /></span>
               <h2 className="m-0 font-display text-xl font-bold">{count(created.length, 'servicio creado', 'servicios creados')}</h2>
-              <p className="m-0 text-[0.9375rem] text-text-2">Quedaron como borrador. Las participaciones habituales y el setlist se agregan después.</p>
+              <p className="m-0 text-[0.9375rem] text-text-2">Quedaron como borrador. {church.usesRotation ? 'Las participaciones habituales y la rotación se cargaron solas' : 'Las participaciones habituales se cargaron solas'}; el setlist se arma después.</p>
             </div>
             <ul className="m-0 grid list-none overflow-hidden rounded-lg border border-line bg-surface p-0">
               {created.map((service) => <Row key={`${service.date}/${service.slot}`} date={`${formatDay(service.date)}${service.slot === 'SINGLE' ? '' : ` · ${slotName[service.slot]}`}${service.time ? ` · ${timeText(service.time)}` : ''}`} value={service.director.name} />)}
