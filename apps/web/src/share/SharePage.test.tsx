@@ -251,7 +251,7 @@ test('the congregation switch saves the church setting with the rest of the sett
   fireEvent.click(toggle)
   expect(await screen.findByText('Los congregantes verán predicador y tema')).toBeTruthy()
   expect(putBody(base)).toEqual({
-    name: 'Betel', sundayDouble: false, usesPreaching: true, congregationShowsPreacher: true,
+    name: 'Betel', sundayDouble: false, usesPreaching: true, usesRotation: true, congregationShowsPreacher: true,
     days: [{ weekday: 5, slot: 'SINGLE', time: '19:30', title: 'Servicio de viernes' }, { weekday: 0, slot: 'SINGLE', time: '10:00', title: 'Servicio dominical' }],
   })
   await waitFor(() => expect(screen.getByRole('switch', { name: 'Mostrar predicador y tema' }).getAttribute('aria-checked')).toBe('true'))

@@ -59,7 +59,7 @@ function Congregation({ church, onDone }: { church: Church; onDone: (message: st
     setBusy(true)
     setFailure('')
     try {
-      await save({ name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, days: church.days, congregationShowsPreacher: on })
+      await save({ name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, days: church.days, congregationShowsPreacher: on })
       onDone(on ? 'Los congregantes verán predicador y tema' : 'Los congregantes ya no ven predicador ni tema')
     } catch (error) {
       setFailure(error instanceof ApiError && error.status === 403 ? 'Solo quien administra la iglesia puede cambiarlo.' : 'No se pudo guardar el cambio. Inténtalo de nuevo.')

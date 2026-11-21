@@ -46,7 +46,7 @@ async function presentRole(db: Tx | PrismaClient, church: Active, roleId: string
     startsOn: plan?.startsOn ? day(plan.startsOn) : null, sequences,
   }
   const dates = upcomingDates(days, today)
-  const turns = previewTurns(base, dates.map(entry => entry.date), active)
+  const turns = previewTurns({ ...base, rotationOn: base.rotationOn && church.usesRotation }, dates.map(entry => entry.date), active)
   return {
     roleId, name: role.name,
     habitual: people(base.habitualIds),

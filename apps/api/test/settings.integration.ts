@@ -15,7 +15,7 @@ const original = [
 ]
 const reset = async () => {
   await db.service.deleteMany()
-  await db.church.update({ where: { id: 'church-a' }, data: { name: 'Fixture Church A', sundayDouble: false, usesPreaching: false, congregationShowsPreacher: false } })
+  await db.church.update({ where: { id: 'church-a' }, data: { name: 'Fixture Church A', sundayDouble: false, usesPreaching: false, usesRotation: false, congregationShowsPreacher: false } })
   await db.serviceDay.deleteMany({ where: { churchId: 'church-a' } })
   await db.serviceDay.createMany({ data: original.map(day => ({ ...day, churchId: 'church-a' })) })
 }
@@ -113,4 +113,16 @@ test('the congregation switch is saved with the settings, kept when a save leave
   expect((await save('admin', { ...valid, congregationShowsPreacher: 'si' })).status).toBe(400)
   expect(await (await call('member', 'GET', '/api/active-church')).json()).toMatchObject({ congregationShowsPreacher: true })
   expect(await (await save('admin', { ...valid, congregationShowsPreacher: false })).json()).toMatchObject({ congregationShowsPreacher: false })
+})
+
+test('the rotation switch is off by default, is saved when sent and stays when left out', async () => {
+  expect(await (await call('admin', 'GET', '/api/active-church')).json()).toMatchObject({ usesRotation: false })
+  const on = await call('admin', 'PUT', '/api/active-church', { ...valid, usesRotation: true })
+  expect(on.status).toBe(200)
+  expect(await on.json()).toMatchObject({ usesRotation: true })
+  const left = await call('admin', 'PUT', '/api/active-church', valid)
+  expect(await left.json()).toMatchObject({ usesRotation: true })
+  const off = await call('admin', 'PUT', '/api/active-church', { ...valid, usesRotation: false })
+  expect(await off.json()).toMatchObject({ usesRotation: false })
+  expect((await call('admin', 'PUT', '/api/active-church', { ...valid, usesRotation: 'sí' })).status).toBe(400)
 })

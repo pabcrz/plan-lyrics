@@ -129,7 +129,7 @@ test('repeats the list until every free date has a director, and creates the rev
   expect(screen.getByRole('button', { name: /viernes,? 13 de noviembre, Ana Ramírez/ })).toBeTruthy()
   expect(screen.getByRole('button', { name: /viernes,? 20 de noviembre, Luis Herrera/ })).toBeTruthy()
   expect(screen.getByRole('button', { name: /viernes,? 27 de noviembre, Ana Ramírez/ })).toBeTruthy()
-  expect(screen.getByText(/participaciones habituales, la rotación y el setlist llegan después/)).toBeTruthy()
+  expect(screen.getByText(/participaciones habituales y la rotación se cargan solas; el setlist se arma después/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Crear 3 servicios' }))
   expect(await screen.findByText('3 servicios creados')).toBeTruthy()
   expect(posted(calls)).toHaveLength(1)

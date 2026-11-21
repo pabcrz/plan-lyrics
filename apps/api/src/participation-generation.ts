@@ -10,9 +10,14 @@ export const planSelect = { roleId: true, rotationOn: true, mode: true, startsOn
 
 /** Plans of every role of the church that has habitual people or a rotation, ready to generate from. */
 async function loadPlans(tx: Tx, churchId: string): Promise<RolePlan[]> {
-  const roles = await tx.musicalRole.findMany({ where: { churchId, plan: { isNot: null } }, orderBy: { name: 'asc' }, select: { id: true, name: true, plan: { select: planSelect } } })
+  const [roles, church] = await Promise.all([
+    tx.musicalRole.findMany({ where: { churchId, plan: { isNot: null } }, orderBy: { name: 'asc' }, select: { id: true, name: true, plan: { select: planSelect } } }),
+    tx.church.findUnique({ where: { id: churchId }, select: { usesRotation: true } }),
+  ])
+  // A church with the rotation off applies none: each role keeps its saved rotation for when it is turned back on.
+  const rotating = church?.usesRotation ?? false
   return roles.flatMap(role => role.plan ? [{
-    roleId: role.id, roleName: role.name, habitualIds: role.plan.habitualIds, rotationOn: role.plan.rotationOn, mode: role.plan.mode,
+    roleId: role.id, roleName: role.name, habitualIds: role.plan.habitualIds, rotationOn: role.plan.rotationOn && rotating, mode: role.plan.mode,
     startsOn: role.plan.startsOn ? day(role.plan.startsOn) : null, sequences: role.plan.sequences.map(sequence => ({ ...sequence })),
   }] : [])
 }
