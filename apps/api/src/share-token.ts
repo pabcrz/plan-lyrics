@@ -8,12 +8,14 @@ import { createHash, createHmac, randomBytes } from 'node:crypto'
  */
 
 const SECRET_MIN = 32
-const SHAPE = /^[A-Za-z0-9_-]{43}$/
+// 12 URL-safe characters = 72 bits: short enough to type or read aloud, far beyond what the public route's rate limit lets anyone guess.
+const TOKEN_LENGTH = 12
+const SHAPE = new RegExp(`^[A-Za-z0-9_-]{${TOKEN_LENGTH}}$`)
 
 export const secretIsUsable = (secret: string | undefined): secret is string => typeof secret === 'string' && secret.length >= SECRET_MIN
 export const newNonce = () => randomBytes(16).toString('base64url')
-/** 256 bits as 43 URL-safe characters. */
-export const tokenFor = (secret: string, nonce: string) => createHmac('sha256', secret).update(`share-link:${nonce}`).digest('base64url')
+/** The first 12 URL-safe characters of the HMAC of the nonce. */
+export const tokenFor = (secret: string, nonce: string) => createHmac('sha256', secret).update(`share-link:${nonce}`).digest('base64url').slice(0, TOKEN_LENGTH)
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex')
 /** Cheap check before touching the database: anything else cannot be a token. */
 export const isTokenShape = (value: string) => SHAPE.test(value)

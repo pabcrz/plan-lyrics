@@ -47,7 +47,7 @@ test('everyone who sees the library reads the lyrics, the internal data included
     const response = await call(subject, 'GET', path(song.id))
     expect(response.status, subject).toBe(200)
     expect(response.headers.get('cache-control')).toBe('no-store')
-    expect(await json(response)).toEqual({ version: 0, published: false, canEdit: ['library', 'owner'].includes(subject), sections: [] })
+    expect(await json(response)).toEqual({ title: song.title, version: 0, published: false, canEdit: ['library', 'owner'].includes(subject), sections: [] })
   }
   await put('library', song.id, { version: 0, sections: [verse(), chorus()] })
   expect((await read('member', song.id)).sections.map(section => section.kind)).toEqual(['VERSE', 'CHORUS'])
@@ -85,7 +85,7 @@ test('a new lyrics keeps its sections in order, with kind, label and repeat, and
   ] })
   expect(response.status).toBe(200)
   const saved = await json<Lyrics>(response)
-  expect(saved).toEqual({ version: 1, published: false, canEdit: true, sections: [
+  expect(saved).toEqual({ title: song.title, version: 1, published: false, canEdit: true, sections: [
     { kind: 'INTRO', label: null, text: 'Intro inventada', repeat: 1 },
     { kind: 'VERSE', label: 'Estrofa 1', text: 'Verso uno\nVerso dos', repeat: 1 },
     { kind: 'CHORUS', label: null, text: 'Coro uno', repeat: 2 },

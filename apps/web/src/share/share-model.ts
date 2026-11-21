@@ -19,7 +19,7 @@ export const versionHelp: Record<Version, string> = {
   PRAISE: 'Fechas, quién dirige y setlists.',
   PREACHING: 'Fechas, predicador, tema, citas y notas.',
   FULL: 'Ambas, con horario y orden de los cantos.',
-  CONGREGATION: 'El setlist de la alabanza, sin directores ni equipos.',
+  CONGREGATION: 'El setlist de la alabanza con las letras publicadas, sin directores ni equipos.',
 }
 
 /** «3 dic 2026». */

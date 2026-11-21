@@ -53,7 +53,7 @@ export function LyricsPage() {
         {query.isError && <div className="grid gap-4 p-4"><LyricsLoadFailure error={query.error} onRetry={() => void query.refetch()} /></div>}
         {lyrics && (
           <>
-            <LyricsHeader title={title} lyrics={lyrics} />
+            <LyricsHeader title={title ?? lyrics.title} lyrics={lyrics} />
             {lyrics.sections.length === 0 ? (
               <div className="mx-4 mb-4 grid justify-items-center gap-2 rounded-lg border border-line bg-surface px-4 py-8 text-center">
                 <span className="mb-1 grid size-14 place-items-center rounded-full bg-accent-soft text-accent-soft-text"><Icon name="music" width={26} height={26} /></span>

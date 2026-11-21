@@ -68,7 +68,7 @@ function Congregation({ church, onDone }: { church: Church; onDone: (message: st
   return (
     <section aria-labelledby="congregantes" className="grid gap-2">
       <h2 id="congregantes" className="m-0 text-sm font-semibold">Vista de congregantes</h2>
-      <CreateRow icon="music" title="Enlace para congregantes" hint="El setlist de la alabanza, sin directores ni equipos." to="/compartir/enlace?para=congregantes" />
+      <CreateRow icon="music" title="Enlace para congregantes" hint="El setlist con las letras publicadas, sin directores ni equipos." to="/compartir/enlace?para=congregantes" />
       {church.usesPreaching ? (
         <div className="rounded-md border border-line bg-surface p-3">
           <Switch checked={church.congregationShowsPreacher} onCheckedChange={(on) => void change(on)} disabled={busy || !church.canConfigure}
@@ -98,7 +98,7 @@ function Home({ church }: { church: Church }) {
         <section aria-labelledby="crear" className="grid gap-2">
           <h2 id="crear" className="m-0 text-sm font-semibold">Crear</h2>
           <CreateRow icon="link" title="Enlace para el ministerio" hint="Alabanza, predicación o servicio completo. Solo lectura." to="/compartir/enlace" />
-          <CreateRow icon="image" title="Setlist en imagen" hint="La fecha y las canciones numeradas, con su autor." to="/compartir/documento/imagen" />
+          <CreateRow icon="image" title="Setlist en imagen" hint="La fecha, quién dirige y las canciones numeradas, con su autor." to="/compartir/documento/imagen" />
           <CreateRow icon="mic" title="Lista mensual de dirección" hint="«Rol alabanza» del mes, en imagen o PDF." to="/compartir/documento/rol" />
           {church.usesPreaching && <CreateRow icon="doc" title="PDF de predicaciones" hint="Fechas, quién predica, tema, citas y puntos. Para imprimir." to="/compartir/documento/predicaciones" />}
         </section>

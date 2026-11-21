@@ -9,7 +9,7 @@ import type { PublicView } from './share-api'
 vi.mock('@clerk/react', () => ({}))
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
-const token = 'A'.repeat(43)
+const token = 'A'.repeat(12)
 const open = () => mount(<Routes><Route path="/m/:token" element={<PublicLinkPage />} /></Routes>, `/m/${token}`)
 const view = (over: Partial<PublicView> = {}): PublicView => ({
   version: 'FULL', church: 'Betel', activeUntil: '2027-01-26', blocks: { keys: false, notes: false, people: true }, closedDates: [],
@@ -159,4 +159,20 @@ test('the congregation view is headed «Setlist» and shows only the setlist and
   expect(first.textContent).toContain('La fe')
   expect(first.textContent).not.toMatch(/Dirige|Citas|Puntos a considerar/)
   expect(screen.getByText('Predicador por confirmar.')).toBeTruthy()
+})
+
+test('the congregation view shows the published lyrics of a song, and a song without author has no parentheses', async () => {
+  serve(200, view({ version: 'CONGREGATION', services: [{
+    date: '2026-12-04', slot: 'SINGLE',
+    setlist: [
+      { kind: 'SONG', title: 'Canción de ejemplo', author: 'Autora Uno', lyrics: [{ kind: 'CHORUS', label: null, text: 'Línea uno\nLínea dos', repeat: 2 }] },
+      { kind: 'SONG', title: 'Himno sin autor', author: '' },
+    ],
+  }] }))
+  open()
+  expect(await screen.findByText('Ver letra')).toBeTruthy()
+  expect(screen.getAllByText('Ver letra')).toHaveLength(1)
+  expect(screen.getByText('Coro')).toBeTruthy()
+  expect(screen.getByText(/Línea uno/).textContent).toContain('Línea dos')
+  expect(screen.queryByText('()')).toBeNull()
 })

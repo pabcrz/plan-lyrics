@@ -16,7 +16,7 @@ export const kindLabel = (kind: SectionKind) => kinds.find((item) => item.value 
 export const limits = { maxSections: 60, maxText: 4000, maxLabel: 60, maxRepeat: 8 } as const
 
 export type Section = { kind: SectionKind; label: string | null; text: string; repeat: number }
-export type Lyrics = { version: number; published: boolean; canEdit: boolean; sections: Section[] }
+export type Lyrics = { title?: string; version: number; published: boolean; canEdit: boolean; sections: Section[] }
 
 /** Sección en edición: `key` identifica la tarjeta aunque cambie de lugar. */
 export type DraftSection = { key: string; kind: SectionKind; label: string; text: string; repeat: number }

@@ -21,9 +21,9 @@ async function libraryAccess(db: PrismaClient, subject: string) {
 
 /** The lyrics of a song as the client sees it; a song without lyrics answers an empty, unpublished version 0. */
 async function readLyrics(db: Pick<PrismaClient, 'song'>, songId: string, canEdit: boolean) {
-  const song = await db.song.findUnique({ where: { id: songId }, select: { lyrics: { select: lyricsSelect } } })
+  const song = await db.song.findUnique({ where: { id: songId }, select: { title: true, lyrics: { select: lyricsSelect } } })
   if (!song) return null
-  return { version: song.lyrics?.version ?? 0, published: song.lyrics?.published ?? false, canEdit, sections: song.lyrics?.sections ?? [] }
+  return { title: song.title, version: song.lyrics?.version ?? 0, published: song.lyrics?.published ?? false, canEdit, sections: song.lyrics?.sections ?? [] }
 }
 
 /**
