@@ -240,7 +240,7 @@ test('library editing never grants church access, and church admin never grants 
 
 const memberOf = async (subject: string) => {
   const body = await (await call(subject, 'GET', '/api/members')).json()
-  return body as { members: Array<{ userId: string; role: string; person: { id: string; name: string } | null; self: boolean; protected: boolean }>; candidates: Array<{ personId: string; name: string }> }
+  return body as { members: Array<{ userId: string; role: string; email: string | null; person: { id: string; name: string } | null; self: boolean; protected: boolean }>; candidates: Array<{ personId: string; name: string; email: string | null }> }
 }
 
 test('an administrator lists only the members of their own church, with candidates that have an account', async () => {
@@ -251,8 +251,10 @@ test('an administrator lists only the members of their own church, with candidat
   expect(ids).not.toContain('b-editor')
   expect(body.members.find(member => member.userId === 'acc-a1')).toMatchObject({ role: 'ADMIN', self: true, protected: false, person: { id: 'person-acc-a1', name: 'Prueba acceso A1' } })
   // acc-free has an account and is in A's directory (shared with B) but has no membership here; acc-none has no account.
-  expect(body.candidates).toEqual([{ personId: 'person-acc-free', name: 'Prueba acceso Libre' }])
-  expect(JSON.stringify(body)).not.toMatch(/clerkSubject|fixture-|email|church-b/)
+  // A church role never reads addresses: only the owner and account managers do.
+  expect(body.candidates).toEqual([{ personId: 'person-acc-free', name: 'Prueba acceso Libre', email: null }])
+  expect(body.members.every(member => member.email === null)).toBe(true)
+  expect(JSON.stringify(body)).not.toMatch(/clerkSubject|fixture-|church-b/)
 })
 
 test('the church always comes from the session, never from the request', async () => {
