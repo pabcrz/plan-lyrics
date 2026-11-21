@@ -140,6 +140,7 @@ function ServiceCard({ service }: { service: Service }) {
       <span className="grid min-w-0 flex-1 content-start gap-0.5">
         <b className="font-display text-[1.0625rem] leading-snug">{service.title}</b>
         <span className="text-sm text-text-2">{timeText(service.time)}{slotText[service.slot]} · Dirige <b className="font-semibold text-text">{service.director.name}</b></span>
+        <span className="text-sm text-text-2">{service.songCount === 0 ? 'Setlist sin preparar' : `${service.songCount} ${service.songCount === 1 ? 'canción' : 'canciones'} en el setlist`}</span>
         <StatusChip status={status(service.status)} className="mt-1.5 w-fit" />
       </span>
       <Icon name="right" className="flex-none text-text-3" />

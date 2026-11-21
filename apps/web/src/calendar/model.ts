@@ -11,6 +11,8 @@ export type ChurchSettings = Pick<Church, 'name' | 'sundayDouble' | 'usesPreachi
 export type Service = {
   id: string; title: string; date: string; slot: Slot; time: string | null; status: Status
   director: { id: string; name: string }
+  /** Canciones del setlist (sin contar los momentos). */
+  songCount: number
 }
 
 /** Persona del directorio de la iglesia activa (lista). */

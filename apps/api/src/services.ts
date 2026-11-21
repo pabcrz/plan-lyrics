@@ -35,11 +35,13 @@ export async function activeChurch(db: PrismaClient, subject: string): Promise<A
 const serviceSelect = {
   id: true, title: true, date: true, slot: true, time: true, status: true,
   director: { select: { person: { select: { id: true, name: true } } } },
+  // Songs only: the moments of the setlist («Ofrenda») are not counted.
+  _count: { select: { setlist: { where: { songId: { not: null } } } } },
 } as const
-type Row = { id: string; title: string; date: Date; slot: string; time: string | null; status: string; director: { person: { id: string; name: string } } }
+type Row = { id: string; title: string; date: Date; slot: string; time: string | null; status: string; director: { person: { id: string; name: string } }; _count: { setlist: number } }
 const present = (row: Row) => ({
   id: row.id, title: row.title, date: row.date.toISOString().slice(0, 10), slot: row.slot,
-  time: row.time, status: row.status, director: row.director.person,
+  time: row.time, status: row.status, director: row.director.person, songCount: row._count.setlist,
 })
 
 const personSelect = { id: true, name: true, phone: true, userId: true } as const
