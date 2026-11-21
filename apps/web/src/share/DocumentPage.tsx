@@ -142,14 +142,14 @@ function SetlistImage({ church }: { church: Church }) {
       )}
     </Field>
   )
-  const intro = 'Una imagen con la fecha y las canciones numeradas, cada una con su autor entre paréntesis.'
+  const intro = 'Una imagen con la fecha, quién dirige y las canciones numeradas, cada una con su autor entre paréntesis.'
   if (!chosen) return <Frame church={church} title="Setlist en imagen" intro={intro} options={<>{select}<LoadState loading={loading} error={Boolean(error)} /></>} paper={null} actions={<Button block disabled>Descargar imagen</Button>} />
   return <SetlistFor key={chosen.id} church={church} service={chosen} select={select} intro={intro} />
 }
 
 function SetlistFor({ church, service, select, intro }: { church: Church; service: Service; select: ReactNode; intro: string }) {
   const setlist = useSetlist(service.id)
-  const doc = setlistDoc({ church: church.name, date: service.date, entries: setlist.data?.entries ?? [] })
+  const doc = setlistDoc({ church: church.name, date: service.date, entries: setlist.data?.entries ?? [], director: service.director.name })
   const name = fileName('setlist', service.date)
   const ready = doc.rows.length > 0
   return (

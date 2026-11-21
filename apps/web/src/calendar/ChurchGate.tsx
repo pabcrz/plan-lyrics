@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { UserButton } from '@clerk/react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Icon, Notice, TextField } from '../ui'
+import { AppearanceSheet, Button, Icon, Notice, TextField } from '../ui'
 import { AccountsLink } from '../access/AccessLinks'
 import { useAccess } from '../access/access-api'
 import { ApiError, useApiFetch, useChurch } from './api'
@@ -11,15 +11,18 @@ import type { Church } from './model'
 /** Encabezado común: iglesia activa y cuenta. */
 export function TopBar({ name, settings, share }: { name?: string; settings?: boolean; share?: boolean }) {
   const navigate = useNavigate()
+  const [looking, setLooking] = useState(false)
   return (
     <div className="flex min-h-14 items-center gap-3 border-b border-line px-4 lg:group-data-[frame]/app:hidden">
       <span className="grid size-8 place-items-center rounded-md bg-accent text-sm font-bold text-on-accent" aria-hidden="true">
         {name?.charAt(0).toUpperCase() ?? ''}
       </span>
-      <span className="flex-1 font-semibold">{name ?? 'Plan & Lyrics'}</span>
+      <span className="min-w-0 flex-1 truncate font-semibold">{name ?? 'Plan & Lyrics'}</span>
       {share && <Button variant="quiet" icon aria-label="Compartir" onClick={() => void navigate('/compartir')}><Icon name="share" /></Button>}
-      {settings && <Button variant="quiet" onClick={() => void navigate('/ajustes')}>Ajustes</Button>}
+      {settings && <Button variant="quiet" icon aria-label="Ajustes" onClick={() => void navigate('/ajustes')}><Icon name="settings" /></Button>}
+      <Button variant="quiet" icon aria-label="Apariencia" onClick={() => setLooking(true)}><Icon name="palette" /></Button>
       <UserButton />
+      <AppearanceSheet open={looking} onClose={() => setLooking(false)} />
     </div>
   )
 }

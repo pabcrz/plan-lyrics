@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router'
 import { Avatar, Button, Icon, Notice, Sheet, TextField } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, usePerson, usePersonActions } from '../calendar/api'
+import { useRoles } from '../calendar/roles-api'
 import type { Church, PersonDetail } from '../calendar/model'
 import { PhoneField, phoneDigits, phoneError, phoneStored } from './phone'
 
@@ -62,14 +63,15 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
   const { update, remove } = usePersonActions()
   const [name, setName] = useState(person.name)
   const [phone, setPhone] = useState(phoneDigits(person.phone))
-  const [saved, setSaved] = useState({ name: person.name, phone: phoneDigits(person.phone) })
+  const [email, setEmail] = useState(person.email ?? '')
+  const [saved, setSaved] = useState({ name: person.name, phone: phoneDigits(person.phone), email: person.email ?? '' })
   const [nameError, setNameError] = useState('')
   const [phoneProblem, setPhoneProblem] = useState('')
   const [failure, setFailure] = useState('')
   const [sending, setSending] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [done, setDone] = useState(false)
-  const dirty = name.trim() !== saved.name || phone !== saved.phone
+  const dirty = name.trim() !== saved.name || phone !== saved.phone || email.trim() !== saved.email
   const edit = church.canEdit
 
   async function save() {
@@ -86,20 +88,23 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
       const result = await update(person.id, {
         ...(name.trim() !== saved.name ? { name: name.trim() } : {}),
         ...(phone !== saved.phone ? { phone: phoneStored(phone) } : {}),
+        ...(email.trim() !== saved.email ? { email: email.trim() || null } : {}),
       })
-      setSaved({ name: result.name, phone: phoneDigits(result.phone) })
+      setSaved({ name: result.name, phone: phoneDigits(result.phone), email: result.email ?? '' })
       setName(result.name)
       setPhone(phoneDigits(result.phone))
+      setEmail(result.email ?? '')
       setDone(true)
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409) setNameError(`Ya hay una persona llamada «${caught.existing?.name ?? name.trim()}». Completa el nombre para distinguirlas.`)
-      else setFailure(caught instanceof ApiError && caught.status === 403 ? 'No tienes permiso para editar personas.' : caught instanceof ApiError && caught.status === 400 ? 'Revisa el nombre y el teléfono.' : 'No se pudo guardar. Inténtalo de nuevo.')
+      else setFailure(caught instanceof ApiError && caught.status === 403 ? 'No tienes permiso para editar personas.' : caught instanceof ApiError && caught.status === 400 ? 'Revisa el nombre, el teléfono y el correo.' : 'No se pudo guardar. Inténtalo de nuevo.')
     }
     setSending(false)
   }
   function discard() {
     setName(saved.name)
     setPhone(saved.phone)
+    setEmail(saved.email)
     setNameError('')
     setPhoneProblem('')
     setFailure('')
@@ -137,11 +142,14 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
               <TextField label="Nombre completo" value={name} maxLength={120} autoComplete="off" error={nameError || undefined}
                 onChange={(event) => { setName(event.target.value); setNameError(''); setDone(false) }} />
               <PhoneField value={phone} error={phoneProblem || undefined} onChange={(digits) => { setPhone(digits); setPhoneProblem(''); setDone(false) }} />
+              <TextField label="Correo (opcional)" type="email" inputMode="email" autoComplete="off" maxLength={254} value={email}
+                onChange={(event) => { setEmail(event.target.value); setDone(false) }} />
             </>
           ) : (
             <dl className="m-0 grid gap-1 text-[0.9375rem]">
               <div><dt className="text-[0.8125rem] text-text-3">Nombre completo</dt><dd className="m-0">{saved.name}</dd></div>
               <div><dt className="text-[0.8125rem] text-text-3">Teléfono</dt><dd className="m-0">{shownPhone(saved.phone)}</dd></div>
+              <div><dt className="text-[0.8125rem] text-text-3">Correo</dt><dd className="m-0">{saved.email || 'Sin correo'}</dd></div>
             </dl>
           )}
           <Notice>
@@ -159,10 +167,7 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
           )}
         </section>
 
-        <section className="grid gap-2" aria-labelledby="here">
-          <h2 id="here" className="m-0 font-display text-lg font-bold">En {church.name}</h2>
-          <p className="m-0 text-[0.9375rem] text-text-2">Sus roles y turnos se configuran en Participaciones y se ajustan en cada servicio.</p>
-        </section>
+        <RolesSection church={church} person={person} />
 
         <section className="grid gap-2" aria-labelledby="account">
           <h2 id="account" className="m-0 font-display text-lg font-bold">Cuenta de acceso</h2>
@@ -188,5 +193,60 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
         </div>
       </Sheet>
     </>
+  )
+}
+
+/** Roles musicales que la persona puede tener en esta iglesia: solo quien administra los cambia. */
+function RolesSection({ church, person }: { church: Church; person: PersonDetail }) {
+  const roles = useRoles()
+  const { setRoles } = usePersonActions()
+  const [saved, setSaved] = useState(person.roleIds)
+  const [chosen, setChosen] = useState(person.roleIds)
+  const [failure, setFailure] = useState('')
+  const [sending, setSending] = useState(false)
+  const [done, setDone] = useState(false)
+  const catalog = roles.data ?? []
+  const dirty = chosen.length !== saved.length || chosen.some((id) => !saved.includes(id))
+  const toggle = (id: string) => { setChosen((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])); setDone(false) }
+
+  async function save() {
+    setSending(true)
+    setFailure('')
+    try {
+      const result = await setRoles(person.id, chosen)
+      setSaved(result.roleIds)
+      setChosen(result.roleIds)
+      setDone(true)
+    } catch (caught) {
+      setFailure(caught instanceof ApiError && caught.status === 403 ? 'Solo un administrador puede cambiar los roles.' : 'No se pudieron guardar los roles. Inténtalo de nuevo.')
+    }
+    setSending(false)
+  }
+
+  return (
+    <section className="grid gap-3" aria-labelledby="roles">
+      <h2 id="roles" className="m-0 font-display text-lg font-bold">Roles en {church.name}</h2>
+      {roles.isPending && <p role="status" className="m-0 text-[0.9375rem] text-text-2">Cargando roles…</p>}
+      {roles.isError && <Notice tone="warn" icon="alert" role="alert">No se pudieron cargar los roles.</Notice>}
+      {roles.data && catalog.length === 0 && <p className="m-0 text-[0.9375rem] text-text-2">La iglesia aún no tiene roles musicales.</p>}
+      {roles.data && catalog.length > 0 && (church.canConfigure ? (
+        <>
+          <div role="group" aria-label="Roles de la persona" className="flex flex-wrap gap-2">
+            {catalog.map((role) => (
+              <button key={role.id} type="button" aria-pressed={chosen.includes(role.id)} onClick={() => toggle(role.id)}
+                className="min-h-touch cursor-pointer rounded-full border border-line-strong bg-surface px-4 text-[0.9375rem] font-semibold aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent">
+                {role.name}
+              </button>
+            ))}
+          </div>
+          <p className="m-0 text-[0.8125rem] text-text-3">Solo puede tener, o recibir en un servicio, los roles marcados. Dirigir no depende de esto.</p>
+          {done && <p role="status" className="m-0 flex items-center gap-1.5 text-[0.8125rem] font-medium text-pub-fg"><Icon name="check" width={16} height={16} />Roles guardados</p>}
+          {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
+          {dirty && <Button variant="primary" block loading={sending} onClick={() => void save()}>Guardar roles</Button>}
+        </>
+      ) : (
+        <p className="m-0 text-[0.9375rem]">{catalog.filter((role) => saved.includes(role.id)).map((role) => role.name).join(', ') || 'Sin roles asignados.'}</p>
+      ))}
+    </section>
   )
 }

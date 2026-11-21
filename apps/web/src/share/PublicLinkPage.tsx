@@ -5,7 +5,8 @@ import { Button, Icon, Notice, format12h, from24h } from '../ui'
 import { formatLongDay } from '../calendar/dates'
 import { compareSlots } from '../calendar/model'
 import { Notes } from '../calendar/PreachingSection'
-import { fetchPublicLink, PublicLinkError, type PublicService, type PublicView } from './share-api'
+import { kindLabel } from '../lyrics/lyrics-model'
+import { fetchPublicLink, PublicLinkError, type PublicSection, type PublicService, type PublicView } from './share-api'
 import { formatFull, versionLabel } from './share-model'
 
 /** Lo que se lee en el encabezado: la congregación ve «Setlist», no el nombre interno de la versión. */
@@ -28,6 +29,25 @@ function useDiscreet(title: string) {
   }, [title])
 }
 
+/** La letra publicada de una canción, plegada para que el setlist siga leyéndose de un vistazo. */
+function Lyrics({ sections }: { sections: PublicSection[] }) {
+  return (
+    <details className="mt-1 rounded-md bg-surface-2 px-3 py-2">
+      <summary className="min-h-touch cursor-pointer py-2 text-[0.8125rem] font-semibold text-accent">Ver letra</summary>
+      <div className="grid gap-3 pb-2">
+        {sections.map((section, index) => (
+          <div key={index}>
+            <p className="m-0 text-[0.8125rem] font-semibold text-text-2">
+              {section.label || kindLabel(section.kind)}{section.repeat > 1 && <span className="ml-1.5 font-mono font-medium">×{section.repeat}</span>}
+            </p>
+            <p className="m-0 text-base leading-[1.65] whitespace-pre-line [overflow-wrap:anywhere]">{section.text}</p>
+          </div>
+        ))}
+      </div>
+    </details>
+  )
+}
+
 function ServiceCard({ service, congregation }: { service: PublicService; congregation: boolean }) {
   const showSetlist = service.setlist !== undefined
   const preaching = service.preaching
@@ -48,7 +68,12 @@ function ServiceCard({ service, congregation }: { service: PublicService; congre
               <li key={index} className="grid grid-cols-[1.75rem_1fr] gap-2 text-[0.9375rem]">
                 <span className="text-text-3 tabular-nums">{index + 1}</span>
                 {entry.kind === 'SONG'
-                  ? <span>{entry.title} <span className="text-text-2">({entry.author})</span>{entry.key && <span className="ml-2 rounded border border-line-strong px-1.5 text-[0.8125rem] font-medium">{entry.key}</span>}</span>
+                  ? (
+                    <div className="min-w-0">
+                      <span>{entry.title} {entry.author && <span className="text-text-2">({entry.author})</span>}{entry.key && <span className="ml-2 rounded border border-line-strong px-1.5 text-[0.8125rem] font-medium">{entry.key}</span>}</span>
+                      {entry.lyrics && <Lyrics sections={entry.lyrics} />}
+                    </div>
+                  )
                   : <span className="italic text-text-2">{entry.name}</span>}
               </li>
             ))}

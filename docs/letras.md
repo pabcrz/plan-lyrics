@@ -14,7 +14,7 @@ Primeras rebanadas de la [etapa 2 del producto](producto.md#etapa-2--letras): mo
 | Ruta | Quién | Resultado |
 | --- | --- | --- |
 | `GET /api/songs/:songId/lyrics` | Superadministrador, editores de biblioteca y quien pertenezca a al menos una iglesia (integrantes, editores de servicios, administradores) | `{version, published, canEdit, sections}`; una canción sin letra responde `version: 0`, `published: false`, `sections: []`. Sin ningún acceso: `403`; canción inexistente: `404`. |
-| `PUT /api/songs/:songId/lyrics` | Solo superadministrador y editores de biblioteca | Reemplaza la letra completa: `{version, sections:[{kind, label?, text, repeat?}], published?}`. `403` antes de validar o buscar la canción; `400` cuerpo inválido; `404` canción inexistente; `409` versión desactualizada. |
+| `PUT /api/songs/:songId/lyrics` | Superadministrador, editores de biblioteca, y administradores y editores de servicios de una iglesia (no los integrantes) | Reemplaza la letra completa: `{version, sections:[{kind, label?, text, repeat?}], published?}`. `403` antes de validar o buscar la canción; `400` cuerpo inválido; `404` canción inexistente; `409` versión desactualizada. |
 
 Todas llevan `Cache-Control: no-store`. Administrar una iglesia o editar servicios **no** da permiso de escritura, tal como fija el producto.
 
@@ -26,7 +26,7 @@ La versión `CONGREGATION` de un enlace ([compartir](compartir.md#vista-de-congr
 
 El producto no las resuelve; cada una se puede relajar con una decisión explícita.
 
-1. **Quién escribe:** solo superadministrador y editores de biblioteca (el producto lo fija); quien administre una iglesia o edite servicios, no.
+1. **Quién escribe:** superadministrador, editores de biblioteca y quien administre una iglesia o edite servicios (decisión del superadministrador); un integrante, no.
 2. **Quién lee:** cualquier persona con membresía en alguna iglesia, sin exigir iglesia activa (la biblioteca no pertenece a ninguna). Una cuenta sin membresías ni acceso de biblioteca (por ejemplo, un gestor de cuentas) no la ve.
 3. **Publicar:** nada es público por omisión; publicar y retirar es una decisión explícita de quien edita. Editar el texto de una letra ya publicada la mantiene publicada y el cambio se ve de inmediato en los enlaces existentes (coherente con «los cambios heredados siguen vigentes incluso en contenido publicado»). **En la interfaz**, guardar una letra que ya estaba publicada y sigue publicada exige una confirmación explícita («Guardar y mantener publicada»); quitar la marca «Publicable» antes de guardar la evita. La API no cambia: la confirmación es de la pantalla (criterio restrictivo, relajable con una decisión explícita).
 4. **Dónde se muestra:** solo la vista de congregantes, la única que el producto describe «con letras». Las versiones del ministerio no las incluyen.

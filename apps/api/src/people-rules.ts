@@ -15,8 +15,13 @@ const name = z.string().transform(value => value.trim().replace(/\s+/g, ' ')).pi
 // Vacío significa «sin teléfono»; el resto es un número mexicano de 10 dígitos guardado como +52XXXXXXXXXX.
 const phone = z.string().trim().transform(value => value || null).pipe(z.string().regex(/^\+52\d{10}$/).nullable())
 
+// Vacío significa «sin correo».
+const email = z.string().trim().transform(value => value.toLowerCase() || null).pipe(z.email().max(254).nullable())
+
+export const personRolesBody = z.strictObject({ roleIds: z.array(z.string().trim().min(1).max(64)).max(60).refine(ids => new Set(ids).size === ids.length) })
+
 // La iglesia nunca forma parte del cuerpo: siempre es la iglesia activa de quien llama.
-export const newPersonBody = z.strictObject({ name, phone: phone.optional() })
+export const newPersonBody = z.strictObject({ name, phone: phone.optional(), email: email.optional() })
 // Solo información personal general; roles, turnos y cuentas no se editan por aquí.
-export const personPatch = z.strictObject({ name: name.optional(), phone: phone.nullable().optional() })
-  .refine(body => body.name !== undefined || body.phone !== undefined)
+export const personPatch = z.strictObject({ name: name.optional(), phone: phone.nullable().optional(), email: email.nullable().optional() })
+  .refine(body => body.name !== undefined || body.phone !== undefined || body.email !== undefined)

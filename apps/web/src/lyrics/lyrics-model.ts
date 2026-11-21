@@ -18,7 +18,7 @@ export const limits = { maxSections: 60, maxText: 4000, maxLabel: 60, maxRepeat:
 /** `chordPro` trae los acordes en línea (`[Am]texto`); sin acordes es `null`. Quien no los conoce puede omitirlo. */
 export type Section = { kind: SectionKind; label: string | null; text: string; repeat: number; chordPro?: string | null }
 /** `key` es la tonalidad guardada (`null` si no hay); en una lectura transpuesta, `semitones` dice cuánto se movió. */
-export type Lyrics = { version: number; published: boolean; key: string | null; canEdit: boolean; sections: Section[]; semitones?: number }
+export type Lyrics = { title?: string; version: number; published: boolean; key: string | null; canEdit: boolean; sections: Section[]; semitones?: number }
 
 /** Sección en edición: `key` identifica la tarjeta aunque cambie de lugar. */
 export type DraftSection = { key: string; kind: SectionKind; label: string; text: string; repeat: number }

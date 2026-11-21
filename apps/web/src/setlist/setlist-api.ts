@@ -15,6 +15,9 @@ export type Setlist = {
   entries: Entry[]
 }
 
+/** «Título, autor»; sin autor, solo el título. */
+export const songLabel = (song: Pick<Song, 'title' | 'author'>) => (song.author ? `${song.title}, ${song.author}` : song.title)
+
 export const entryLabel = (entry: Entry) => entry.song?.title ?? entry.moment ?? ''
 
 
@@ -68,7 +71,7 @@ export function useSetlistActions(serviceId: string) {
   const edit = useCallback((entryId: string, patch: { key?: string | null; link?: string | null; moment?: string }) =>
     api<Setlist>(`${base}/entries/${encodeURIComponent(entryId)}`, { method: 'PATCH', body: patch }).then(accept), [api, base, accept])
   const remove = useCallback((entryId: string) => api<Setlist>(`${base}/entries/${encodeURIComponent(entryId)}`, { method: 'DELETE' }).then(accept), [api, base, accept])
-  const createSong = useCallback(async (song: { title: string; author: string }) => {
+  const createSong = useCallback(async (song: { title: string; author?: string }) => {
     const created = await api<Song>('/api/songs', { method: 'POST', body: song })
     await client.invalidateQueries({ queryKey: ['songs'] })
     return created

@@ -5,7 +5,7 @@ import { ApiError } from '../calendar/api'
 import { ChordLine, linesOf } from '../lyrics/ChordParts'
 import { keysOfMode, parseKey } from '../lyrics/chords'
 import { useLyrics, useTransposedLyrics } from '../lyrics/lyrics-api'
-import { entryLabel, referenceOrigin, useSongs, type Entry, type Song } from './setlist-api'
+import { entryLabel, referenceOrigin, songLabel, useSongs, type Entry, type Song } from './setlist-api'
 
 const MOMENTS = ['Oración', 'Ofrenda', 'Anuncios', 'Lectura bíblica', 'Predicación', 'Santa cena']
 
@@ -88,9 +88,9 @@ function SongTab({ entries, canCreateSongs, createSong, onAdd }: {
             const already = used.has(song.id)
             return (
               <li key={song.id} className="border-b border-line last:border-b-0">
-                <button type="button" disabled={already || sending} onClick={() => void add(song)} aria-label={already ? `${song.title}, ${song.author}. Ya está en el setlist` : `Agregar ${song.title}, ${song.author}`}
+                <button type="button" disabled={already || sending} onClick={() => void add(song)} aria-label={already ? `${songLabel(song)}. Ya está en el setlist` : `Agregar ${songLabel(song)}`}
                   className="flex min-h-14 w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-3 text-left hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-55">
-                  <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-3">{song.author}</small></span>
+                  <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-3">{song.author || 'Sin autor'}</small></span>
                   {already && <span className="text-xs font-medium text-text-3">Ya está</span>}
                 </button>
               </li>
@@ -112,7 +112,7 @@ function NewSongForm({ initialTitle, onCancel, onSave }: { initialTitle: string;
   const [sending, setSending] = useState(false)
   async function submit(event: FormEvent) {
     event.preventDefault()
-    const next = { title: title.trim() ? undefined : 'Escribe el título.', author: author.trim() ? undefined : 'Escribe el autor.' }
+    const next = { title: title.trim() ? undefined : 'Escribe el título.', author: undefined }
     setErrors(next)
     if (next.title || next.author) return
     setSending(true)
@@ -122,9 +122,9 @@ function NewSongForm({ initialTitle, onCancel, onSave }: { initialTitle: string;
   }
   return (
     <form onSubmit={(event) => void submit(event)} noValidate className="grid gap-3">
-      <p className="m-0 text-sm text-text-2">Se agrega a la biblioteca compartida y al setlist. El título y el autor juntos identifican la canción.</p>
+      <p className="m-0 text-sm text-text-2">Se agrega a la biblioteca compartida y al setlist. El título y el autor juntos identifican la canción; si no tienes el autor, déjalo vacío.</p>
       <TextField label="Título" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} autoComplete="off" error={errors.title} />
-      <TextField label="Autor" value={author} onChange={(event) => setAuthor(event.target.value)} maxLength={120} autoComplete="off" error={errors.author} />
+      <TextField label="Autor (opcional)" value={author} onChange={(event) => setAuthor(event.target.value)} maxLength={120} autoComplete="off" error={errors.author} />
       {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
       <Button type="submit" block loading={sending}>Guardar y agregar</Button>
       <Button variant="quiet" block onClick={onCancel}>Volver a la búsqueda</Button>
@@ -212,9 +212,11 @@ function KeyPicker({ song, selected, onSelect }: { song: Song; selected: string 
 }
 
 /** Edición de una entrada: tonalidad y enlace de una canción, nombre de un momento; quien no edita solo la lee. */
-export function EditSheet({ entry, canEdit, onClose, onRemove, onSave }: {
+export function EditSheet({ entry, canEdit, canEditSong = false, onClose, onRemove, onSave }: {
   entry: Entry
   canEdit: boolean
+  /** Quien edita la biblioteca puede corregir el título y el autor de la canción desde aquí. */
+  canEditSong?: boolean
   onClose: () => void
   onRemove: () => void
   onSave: (patch: { key?: string | null; link?: string | null; moment?: string }) => Promise<void>
@@ -255,11 +257,16 @@ export function EditSheet({ entry, canEdit, onClose, onRemove, onSave }: {
   return (
     <Sheet open onClose={onClose} title={entryLabel(entry)}>
       <div className="grid gap-4">
-        {song && <p className="m-0 text-sm text-text-2">{song.author} · de la biblioteca compartida; aquí solo cambian la tonalidad y el enlace de este servicio.</p>}
+        {song && <p className="m-0 text-sm text-text-2">{song.author || 'Sin autor'} · de la biblioteca compartida; aquí solo cambian la tonalidad y el enlace de este servicio.</p>}
         {song && (
           <Link to={`/canciones/${encodeURIComponent(song.id)}/letra`} state={{ title: song.title, back: location.pathname, key: entry.key ?? undefined }}
             className="inline-flex min-h-touch items-center gap-1.5 font-semibold text-accent underline">
             <Icon name="music" width={16} height={16} />Ver letra
+          </Link>
+        )}
+        {song && canEditSong && (
+          <Link to={`/canciones/${encodeURIComponent(song.id)}/editar`} className="inline-flex min-h-touch items-center gap-1.5 font-semibold text-accent underline">
+            <Icon name="edit" width={16} height={16} />Editar título o autor
           </Link>
         )}
         {song && canEdit && (

@@ -37,7 +37,7 @@ export function LyricsEditPage() {
   const viewPath = `/canciones/${encodeURIComponent(songId)}/letra`
   const lyrics = query.data
 
-  if (lyrics?.canEdit) return <Editor key={query.dataUpdatedAt} songId={songId} lyrics={lyrics} title={nav.title} back={nav.back} serviceKey={nav.key} />
+  if (lyrics?.canEdit) return <Editor key={query.dataUpdatedAt} songId={songId} lyrics={lyrics} title={nav.title ?? lyrics.title} back={nav.back} serviceKey={nav.key} />
   return (
     <div className="mx-auto min-h-dvh max-w-[480px] lg:max-w-[720px]">
       <EditHeader title="Editar letra" onBack={() => void navigate(viewPath, { state: { title: nav.title, back: nav.back, key: nav.key } })} />

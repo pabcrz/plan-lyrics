@@ -10,6 +10,7 @@ import { useRoles } from './roles-api'
 
 const failureText = (error: unknown) => {
   const code = error instanceof ApiError ? error.code : ''
+  if (code === 'Role not allowed') return 'Esa persona no tiene este rol. Un administrador lo asigna desde su ficha.'
   if (code === 'Combination not allowed') return 'Esa persona no puede tener esos dos roles a la vez en el mismo servicio.'
   if (code === 'Already assigned') return 'Esa persona ya tiene este rol en el servicio.'
   if (code === 'Date in the past') return 'Los servicios pasados se conservan como registro y ya no se modifican.'
@@ -124,7 +125,7 @@ function ChangeBody({ row, service, onClose, onDone }: { row: Assignment; servic
     )
   }
 
-  const choices: Person[] = (people.data ?? []).filter((person) => person.id !== row.person?.id)
+  const choices: Person[] = (people.data ?? []).filter((person) => person.id !== row.person?.id && (!row.roleId || person.roleIds.includes(row.roleId)))
   return (
     <div className="grid gap-3">
       <p className="m-0 text-sm text-text-2">{row.person ? `Ahora: ${row.person.name}` : 'Sin persona asignada'} · {formatLongDay(service.date)}</p>
@@ -133,7 +134,7 @@ function ChangeBody({ row, service, onClose, onDone }: { row: Assignment; servic
           options={[{ value: 'one', label: 'Solo este servicio' }, { value: 'swap', label: 'Intercambiar turnos' }]} />
       )}
       {mode === 'one' ? (
-        <PersonList people={choices} selectedId={personId} onSelect={(person) => { setPersonId(person.id); setFailure('') }} empty="No hay otras personas en el directorio." />
+        <PersonList people={choices} selectedId={personId} onSelect={(person) => { setPersonId(person.id); setFailure('') }} empty="Nadie más tiene este rol. Un administrador lo asigna desde la ficha de cada persona." />
       ) : turns.isPending ? (
         <p role="status" className="m-0 text-[0.8125rem] text-text-3">Cargando turnos…</p>
       ) : others.length === 0 ? (
@@ -207,7 +208,7 @@ function AddBody({ service, onClose, onDone }: { service: Service; onClose: () =
           </button>
         ))}
       </div>
-      <PersonList people={people.data ?? []} selectedId={personId} onSelect={(person) => { setPersonId(person.id); setFailure('') }} empty="No hay personas en el directorio." />
+      <PersonList people={(people.data ?? []).filter((person) => person.roleIds.includes(roleId))} selectedId={personId} onSelect={(person) => { setPersonId(person.id); setFailure('') }} empty={roleId ? 'Nadie tiene este rol. Un administrador lo asigna desde la ficha de cada persona.' : 'Elige primero un rol.'} />
       {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
       <Button variant="primary" block loading={sending} disabled={!roleId || !personId} onClick={() => void submit()}>Agregar</Button>
       <Button variant="quiet" block onClick={onClose}>Cancelar</Button>

@@ -20,6 +20,8 @@
 }
 :root[data-accent='indigo'] { --h: 272; --c: 0.15; }
 :root[data-accent='ocre'] { --h: 62; --c: 0.105; }
+:root[data-accent='azul'] { --h: 235; --c: 0.11; }
+:root[data-accent='granate'] { --h: 15; --c: 0.13; }
 
 /* Semánticos — modo claro (predeterminado) */
 :root,

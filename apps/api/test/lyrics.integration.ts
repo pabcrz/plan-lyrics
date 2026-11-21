@@ -47,7 +47,7 @@ test('everyone who sees the library reads the lyrics, the internal data included
     const response = await call(subject, 'GET', path(song.id))
     expect(response.status, subject).toBe(200)
     expect(response.headers.get('cache-control')).toBe('no-store')
-    expect(await json(response)).toEqual({ version: 0, published: false, key: null, canEdit: ['library', 'owner'].includes(subject), sections: [] })
+    expect(await json(response)).toEqual({ title: song.title, version: 0, published: false, key: null, canEdit: ['library', 'owner'].includes(subject), sections: [] })
   }
   await put('library', song.id, { version: 0, sections: [verse(), chorus()] })
   expect((await read('member', song.id)).sections.map(section => section.kind)).toEqual(['VERSE', 'CHORUS'])
@@ -62,9 +62,9 @@ test('without a session, without any access, or for a song that does not exist, 
   expect((await call('member', 'GET', path('does-not-exist'))).status).toBe(404)
 })
 
-test('only the owner and library editors write; church roles never do, and nothing is stored when refused', async () => {
+test('the owner, library editors and church administrators and editors write; a plain member never does, and nothing is stored when refused', async () => {
   const song = await newSong()
-  for (const subject of ['member', 'editor', 'admin', 'accounts', 'b-editor']) {
+  for (const subject of ['member', 'accounts']) {
     const response = await put(subject, song.id, { version: 0, sections: [verse()] })
     expect(response.status, subject).toBe(403)
   }
@@ -72,7 +72,7 @@ test('only the owner and library editors write; church roles never do, and nothi
   expect((await put('member', song.id, { nonsense: true })).status).toBe(403)
   expect((await put('member', 'does-not-exist', { version: 0, sections: [] })).status).toBe(403)
   expect(await db.songLyrics.count()).toBe(0)
-  for (const subject of ['library', 'owner', 'combined']) {
+  for (const subject of ['library', 'owner', 'combined', 'editor', 'admin', 'b-editor']) {
     await db.songLyrics.deleteMany()
     expect((await put(subject, song.id, { version: 0, sections: [verse()] })).status, subject).toBe(200)
   }
@@ -85,7 +85,7 @@ test('a new lyrics keeps its sections in order, with kind, label and repeat, and
   ] })
   expect(response.status).toBe(200)
   const saved = await json<Lyrics>(response)
-  expect(saved).toEqual({ version: 1, published: false, key: null, canEdit: true, sections: [
+  expect(saved).toEqual({ title: song.title, version: 1, published: false, key: null, canEdit: true, sections: [
     { kind: 'INTRO', label: null, text: 'Intro inventada', chordPro: null, repeat: 1 },
     { kind: 'VERSE', label: 'Estrofa 1', text: 'Verso uno\nVerso dos', chordPro: null, repeat: 1 },
     { kind: 'CHORUS', label: null, text: 'Coro uno', chordPro: null, repeat: 2 },

@@ -101,7 +101,7 @@ export function participationRoutes(config: SessionConfig, db?: PrismaClient, no
       const role = await tx.musicalRole.findFirst({ where: { id: roleId, churchId: church.churchId }, select: { plan: { select: planSelect } } })
       if (!role) return 'missing' as const
       const wanted = new Set([...habitualIds, ...rotation.sequences.flatMap(sequence => sequence.personIds)])
-      if (await tx.churchPerson.count({ where: { churchId: church.churchId, removedAt: null, personId: { in: [...wanted] } } }) !== wanted.size) return 'invalid' as const
+      if (await tx.churchPerson.count({ where: { churchId: church.churchId, removedAt: null, personId: { in: [...wanted] }, roleIds: { has: roleId } } }) !== wanted.size) return 'invalid' as const
       const previous = role.plan
       const startsOn = rotation.startsOn ? dateValue(rotation.startsOn) : null
       const restarted = !previous?.rotationOn || (previous.startsOn ? day(previous.startsOn) : null) !== rotation.startsOn
@@ -138,7 +138,10 @@ export function participationRoutes(config: SessionConfig, db?: PrismaClient, no
   /** Checks that `personId` may hold `roleId` in the service and returns why not; `ignore` is the assignment being replaced. */
   const fit = async (tx: Tx, church: Active, service: { id: string; date: Date; directorId: string }, roleId: string, personId: string, ignore?: string) => {
     if (day(service.date) < today()) return 'Date in the past' as const
-    if (!await tx.churchPerson.findFirst({ where: { churchId: church.churchId, personId, removedAt: null }, select: { personId: true } })) return 'Invalid request' as const
+    const link = await tx.churchPerson.findFirst({ where: { churchId: church.churchId, personId, removedAt: null }, select: { roleIds: true } })
+    if (!link) return 'Invalid request' as const
+    // A person only holds the roles an administrator established for them.
+    if (!link.roleIds.includes(roleId)) return 'Role not allowed' as const
     const held = await tx.assignment.findMany({ where: { serviceId: service.id, personId, id: ignore ? { not: ignore } : undefined }, select: { roleId: true } })
     const roles = held.flatMap(row => row.roleId ? [row.roleId] : [])
     if (roles.includes(roleId)) return 'Already assigned' as const

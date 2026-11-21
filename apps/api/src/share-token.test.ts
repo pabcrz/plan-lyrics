@@ -11,10 +11,10 @@ describe('share tokens', () => {
     expect(tokenFor(secret, nonce)).not.toBe(tokenFor(secret, newNonce()))
   })
 
-  test('it carries 256 bits as 43 URL-safe characters and never contains the nonce', () => {
+  test('it is 12 URL-safe characters and never contains the nonce', () => {
     const nonce = newNonce()
     const token = tokenFor(secret, nonce)
-    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(token).toMatch(/^[A-Za-z0-9_-]{12}$/)
     expect(isTokenShape(token)).toBe(true)
     expect(token).not.toContain(nonce)
   })
@@ -30,8 +30,8 @@ describe('share tokens', () => {
     expect(hashToken(token)).not.toContain(token)
   })
 
-  test('anything that is not a 43 character URL-safe string is not a token', () => {
-    for (const value of ['', 'abc', 'a'.repeat(42), 'a'.repeat(44), `${'a'.repeat(42)}!`, `${'a'.repeat(42)}/`, ' '.repeat(43)]) expect(isTokenShape(value)).toBe(false)
+  test('anything that is not a 12 character URL-safe string is not a token', () => {
+    for (const value of ['', 'abc', 'a'.repeat(11), 'a'.repeat(13), `${'a'.repeat(11)}!`, `${'a'.repeat(11)}/`, ' '.repeat(12)]) expect(isTokenShape(value)).toBe(false)
   })
 
   test('a short or missing secret is unusable', () => {

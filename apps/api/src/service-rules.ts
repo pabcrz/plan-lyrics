@@ -12,6 +12,15 @@ export const newServiceBody = z.strictObject({
   status: z.enum(['DRAFT', 'PUBLISHED']),
   directorId: z.string().trim().min(1).max(64),
 })
+// Correcting a service: any subset of its own fields (the church never travels in the body). `time: null` clears the hour.
+export const servicePatch = z.strictObject({
+  title: z.string().trim().min(1).max(120).optional(),
+  date: isoDate.optional(),
+  slot: z.enum(['MORNING', 'AFTERNOON']).optional(),
+  time: z.string().regex(hhmm).nullable().optional(),
+  status: z.enum(['DRAFT', 'PUBLISHED', 'COMPLETED', 'CANCELLED']).optional(),
+  directorId: z.string().trim().min(1).max(64).optional(),
+}).refine(body => Object.keys(body).length > 0)
 // The church is never part of the body either; the date comes from the path.
 export const closedDateBody = z.strictObject({ reason: z.string().trim().min(1).max(120).optional() })
 export const monthQuery = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)
@@ -31,6 +40,22 @@ export function planSlot(input: { date: string; sundayDouble: boolean; slot?: 'M
   if (!input.slot) return { error: 'Invalid request' }
   if (input.time && (input.time < '12:00') !== (input.slot === 'MORNING')) return { error: 'Invalid request' }
   return { slot: input.slot }
+}
+
+/**
+ * The date, slot and time a service ends up with after an edit. A slot is only meaningful on an enabled double Sunday:
+ * moving away from it drops the slot, moving onto it keeps the current one when there is one, and asking for a slot
+ * anywhere else is refused.
+ */
+export function planEdit(current: { date: string; slot: SlotName; time: string | null }, patch: { date?: string; slot?: 'MORNING' | 'AFTERNOON'; time?: string | null }, sundayDouble: boolean):
+  { date: string; slot: SlotName; time: string | null } | { error: 'Invalid request' } {
+  const date = patch.date ?? current.date
+  const time = patch.time === undefined ? current.time : patch.time
+  const doubleDay = sundayDouble && weekdayOf(date) === 0
+  if (patch.slot && !doubleDay) return { error: 'Invalid request' }
+  const slot = doubleDay ? (patch.slot ?? (current.slot === 'SINGLE' ? undefined : current.slot)) : undefined
+  const plan = planSlot({ date, sundayDouble, slot, time })
+  return 'error' in plan ? plan : { date, time, slot: plan.slot }
 }
 
 /** A date holds one service, or two on an enabled double Sunday. */

@@ -9,14 +9,15 @@ type Tx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0]
 const lyricsSelect = { version: true, published: true, key: true, sections: { orderBy: { position: 'asc' }, select: { kind: true, label: true, text: true, chordPro: true, repeat: true } } } as const
 
 /**
- * What the caller may do with the shared library: the owner and the library editors write; whoever belongs to at
- * least one church reads (lyrics are internal data of the ministry). An account with neither sees no library.
+ * What the caller may do with the shared library: the owner, the library editors and the administrators and editors of a
+ * church write; whoever belongs to at least one church reads (lyrics are internal data of the ministry). An account with
+ * neither sees no library.
  */
 async function libraryAccess(db: PrismaClient, subject: string) {
-  const user = await db.user.findUnique({ where: { clerkSubject: subject }, select: { libraryEditor: true, ownership: { select: { id: true } }, _count: { select: { memberships: true } } } })
+  const user = await db.user.findUnique({ where: { clerkSubject: subject }, select: { libraryEditor: true, ownership: { select: { id: true } }, memberships: { select: { role: true } } } })
   if (!user) return { read: false, write: false }
-  const write = user.libraryEditor || Boolean(user.ownership)
-  return { read: write || user._count.memberships > 0, write }
+  const write = user.libraryEditor || Boolean(user.ownership) || user.memberships.some(({ role }) => role === 'ADMIN' || role === 'EDITOR')
+  return { read: write || user.memberships.length > 0, write }
 }
 
 /**
@@ -25,9 +26,9 @@ async function libraryAccess(db: PrismaClient, subject: string) {
  * means the request cannot be done (for example a target key of another mode).
  */
 async function readLyrics(db: Pick<PrismaClient, 'song'>, songId: string, canEdit: boolean, transposition: { semitones?: number; toKey?: string } | null = null) {
-  const song = await db.song.findUnique({ where: { id: songId }, select: { lyrics: { select: lyricsSelect } } })
+  const song = await db.song.findUnique({ where: { id: songId }, select: { title: true, lyrics: { select: lyricsSelect } } })
   if (!song) return null
-  const stored = { version: song.lyrics?.version ?? 0, published: song.lyrics?.published ?? false, key: song.lyrics?.key ?? null, canEdit, sections: song.lyrics?.sections ?? [] }
+  const stored = { title: song.title, version: song.lyrics?.version ?? 0, published: song.lyrics?.published ?? false, key: song.lyrics?.key ?? null, canEdit, sections: song.lyrics?.sections ?? [] }
   if (!transposition) return stored
   const moved = transposeLyrics(stored.key, stored.sections, transposition)
   return moved ? { ...stored, key: moved.key, semitones: moved.semitones, sections: moved.sections } : 'impossible' as const

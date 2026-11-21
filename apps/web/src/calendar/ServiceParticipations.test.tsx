@@ -3,7 +3,7 @@ import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { ServicePage } from '../setlist/ServicePage'
 import type { Assignment, Turn, Who } from './participations-api'
-import { church, detail, mount, service, stubApi } from './test-utils'
+import { church, defaultRoles, detail, mount, service, stubApi } from './test-utils'
 
 vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-ficticio' }), UserButton: () => <button>Cuenta</button> }))
 
@@ -14,7 +14,7 @@ afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() })
 const [ana, luis, pedro, juan]: Who[] = [{ id: 'p1', name: 'Ana Ramírez' }, { id: 'p2', name: 'Luis Herrera' }, { id: 'p3', name: 'Pedro Castillo' }, { id: 'p4', name: 'Juan Pérez' }]
 const directory = [ana, luis, pedro, juan].map((person) => detail(person))
 const row = (id: string, roleName: string, person: Who | null, over: Partial<Assignment> = {}): Assignment => ({
-  id, roleId: `r-${roleName}`, roleName, source: 'HABITUAL', pending: null, person, proposed: null, ...over,
+  id, roleId: defaultRoles.find((role) => role.name === roleName)?.id ?? `r-${roleName.toLowerCase()}`, roleName, source: 'HABITUAL', pending: null, person, proposed: null, ...over,
 })
 const turns: Turn[] = [
   { id: 't-this', serviceId: 's1', date: '2026-11-13', slot: 'SINGLE', person: luis },

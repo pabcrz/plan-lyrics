@@ -77,21 +77,26 @@ export function usePersonActions() {
   const api = useApiFetch()
   const client = useQueryClient()
   const refresh = useCallback(() => Promise.all([client.invalidateQueries({ queryKey: ['people'] }), client.invalidateQueries({ queryKey: ['person'] })]), [client])
-  const create = useCallback(async (person: { name: string; phone?: string }) => {
+  const create = useCallback(async (person: { name: string; phone?: string; email?: string }) => {
     const created = await api<Omit<PersonDetail, 'sharedWithOtherChurches' | 'upcomingServices'>>('/api/people', { method: 'POST', body: person })
     await refresh()
     return created
   }, [api, refresh])
-  const update = useCallback(async (id: string, patch: { name?: string; phone?: string | null }) => {
+  const update = useCallback(async (id: string, patch: { name?: string; phone?: string | null; email?: string | null }) => {
     const saved = await api<Omit<PersonDetail, 'sharedWithOtherChurches' | 'upcomingServices'>>(`/api/people/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
     await refresh()
     return saved
   }, [api, refresh])
+  const setRoles = useCallback(async (id: string, roleIds: string[]) => {
+    const saved = await api<{ roleIds: string[] }>(`/api/people/${encodeURIComponent(id)}/roles`, { method: 'PUT', body: { roleIds } })
+    await Promise.all([refresh(), client.invalidateQueries({ queryKey: ['participations'] })])
+    return saved
+  }, [api, client, refresh])
   const remove = useCallback(async (id: string) => {
     await api<void>(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE' })
     await refresh()
   }, [api, refresh])
-  return { create, update, remove }
+  return { create, update, setRoles, remove }
 }
 
 /** Servicios de uno o varios meses (`YYYY-MM`), cada uno en su propia consulta. */
@@ -125,6 +130,21 @@ export function useCreateService() {
     } finally {
       // Éxito o rechazo (p. ej. fecha completa): la lista visible debe reflejar el servidor.
       await Promise.all([client.invalidateQueries({ queryKey: ['services'] }), client.invalidateQueries({ queryKey: ['closed'] })])
+    }
+  }, [api, client])
+}
+
+export type ServicePatch = { title?: string; date?: string; slot?: 'MORNING' | 'AFTERNOON'; time?: string | null; status?: Status; directorId?: string }
+
+/** Corregir un servicio; el servidor decide permisos, fechas y combinaciones de roles, y todo lo que lo muestra se vuelve a leer. */
+export function useUpdateService() {
+  const api = useApiFetch()
+  const client = useQueryClient()
+  return useCallback(async (id: string, patch: ServicePatch) => {
+    try {
+      return await api<Service>(`/api/services/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
+    } finally {
+      await Promise.all(['services', 'setlist', 'assignments', 'closed'].map((key) => client.invalidateQueries({ queryKey: [key] })))
     }
   }, [api, client])
 }

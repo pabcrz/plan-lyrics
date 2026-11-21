@@ -108,7 +108,7 @@ export function LyricsPage() {
         {query.isError && <div className="grid gap-4 p-4"><LyricsLoadFailure error={query.error} onRetry={() => void query.refetch()} /></div>}
         {lyrics && stored && (
           <>
-            <LyricsHeader title={title} lyrics={lyrics} />
+            <LyricsHeader title={title ?? lyrics.title} lyrics={lyrics} />
             {hasChords && <KeyBar base={stored.key} now={lyrics.key} serviceKey={service ? serviceKey : undefined} offset={offset} onOffset={setOffset} note={unusable || undefined} />}
             {failed && <div className="px-4 pb-3"><Notice tone="warn" icon="alert" role="alert" title="No se pudo transponer">Se muestran los acordes como están guardados. Inténtalo de nuevo.</Notice></div>}
             {waiting && <p role="status" className="m-0 px-4 pb-3 text-sm text-text-2">Calculando los acordes…</p>}

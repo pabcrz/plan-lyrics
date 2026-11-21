@@ -25,6 +25,7 @@ function Form({ church }: { church: Church }) {
   const { create } = usePersonActions()
   const [name, setName] = useState((useLocation().state as { name?: string } | null)?.name ?? '')
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [phoneProblem, setPhoneError] = useState('')
   const [existing, setExisting] = useState<{ id: string; name: string } | null>(null)
   const [failure, setFailure] = useState('')
@@ -40,11 +41,11 @@ function Form({ church }: { church: Church }) {
     setExisting(null)
     setFailure('')
     try {
-      const person = await create({ name: name.trim(), ...(phone ? { phone: phoneStored(phone) as string } : {}) })
+      const person = await create({ name: name.trim(), ...(phone ? { phone: phoneStored(phone) as string } : {}), ...(email.trim() ? { email: email.trim() } : {}) })
       void navigate(`/personas/${encodeURIComponent(person.id)}`, { replace: true })
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409 && caught.existing) setExisting(caught.existing)
-      else setFailure(caught instanceof ApiError && caught.status === 400 ? 'Revisa el nombre y el teléfono.' : caught instanceof ApiError && caught.status === 403 ? 'No tienes permiso para agregar personas.' : 'No se pudo agregar a la persona. Inténtalo de nuevo.')
+      else setFailure(caught instanceof ApiError && caught.status === 400 ? 'Revisa el nombre, el teléfono y el correo.' : caught instanceof ApiError && caught.status === 403 ? 'No tienes permiso para agregar personas.' : 'No se pudo agregar a la persona. Inténtalo de nuevo.')
       setSending(false)
     }
   }
@@ -68,7 +69,8 @@ function Form({ church }: { church: Church }) {
           </Notice>
         )}
         <PhoneField value={phone} error={phoneProblem || undefined} onChange={(digits) => { setPhone(digits); setPhoneError('') }} />
-        <p className="m-0 text-[0.8125rem] text-text-3">El nombre y el teléfono son información general: se ven en todas las iglesias donde participe. Sus roles y turnos se configuran en cada iglesia.</p>
+        <TextField label="Correo (opcional)" type="email" inputMode="email" autoComplete="off" value={email} maxLength={254} onChange={(event) => setEmail(event.target.value)} />
+        <p className="m-0 text-[0.8125rem] text-text-3">El nombre, el teléfono y el correo son información general: se ven en todas las iglesias donde participe. Sus roles y turnos se configuran en cada iglesia.</p>
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
         <Button type="submit" variant="primary" block loading={sending} disabled={!name.trim()}>Agregar persona</Button>
       </form>

@@ -9,6 +9,7 @@ import type { Church } from '../calendar/model'
 import { PreachingSection } from '../calendar/PreachingSection'
 import { ServiceParticipations } from '../calendar/ServiceParticipations'
 import { AddSheet, EditSheet } from './SetlistSheets'
+import { EditServiceSheet } from './EditServiceSheet'
 import { moveItem, useDragReorder, type Rect } from './reorder'
 import { entryLabel, referenceOrigin, useSetlist, useSetlistActions, type Entry, type NewEntry, type Setlist } from './setlist-api'
 
@@ -40,6 +41,8 @@ function Screen({ church }: { church: Church }) {
   const service = useServices(month ? [month] : []).services.find((item) => item.id === serviceId)
   const missing = query.error instanceof ApiError && query.error.status === 404
   const setlist = query.data
+  const [editing, setEditing] = useState(false)
+  const [saved, setSaved] = useState(false)
   const back = setlist && monthOf(setlist.service.date) !== monthOf(todayIn()) ? `/?mes=${monthOf(setlist.service.date)}` : '/'
 
   return (
@@ -57,7 +60,11 @@ function Screen({ church }: { church: Church }) {
         {setlist && (
           <>
             <header className="grid justify-items-start gap-2">
-              <StatusChip status={setlist.service.status.toLowerCase() as ServiceStatus} />
+              <div className="flex w-full items-center justify-between gap-3">
+                <StatusChip status={setlist.service.status.toLowerCase() as ServiceStatus} />
+                {setlist.canEdit && <Button variant="secondary" onClick={() => setEditing(true)}><Icon name="edit" width={16} height={16} />Editar servicio</Button>}
+              </div>
+              {saved && <p role="status" className="m-0 text-[0.8125rem] font-medium text-pub-fg">Servicio actualizado</p>}
               <h1 className="m-0 font-display text-[1.75rem] leading-[1.1] font-bold tracking-tight">{setlist.service.title}</h1>
               <p className="m-0 flex flex-wrap gap-x-3 text-[0.9375rem] text-text-2">
                 <span>{capitalize(formatLongDay(setlist.service.date).replace(',', ''))}</span>
@@ -79,6 +86,10 @@ function Screen({ church }: { church: Church }) {
                 </div>
               )}
             </div>
+            {editing && (
+              <EditServiceSheet church={church} service={setlist.service} directorId={service?.director.id} onClose={() => setEditing(false)}
+                onSaved={() => { setEditing(false); setSaved(true) }} />
+            )}
           </>
         )}
       </main>
@@ -180,7 +191,7 @@ function SetlistSection({ setlist }: { setlist: Setlist }) {
                 const dragging = drag?.from === index
                 return (
                   <li key={entry.id} ref={(node) => { if (node) rows.current.set(entry.id, node); else rows.current.delete(entry.id) }} style={rowStyle(index)}
-                    className={`relative grid min-h-[68px] items-center gap-1 border-b border-line py-0 pl-3 transition-transform duration-(--t-fast) ease-out last:border-b-0 ${canEdit ? 'grid-cols-[28px_1fr_44px] pr-1' : 'grid-cols-[28px_1fr] pr-3'} ${moment ? 'bg-surface-2' : 'bg-surface'} ${dragging ? 'z-10 bg-surface shadow-3 outline-[1.5px] -outline-offset-[1.5px] outline-accent' : ''}`}>
+                    className={`relative grid min-h-[68px] items-center gap-1 border-b border-line py-0 pl-3 transition-transform duration-(--t-fast) ease-out last:border-b-0 ${canEdit ? 'grid-cols-[28px_1fr_44px] pr-1' : 'grid-cols-[28px_1fr] pr-3'} ${dragging ? '' : moment ? 'bg-surface-2' : 'bg-surface'} ${dragging ? 'z-10 bg-accent-soft shadow-2' : ''}`}>
                     <span className="text-center font-mono text-[0.8125rem] text-text-3 tabular-nums">{index + 1}</span>
                     <button type="button" onClick={() => setSheet({ kind: 'edit', id: entry.id })} aria-label={`${canEdit ? 'Editar' : 'Ver'} ${label}`}
                       className="block min-h-14 w-full min-w-0 cursor-pointer rounded-md border-0 bg-transparent px-2 py-2 text-left hover:bg-surface-2">
@@ -190,7 +201,7 @@ function SetlistSection({ setlist }: { setlist: Setlist }) {
                           <span className="inline-flex items-center gap-1"><Icon name="clock" width={13} height={13} />Momento</span>
                         ) : (
                           <>
-                            <span>{entry.song?.author}</span>
+                            {entry.song?.author && <span>{entry.song.author}</span>}
                             {entry.key ? <span className="rounded-sm bg-accent-soft px-2 py-0.5 font-mono font-medium text-accent-soft-text">{entry.key}</span> : <span className="text-text-3">Sin tonalidad</span>}
                             {origin && <span className="inline-flex items-center gap-1"><Icon name="link" width={13} height={13} />{origin}</span>}
                           </>
@@ -222,7 +233,7 @@ function SetlistSection({ setlist }: { setlist: Setlist }) {
           onAddSong={(song) => addEntry({ songId: song.id }, song.title, true)} onAddMoment={(name) => addEntry({ moment: name }, name, false)} />
       )}
       {editing && (
-        <EditSheet entry={editing} canEdit={canEdit} onClose={() => setSheet(null)} onRemove={() => void removeEntry(editing, entries.indexOf(editing))}
+        <EditSheet entry={editing} canEdit={canEdit} canEditSong={canCreateSongs} onClose={() => setSheet(null)} onRemove={() => void removeEntry(editing, entries.indexOf(editing))}
           onSave={async (patch) => { if (await perform(() => actions.edit(editing.id, patch))) setSheet(null) }} />
       )}
     </section>

@@ -144,7 +144,7 @@ function RoleDetail({ church, roleId }: { church: Church; roleId: string }) {
 
   // Quien ya está en la otra lista del mismo rol no se ofrece: habitual y rotación son excluyentes.
   const candidates = (people.data ?? []).filter((person) => {
-    if (!picking) return false
+    if (!picking || !person.roleIds.includes(role.roleId)) return false
     if (picking.kind === 'habitual') return !role.habitual.some((item) => item.id === person.id) && !inRotation(person.id)
     return !role.habitual.some((item) => item.id === person.id) && !sequenceOf(picking.weekday).people.some((item) => item.id === person.id)
   })
