@@ -5,11 +5,11 @@ import { cx } from '../ui/cx'
 import { AppShell } from '../calendar/AppShell'
 import { ChurchGate } from '../calendar/ChurchGate'
 import type { Church } from '../calendar/model'
-import { songLabel, useSongs } from '../setlist/setlist-api'
-import { lyricsPath, useLibraryAccess } from './songs-api'
+import { songLabel } from '../setlist/setlist-api'
+import { lyricsPath, useLibrary, useLibraryAccess, type LibraryFilter } from './songs-api'
 
-// El servidor devuelve como máximo 50 canciones por búsqueda.
-const LIMIT = 50
+const FILTERS: ReadonlyArray<{ value: LibraryFilter; label: string }> = [{ value: 'all', label: 'Todas' }, { value: 'no-lyrics', label: 'Sin letra' }, { value: 'no-chords', label: 'Sin acordes' }]
+const allHave = { all: '', 'no-lyrics': 'Todas las canciones tienen letra.', 'no-chords': 'Todas las canciones tienen acordes.' } as const
 const DESKTOP = '(min-width: 1024px)'
 
 /** Escritorio ≥1024 px (la misma frontera que `lg:` de Tailwind); sin `matchMedia` (pruebas) cuenta como móvil. */
@@ -44,10 +44,11 @@ function Library({ church }: { church: Church }) {
     const timer = setTimeout(() => setTerm(text.trim()), 200)
     return () => clearTimeout(timer)
   }, [text])
-  const songs = useSongs(term, true)
+  const [filter, setFilter] = useState<LibraryFilter>('all')
+  const songs = useLibrary(term, filter)
   const access = useLibraryAccess()
   const canCreate = Boolean(access.data?.canCreate)
-  const rows = songs.data ?? []
+  const rows = songs.rows
   const add = () => void navigate('/canciones/nueva', { state: { title: text.trim() } })
   const edit = (song: { id: string }) => void navigate(`/canciones/${encodeURIComponent(song.id)}/editar`, { state: { song } })
 
@@ -64,6 +65,14 @@ function Library({ church }: { church: Church }) {
               <input type="search" autoComplete="off" placeholder="Buscar por título o autor" aria-label="Buscar canciones"
                 value={text} onChange={(event) => setText(event.target.value)} className={`${inputClass} pl-10`} />
             </div>
+            <div role="group" aria-label="Filtrar por lo que falta" className="flex flex-wrap gap-2">
+              {FILTERS.map((item) => (
+                <button key={item.value} type="button" aria-pressed={filter === item.value} onClick={() => setFilter(item.value)}
+                  className={cx('min-h-11 cursor-pointer rounded-full border px-4 text-sm font-medium', filter === item.value ? 'border-accent bg-accent text-on-accent' : 'border-line-strong bg-surface text-text hover:bg-surface-2')}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
             {songs.isPending && <p role="status">Cargando canciones…</p>}
             {songs.isError && (
               <>
@@ -73,7 +82,7 @@ function Library({ church }: { church: Church }) {
             )}
             {songs.data && rows.length > 0 && (
               <p aria-live="polite" className="m-0 text-[0.8125rem] text-text-2">
-                {rows.length >= LIMIT ? `Primeras ${LIMIT} canciones; afina la búsqueda.` : `${rows.length} ${rows.length === 1 ? 'canción' : 'canciones'}`}
+                {rows.length} {rows.length === 1 && !songs.hasNextPage ? 'canción' : 'canciones'}{songs.hasNextPage ? ' o más' : ''}
               </p>
             )}
             {rows.length > 0 && (
@@ -83,7 +92,7 @@ function Library({ church }: { church: Church }) {
                     {/* Escritorio con permiso: elegir abre el panel de edición, que ofrece la letra; en móvil abre la letra. */}
                     <button type="button" aria-current={editing === song.id ? 'true' : undefined} onClick={() => (desktop && canCreate ? edit(song) : void navigate(lyricsPath(song.id)))}
                       className="flex min-h-16 min-w-0 flex-1 cursor-pointer items-center gap-3 border-0 bg-transparent px-4 text-left hover:bg-surface-2">
-                      <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-2">{song.author || 'Sin autor'}</small></span>
+                      <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-2">{song.author || 'Sin autor'}{song.hasLyrics === false ? ' · Sin letra' : song.hasChords === false ? ' · Sin acordes' : ''}</small></span>
                       {!canCreate && <Icon name="right" className="text-text-3" />}
                     </button>
                     {canCreate && (
@@ -93,10 +102,11 @@ function Library({ church }: { church: Church }) {
                 ))}
               </ul>
             )}
+            {songs.hasNextPage && <Button variant="secondary" block loading={songs.isFetchingNextPage} onClick={() => void songs.fetchNextPage()}>Cargar más</Button>}
             {songs.data && rows.length === 0 && (
               <div className="grid justify-items-center gap-2 py-6 text-center">
-                <h2 className="m-0 font-display text-lg font-bold">{term ? 'Sin resultados' : 'Aún no hay canciones'}</h2>
-                <p className="m-0 text-text-2">{term ? 'Prueba con otro título o autor.' : canCreate ? 'Agrega la primera con «Nueva».' : 'La biblioteca la edita quien tenga ese acceso.'}</p>
+                <h2 className="m-0 font-display text-lg font-bold">{term ? 'Sin resultados' : filter !== 'all' ? 'Nada pendiente' : 'Aún no hay canciones'}</h2>
+                <p className="m-0 text-text-2">{term ? 'Prueba con otro título o autor.' : filter !== 'all' ? allHave[filter] : canCreate ? 'Agrega la primera con «Nueva».' : 'La biblioteca la edita quien tenga ese acceso.'}</p>
                 {term && canCreate && <Button variant="secondary" onClick={add}>Agregar «{term}»</Button>}
               </div>
             )}

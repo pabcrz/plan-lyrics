@@ -3,7 +3,8 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useApiFetch } from '../calendar/api'
 import type { Slot, Status } from '../calendar/model'
 
-export type Song = { id: string; title: string; author: string }
+/** `hasLyrics` y `hasChords` solo vienen en la lista de la biblioteca. */
+export type Song = { id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean }
 export type Entry = { id: string; kind: 'SONG' | 'MOMENT'; song: Song | null; moment: string | null; key: string | null; link: string | null }
 export type Setlist = {
   service: { id: string; title: string; date: string; slot: Slot; time: string | null; status: Status }

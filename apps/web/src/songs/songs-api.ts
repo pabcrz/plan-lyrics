@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApiFetch } from '../calendar/api'
 import type { Song } from '../setlist/setlist-api'
 
@@ -38,4 +38,22 @@ export function useDeleteSong() {
     await api<void>(`/api/songs/${encodeURIComponent(songId)}`, { method: 'DELETE' })
     await client.invalidateQueries({ queryKey: ['songs'] })
   }, [api, client])
+}
+
+export type LibraryFilter = 'all' | 'no-lyrics' | 'no-chords'
+/** Canciones por página; una página llena indica que puede haber más. */
+export const PAGE = 50
+
+/** La biblioteca por páginas, con búsqueda y filtro de lo que falta; conserva la lista anterior mientras llega la nueva. */
+export function useLibrary(term: string, filter: LibraryFilter) {
+  const api = useApiFetch()
+  const query = useInfiniteQuery({
+    queryKey: ['songs', 'library', term, filter],
+    queryFn: ({ pageParam }) => api<Song[]>(`/api/songs?q=${encodeURIComponent(term)}${filter === 'all' ? '' : `&filter=${filter}`}&offset=${pageParam}`),
+    initialPageParam: 0,
+    getNextPageParam: (last, all) => (last.length === PAGE ? all.length * PAGE : undefined),
+    retry: false,
+    placeholderData: keepPreviousData,
+  })
+  return { ...query, rows: query.data?.pages.flat() ?? [] }
 }

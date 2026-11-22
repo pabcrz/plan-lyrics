@@ -15,6 +15,7 @@ beforeAll(() => seedFixtures(db))
 beforeEach(async () => {
   await db.setlistEntry.deleteMany()
   await db.service.deleteMany()
+  await db.songLyrics.deleteMany()
   await db.song.deleteMany()
 })
 afterAll(() => db.$disconnect())
