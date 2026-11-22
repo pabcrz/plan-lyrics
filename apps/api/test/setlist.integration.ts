@@ -61,6 +61,15 @@ test('the owner, library editors and church administrators and editors create so
   expect((await call('library', 'POST', '/api/songs', { title: 'Otra', author: 'Autor' })).status).toBe(404)
 })
 
+test('the author is optional: a song without one is stored with an empty author and identified by its title alone', async () => {
+  const created = await call('combined', 'POST', '/api/songs', { title: 'Sin autor' })
+  expect(created.status).toBe(201)
+  expect(await created.json()).toEqual({ id: expect.any(String), title: 'Sin autor', author: '' })
+  expect((await call('combined', 'POST', '/api/songs', { title: 'sin  AUTOR', author: '   ' })).status).toBe(409)
+  expect((await call('combined', 'POST', '/api/songs', { title: 'Sin autor', author: 'Alguien' })).status).toBe(201)
+  expect(await db.song.count()).toBe(2)
+})
+
 test('identity is title + author: the same title with another author is a different song', async () => {
   const create = (title: string, author: string) => call('combined', 'POST', '/api/songs', { title, author })
   expect((await create('Canción de ejemplo', 'Autora Uno')).status).toBe(201)
@@ -69,7 +78,7 @@ test('identity is title + author: the same title with another author is a differ
   expect(repeated.status).toBe(409)
   expect(await repeated.json()).toMatchObject({ error: 'Song exists', existing: { title: 'Canción de ejemplo', author: 'Autora Uno' } })
   expect(await db.song.count()).toBe(2)
-  for (const bad of [{ title: 'Sin autor' }, { title: 'Título', author: '  ' }, { title: 'Título', author: 'Autor', lyrics: 'la la' }, { title: 'Título', author: 'Autor', churchId: 'church-b' }]) {
+  for (const bad of [{ author: 'Sin título' }, { title: '  ', author: 'Autor' }, { title: 'Título', author: 'Autor', lyrics: 'la la' }, { title: 'Título', author: 'Autor', churchId: 'church-b' }]) {
     expect((await call('combined', 'POST', '/api/songs', bad)).status).toBe(400)
   }
   expect(await db.song.count()).toBe(2)
@@ -87,7 +96,7 @@ test('whoever may edit the library renames or deletes a song, a plain member can
   const clash = await call('combined', 'PATCH', `/api/songs/${one.id}`, { title: 'canción DOS', author: 'autor dos' })
   expect(clash.status).toBe(409)
   expect(await clash.json()).toMatchObject({ error: 'Song exists', existing: { id: two.id } })
-  expect((await call('combined', 'PATCH', `/api/songs/${one.id}`, { title: 'Sin autor' })).status).toBe(400)
+  expect((await call('combined', 'PATCH', `/api/songs/${one.id}`, { author: 'Sin título' })).status).toBe(400)
   expect((await call('combined', 'PATCH', '/api/songs/no-existe', { title: 'Tema', author: 'Autor' })).status).toBe(404)
   await call('editor', 'POST', `/api/services/${service.id}/setlist/entries`, { songId: one.id })
   const used = await call('combined', 'DELETE', `/api/songs/${one.id}`)

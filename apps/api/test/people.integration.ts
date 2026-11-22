@@ -36,8 +36,8 @@ test('lists only the active church people, alphabetically, with the account stat
   try {
     const listed = await (await call('member', 'GET', '/api/people')).json()
     expect(listed).toEqual([
-      { id: 'person-a', name: 'Director person-a', hasAccount: true, isYou: false },
-      { id: 'person-no-account', name: 'Fixture Participant', hasAccount: false, isYou: false },
+      { id: 'person-a', name: 'Director person-a', hasAccount: true, isYou: false, roleIds: [] },
+      { id: 'person-no-account', name: 'Fixture Participant', hasAccount: false, isYou: false, roleIds: [] },
     ])
     expect((await call('b-editor', 'GET', '/api/people').then(r => r.json())).map((p: { id: string }) => p.id)).toEqual(['person-b', 'person-no-account'])
   } finally { await db.person.update({ where: { id: 'person-a' }, data: { userId: null } }) }
@@ -86,7 +86,7 @@ test('reads one person with account state, upcoming services and sharing, hiding
   await db.service.create({ data: { churchId: 'church-a', directorId: 'person-no-account', title: 'Culto', date: new Date('2026-11-20T00:00:00Z') } })
   await db.service.create({ data: { churchId: 'church-a', directorId: 'person-no-account', title: 'Pasado', date: new Date('2026-11-06T00:00:00Z') } })
   const shared = await (await call('member', 'GET', '/api/people/person-no-account')).json()
-  expect(shared).toEqual({ id: 'person-no-account', name: 'Fixture Participant', phone: null, hasAccount: false, isYou: false, sharedWithOtherChurches: true, upcomingServices: 1 })
+  expect(shared).toEqual({ id: 'person-no-account', name: 'Fixture Participant', phone: null, email: null, roleIds: [], hasAccount: false, isYou: false, sharedWithOtherChurches: true, upcomingServices: 1 })
   const own = await (await call('member', 'GET', '/api/people/person-a')).json()
   expect(own).toMatchObject({ sharedWithOtherChurches: false, upcomingServices: 0 })
   expect((await call('member', 'GET', '/api/people/person-b')).status).toBe(404)

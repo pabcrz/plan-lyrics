@@ -48,19 +48,21 @@ test('chords are saved with the lyrics under the same version check, and every r
     { kind: 'VERSE', text: 'Luz de la mañana\nCanto hoy', chordPro: '[Em]Luz de la [C]mañana\n[G]Canto [D/F#]hoy' },
     { kind: 'CHORUS', text: 'Coro inventado', chordPro: '[G]Coro [Em7]inventado', repeat: 2 },
   ] })
-  for (const subject of ['member', 'editor', 'admin']) expect(await read(subject, song.id), subject).toEqual({ ...saved, canEdit: false })
+  expect(await read('member', song.id)).toEqual({ ...saved, canEdit: false })
+  // Whoever administers a church or edits services may also edit the library (decision of the platform owner).
+  for (const subject of ['editor', 'admin']) expect(await read(subject, song.id), subject).toEqual({ ...saved, canEdit: true })
   const stale = await put('owner', song.id, { version: 0, sections: [chordedVerse] })
   expect(stale.status).toBe(409)
   expect(await json(stale)).toEqual({ error: 'Lyrics changed', version: 1 })
   expect((await read('member', song.id)).sections).toHaveLength(2)
 })
 
-test('only editors of the library write chords; a refused write changes nothing', async () => {
+test('only whoever may edit the library writes chords; a refused write changes nothing', async () => {
   const song = await newSong()
-  for (const subject of ['member', 'editor', 'admin', 'accounts']) expect((await put(subject, song.id, { version: 0, key: 'G', sections: [chordedVerse] })).status, subject).toBe(403)
+  for (const subject of ['member', 'accounts']) expect((await put(subject, song.id, { version: 0, key: 'G', sections: [chordedVerse] })).status, subject).toBe(403)
   expect(await db.songLyrics.count()).toBe(0)
   expect((await put('owner', song.id, { version: 0, key: 'G', sections: [chordedVerse] })).status).toBe(200)
-  expect((await put('admin', song.id, { version: 1, key: 'A', sections: [chordedVerse] })).status).toBe(403)
+  expect((await put('member', song.id, { version: 1, key: 'A', sections: [chordedVerse] })).status).toBe(403)
   expect(await read('member', song.id)).toMatchObject({ version: 1, key: 'G' })
 })
 

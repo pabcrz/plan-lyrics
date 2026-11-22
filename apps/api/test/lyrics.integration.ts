@@ -47,7 +47,7 @@ test('everyone who sees the library reads the lyrics, the internal data included
     const response = await call(subject, 'GET', path(song.id))
     expect(response.status, subject).toBe(200)
     expect(response.headers.get('cache-control')).toBe('no-store')
-    expect(await json(response)).toEqual({ title: song.title, version: 0, published: false, key: null, canEdit: ['library', 'owner'].includes(subject), sections: [] })
+    expect(await json(response)).toEqual({ title: song.title, version: 0, published: false, key: null, canEdit: ['library', 'owner', 'editor', 'admin'].includes(subject), sections: [] })
   }
   await put('library', song.id, { version: 0, sections: [verse(), chorus()] })
   expect((await read('member', song.id)).sections.map(section => section.kind)).toEqual(['VERSE', 'CHORUS'])
@@ -150,8 +150,8 @@ test('published is explicit: a new lyrics is private, an absent flag keeps it, a
   expect((await json<Lyrics>(await put('library', song.id, { version: 1, sections: [verse()], published: true }))).published).toBe(true)
   expect((await json<Lyrics>(await put('library', song.id, { version: 2, sections: [verse('Texto corregido')] }))).published).toBe(true)
   expect((await json<Lyrics>(await put('library', song.id, { version: 3, sections: [verse('Texto corregido')], published: false }))).published).toBe(false)
-  // Only an editor can publish: a church administrator cannot.
-  expect((await put('admin', song.id, { version: 4, sections: [verse()], published: true })).status).toBe(403)
+  // A plain member cannot publish.
+  expect((await put('member', song.id, { version: 4, sections: [verse()], published: true })).status).toBe(403)
   expect((await read('member', song.id)).published).toBe(false)
 })
 
