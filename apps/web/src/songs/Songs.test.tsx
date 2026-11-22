@@ -10,7 +10,10 @@ vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 // Solo datos ficticios.
-const library = [{ id: 's1', title: 'Canción de ejemplo', author: 'Autora Uno' }, { id: 's2', title: 'Himno ficticio', author: 'Autor Dos' }]
+const library: Array<{ id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean }> = [
+  { id: 's1', title: 'Canción de ejemplo', author: 'Autora Uno', hasLyrics: true, hasChords: true },
+  { id: 's2', title: 'Himno ficticio', author: 'Autor Dos', hasLyrics: true, hasChords: false },
+]
 
 function stub(canCreate: boolean, post?: () => Response, write?: (method: string) => Response) {
   const calls: string[] = []
@@ -21,9 +24,14 @@ function stub(canCreate: boolean, post?: () => Response, write?: (method: string
     if (url === '/api/songs/access') return reply(200, { canCreate })
     if (url.startsWith('/api/songs/s') && (init?.method === 'PATCH' || init?.method === 'DELETE')) return write?.(init.method) ?? (init.method === 'DELETE' ? new Response(null, { status: 204 }) : reply(200, { id: 's1', ...JSON.parse(String(init.body)) }))
     if (url === '/api/songs' && init?.method === 'POST') return post?.() ?? reply(201, { id: 's9', ...JSON.parse(String(init.body)) })
-    if (url.startsWith('/api/songs?q=')) {
-      const q = decodeURIComponent(url.split('q=')[1]!).toLowerCase()
-      return reply(200, library.filter((song) => `${song.title} ${song.author}`.toLowerCase().includes(q)))
+    if (url.startsWith('/api/songs?')) {
+      const params = new URL(url, 'http://servidor.invalid').searchParams
+      const q = (params.get('q') ?? '').toLowerCase()
+      const offset = Number(params.get('offset') ?? 0)
+      const filter = params.get('filter')
+      const rows = library.filter((song) => `${song.title} ${song.author}`.toLowerCase().includes(q)
+        && (filter === 'no-lyrics' ? song.hasLyrics === false : filter === 'no-chords' ? song.hasChords === false : true))
+      return reply(200, rows.slice(offset, offset + 50))
     }
     return reply(404, {})
   }))
@@ -134,4 +142,32 @@ test('an empty library invites an editor to add the first song, and tells a read
   app('/canciones')
   expect(await screen.findByText('La biblioteca la edita quien tenga ese acceso.')).toBeTruthy()
   library.push(...kept)
+})
+
+test('the library filters by what is missing and says it on each song', async () => {
+  const calls = stub(false)
+  app('/canciones')
+  await screen.findByText('Canción de ejemplo')
+  expect(screen.getByText(/Autor Dos · Sin acordes/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Sin acordes' }))
+  await waitFor(() => expect(screen.queryByText('Canción de ejemplo')).toBeNull())
+  expect(screen.getByRole('button', { name: 'Sin acordes' }).getAttribute('aria-pressed')).toBe('true')
+  expect(calls.some((call) => call.includes('filter=no-chords'))).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: 'Sin letra' }))
+  expect(await screen.findByText('Todas las canciones tienen letra.')).toBeTruthy()
+})
+
+test('a library with more than a page offers «Cargar más» until it runs out', async () => {
+  const kept = library.splice(0, library.length, ...Array.from({ length: 60 }, (_, index) => ({ id: `m${index}`, title: `Tema ${String(index).padStart(2, '0')}`, author: 'Autor' })))
+  try {
+    const calls = stub(false)
+    app('/canciones')
+    expect(await screen.findByText('50 canciones o más')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cargar más' }))
+    expect(await screen.findByText('60 canciones')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Cargar más' })).toBeNull()
+    expect(calls.some((call) => call.includes('offset=50'))).toBe(true)
+  } finally {
+    library.splice(0, library.length, ...kept)
+  }
 })

@@ -1,12 +1,14 @@
 import { Hono } from 'hono'
-import type { PrismaClient } from './generated/prisma/client.ts'
+import type { Prisma, PrismaClient } from './generated/prisma/client.ts'
 import { safeErrorCode } from './errors.js'
 import { nameKey } from './people-rules.js'
 import { guarded } from './active-guard.js'
-import { newSongBody, songSearch } from './setlist-rules.js'
+import { newSongBody, songListQuery } from './setlist-rules.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 
 const songSelect = { id: true, title: true, author: true } as const
+/** Songs per page of the library list; a full page means there may be more (`offset`). */
+const PAGE_SIZE = 50
 
 /**
  * Who edits the shared library: the platform owner, the library editors and, by the product owner's decision, whoever
@@ -27,14 +29,20 @@ export function songRoutes(config: SessionConfig, db?: PrismaClient) {
   // Any member reads the shared library (it belongs to no church). Search ignores case and accents,
   // and every word must appear in the title or the author.
   routes.get('/api/songs', guarded(db, 'songs_list_failed', async (c, db) => {
-    const query = songSearch.safeParse(c.req.query('q') ?? '')
+    const query = songListQuery.safeParse({ q: c.req.query('q') ?? '', filter: c.req.query('filter'), offset: c.req.query('offset') })
     if (!query.success) return c.json({ error: 'Invalid request' }, 400)
-    const words = nameKey(query.data).split(' ').filter(Boolean).slice(0, 8)
+    const words = nameKey(query.data.q).split(' ').filter(Boolean).slice(0, 8)
+    // «Sin letra»: no lyrics or none with a section; «Sin acordes»: no section carries chords (a song without lyrics has none).
+    const missing: Record<'no-lyrics' | 'no-chords', Prisma.SongWhereInput> = {
+      'no-lyrics': { OR: [{ lyrics: { is: null } }, { lyrics: { is: { sections: { none: {} } } } }] },
+      'no-chords': { OR: [{ lyrics: { is: null } }, { lyrics: { is: { sections: { none: { chordPro: { not: null } } } } } }] },
+    }
     const rows = await db.song.findMany({
-      where: { AND: words.map(word => ({ OR: [{ titleKey: { contains: word } }, { authorKey: { contains: word } }] })) },
-      orderBy: [{ titleKey: 'asc' }, { authorKey: 'asc' }], take: 50, select: songSelect,
+      where: { AND: [...words.map(word => ({ OR: [{ titleKey: { contains: word } }, { authorKey: { contains: word } }] })), ...(query.data.filter ? [missing[query.data.filter]] : [])] },
+      orderBy: [{ titleKey: 'asc' }, { authorKey: 'asc' }], skip: query.data.offset, take: PAGE_SIZE,
+      select: { ...songSelect, lyrics: { select: { _count: { select: { sections: true } }, sections: { where: { chordPro: { not: null } }, select: { id: true }, take: 1 } } } },
     })
-    return c.json(rows)
+    return c.json(rows.map(({ lyrics, ...song }) => ({ ...song, hasLyrics: (lyrics?._count.sections ?? 0) > 0, hasChords: (lyrics?.sections.length ?? 0) > 0 })))
   }))
 
   // Lets the library screen show «Nueva» only to who can create songs (the POST below still decides).
