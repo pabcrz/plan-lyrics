@@ -206,3 +206,21 @@ test('the «Más» sheet offers settings only to the church administrator', asyn
   fireEvent.click(within(await screen.findByRole('navigation', { name: 'Principal' })).getByRole('button', { name: 'Más' }))
   expect(within(screen.getByRole('dialog', { name: 'Más' })).queryByRole('button', { name: 'Ajustes' })).toBeNull()
 })
+
+test('the services of this month that already passed are one tap away and hide again', async () => {
+  stubApi({ services })
+  mount(<HomePage />)
+  expect(screen.queryByText('Servicio pasado')).toBeNull()
+  fireEvent.click(await screen.findByRole('button', { name: 'Ver anteriores (1)' }))
+  expect(screen.getByText('Servicio pasado')).toBeTruthy()
+  expect(screen.getAllByRole('link', { name: /,/ }).map((item) => item.getAttribute('aria-label'))[0]).toContain('Servicio pasado')
+  fireEvent.click(screen.getByRole('button', { name: 'Ocultar anteriores' }))
+  expect(screen.queryByText('Servicio pasado')).toBeNull()
+})
+
+test('there is no «Ver anteriores» when nothing passed this month or when looking at another month', async () => {
+  stubApi({ services: services.filter((item) => item.id !== 'a') })
+  mount(<HomePage />)
+  await screen.findByRole('link', { name: /Servicio de viernes/ })
+  expect(screen.queryByRole('button', { name: /Ver anteriores/ })).toBeNull()
+})

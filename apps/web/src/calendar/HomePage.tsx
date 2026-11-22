@@ -31,6 +31,7 @@ function Home({ church }: { church: Church }) {
   const created = Boolean((useLocation().state as { created?: boolean } | null)?.created)
   const [toast, setToast] = useState(created ? 'Servicio creado' : '')
   const [openDate, setOpenDate] = useState<string | null>(null)
+  const [showPast, setShowPast] = useState(false)
   const [expanded, setExpanded] = useState(() => window.matchMedia?.(DESKTOP).matches ?? false)
   const today = todayIn()
   const requested = params.get('mes') ?? ''
@@ -45,13 +46,14 @@ function Home({ church }: { church: Church }) {
   const inMonth = (date: string) => monthOf(date) === month
   const gridServices = monthServices.services.filter((service) => inMonth(service.date))
   const gridClosed = monthClosed.closed.filter((item) => inMonth(item.date))
-  const items: Item[] = [
+  const all: Item[] = [
     ...monthServices.services.map((service): Item => ({ kind: 'service', date: service.date, service })),
     ...monthClosed.closed.map((item): Item => ({ kind: 'closed', date: item.date, closed: item })),
-  ]
-    .filter((item) => (current ? item.date >= today : inMonth(item.date)))
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, current ? SHOWN : undefined)
+  ].sort((a, b) => a.date.localeCompare(b.date))
+  // Mes en curso: lo que viene (y, a petición, lo que ya pasó de este mes). Otro mes: el mes completo.
+  const upcoming = all.filter((item) => (current ? item.date >= today : inMonth(item.date))).slice(0, current ? SHOWN : undefined)
+  const past = current ? all.filter((item) => inMonth(item.date) && item.date < today) : []
+  const items = showPast ? [...past, ...upcoming] : upcoming
   const count = gridServices.length
 
   const calendar = (
@@ -90,7 +92,10 @@ function Home({ church }: { church: Church }) {
           <NewServiceButton church={church} />
         </div>
         <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1">{calendar}</div>
-        <h2 className="m-0 text-base font-semibold text-text-2 lg:col-start-1">{current ? 'Próximos servicios' : `Servicios de ${monthTitle(month).split(' ')[0].toLowerCase()}`}</h2>
+        <div className="flex items-center gap-2 lg:col-start-1">
+          <h2 className="m-0 flex-1 text-base font-semibold text-text-2">{current ? 'Próximos servicios' : `Servicios de ${monthTitle(month).split(' ')[0].toLowerCase()}`}</h2>
+          {past.length > 0 && <Button variant="quiet" onClick={() => setShowPast(!showPast)}>{showPast ? 'Ocultar anteriores' : `Ver anteriores (${past.length})`}</Button>}
+        </div>
         <div className="lg:col-start-1">
           {error ? (
             <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
