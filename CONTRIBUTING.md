@@ -1,6 +1,6 @@
 # Contribuir
 
-Estas convenciones ayudan a mantener cambios revisables; no inventan aprobaciones, herramientas ni pipelines del proyecto.
+Estas convenciones ayudan a mantener cambios revisables; no inventan aprobaciones ni herramientas. La integración continua (`.github/workflows/ci.yml`) corre `pnpm test:db` en cada PR.
 
 ## Cambios y commits
 
