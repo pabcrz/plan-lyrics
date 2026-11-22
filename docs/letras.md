@@ -65,6 +65,8 @@ Mockup: [letras.html](design/pantallas/letras.html) (ver [diseño](design.md#let
 
 La biblioteca (`/canciones`) lista y busca canciones por páginas de 50 («Cargar más»), con filtros «Sin letra» y «Sin acordes» y la marca de lo que falta en cada canción; `GET /api/songs/access` indica si quien consulta puede crear (`/canciones/nueva`). Quien edita la biblioteca cambia el título o el autor (`PATCH /api/songs/:songId`, mismo id, `409` si choca con otra canción) desde `/canciones/:songId/editar` (en escritorio es el panel derecho de la biblioteca, sin cambiar de página), y elimina (`DELETE`) solo una canción creada por error: sin letra y fuera de todo setlist, de lo contrario `409 Song in use`. Mockup: [canciones.html](design/pantallas/canciones.html).
 
+El autor de una canción es opcional: sin autor se guarda vacío y la canción se identifica solo por su título. La migración `20261124120000_song_author_optional` relaja la restricción de la base, que seguía exigiendo de 1 a 120 caracteres y hacía fallar (`503`) crear o renombrar una canción sin autor.
+
 ## Verificación
 
 Pantallas: pruebas de componente (`apps/web/src/lyrics/*.test.tsx` y el enlace desde `SetlistPage.test.tsx`) con textos inventados y un servidor ficticio en memoria con versión y 409. API: pruebas puras de reglas (`lyrics-rules.test.ts`) e integración sobre PostgreSQL aislado (`test/lyrics.integration.ts`, con `pnpm test:db`): permisos por tipo de cuenta, concurrencia, restricciones de base, publicación y fuga de datos en la vista pública.

@@ -23,7 +23,7 @@ const reset = async () => {
   await db.musicalRole.deleteMany({ where: { churchId: { in: churches } } })
   // The rotation is opt-in per church: these tests are about it, so they start with it on (one test turns it off).
   await db.church.updateMany({ where: { id: { in: churches } }, data: { rolesSeeded: false, usesRotation: true } })
-  await db.churchPerson.updateMany({ data: { removedAt: null } })
+  await db.churchPerson.updateMany({ data: { removedAt: null, roleIds: [] } })
 }
 beforeAll(async () => {
   await seedFixtures(db)
@@ -41,7 +41,15 @@ function call(subject: string | undefined, method: string, path: string, body?: 
   })
 }
 const json = async <T = any>(response: Response) => (await response.json()) as T // eslint-disable-line @typescript-eslint/no-explicit-any
-const roleId = async (name: string, subject = 'member') => (await json<{ id: string; name: string }[]>(await call(subject, 'GET', '/api/roles'))).find(role => role.name === name)!.id
+// A person only holds the roles an administrator established for them, so looking a role up also establishes it for every test person.
+const roleId = async (name: string, subject = 'member') => {
+  const id = (await json<{ id: string; name: string }[]>(await call(subject, 'GET', '/api/roles'))).find(role => role.name === name)!.id
+  for (const personId of [...people, 'person-a']) {
+    const link = await db.churchPerson.findFirst({ where: { churchId: 'church-a', personId }, select: { roleIds: true } })
+    if (link && !link.roleIds.includes(id)) await db.churchPerson.updateMany({ where: { churchId: 'church-a', personId }, data: { roleIds: { push: id } } })
+  }
+  return id
+}
 const [luis, pedro, juan, ana] = people
 const rotation = (sequences: { weekday: number | null; personIds: string[] }[], over: Record<string, unknown> = {}) =>
   ({ enabled: true, mode: 'SHARED', startsOn: '2026-11-01', sequences, ...over })
