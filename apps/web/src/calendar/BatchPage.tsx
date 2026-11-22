@@ -392,7 +392,7 @@ function Batch({ church }: { church: Church }) {
               {created.map((service) => <Row key={`${service.date}/${service.slot}`} date={`${formatDay(service.date)}${service.slot === 'SINGLE' ? '' : ` · ${slotName[service.slot]}`}${service.time ? ` · ${timeText(service.time)}` : ''}`} value={service.director.name} />)}
             </ul>
             {pending.length > 0 && <Notice icon="info" title="Sin programar">{pending.map((entry) => formatDay(entry.date) + (entry.slot === 'SINGLE' ? '' : ` · ${slotName[entry.slot]}`)).join(', ')}. Quedan para resolver después.</Notice>}
-            <Button variant="primary" block onClick={() => void navigate({ pathname: '/', search: month === monthOf(today) ? '' : `?mes=${month}` }, { state: { created: true } })}>Ver en el calendario</Button>
+            <Button variant="primary" block onClick={() => void navigate({ pathname: '/', search: month === monthOf(today) ? '' : `?mes=${month}` }, { state: { created: true } })}>Ver en Inicio</Button>
             <Button variant="quiet" block onClick={restart}>Programar otro lote</Button>
           </>
         )}

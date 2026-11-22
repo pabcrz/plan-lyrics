@@ -142,7 +142,7 @@ test('repeats the list until every free date has a director, and creates the rev
     ],
   })
   expect(screen.getByText(/Quedaron como borrador/)).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Ver en el calendario' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Ver en Inicio' }))
   expect(await screen.findByText('Calendario')).toBeTruthy()
 })
 
