@@ -10,7 +10,7 @@ const church: Church = {
   ],
 }
 const service = (date: string, slot: Service['slot']): Service => ({
-  id: `${date}-${slot}`, title: 'x', date, slot, time: null, status: 'DRAFT', director: { id: 'p', name: 'Ana' },
+  id: `${date}-${slot}`, title: 'x', date, slot, time: null, status: 'DRAFT', director: { id: 'p', name: 'Ana' }, songCount: 0,
 })
 
 describe('freeSlots', () => {

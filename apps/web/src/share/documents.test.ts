@@ -19,7 +19,7 @@ test('the setlist image has the date and only the songs, numbered, each with its
   expect(JSON.stringify(doc)).not.toMatch(/youtu|"G"/)
 })
 
-const service = (date: string, over: Record<string, unknown> = {}) => ({ id: date, title: 'Servicio', date, slot: 'SINGLE' as const, time: '19:30', status: 'PUBLISHED' as const, director: { id: 'p', name: 'Ana Torres' }, ...over })
+const service = (date: string, over: Record<string, unknown> = {}) => ({ id: date, title: 'Servicio', date, slot: 'SINGLE' as const, time: '19:30', status: 'PUBLISHED' as const, director: { id: 'p', name: 'Ana Torres' }, songCount: 0, ...over })
 
 test('the monthly rota is titled «Rol alabanza» with the month, one line per date and «No hay culto» in its place', () => {
   const doc = rotaDoc({

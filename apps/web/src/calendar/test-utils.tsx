@@ -21,7 +21,7 @@ export const defaultRoles: MusicalRole[] = [
 export const people = [{ id: 'p1', name: 'Ana Ramírez' }, { id: 'p2', name: 'Luis Herrera' }].map((person) => ({ ...person, roleIds: defaultRoles.map((role) => role.id) }))
 export const service = (over: Partial<Service>): Service => ({
   id: 's1', title: 'Servicio de viernes', date: '2026-11-13', slot: 'SINGLE', time: '19:30', status: 'PUBLISHED',
-  director: people[0], ...over,
+  director: people[0], songCount: 0, ...over,
 })
 
 export const defaultRestrictions: RoleRestriction[] = [{ id: 'x1', first: 'DIRIGIR', second: 'r-drums' }]

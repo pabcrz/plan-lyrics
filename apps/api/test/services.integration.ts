@@ -37,6 +37,20 @@ test('an editor and an admin create a service in their active church; a member o
   expect(listed.map((s: { date: string }) => s.date)).toEqual(['2026-11-13', '2026-11-20'])
 })
 
+test('a service lists how many songs its setlist has; moments are not counted', async () => {
+  const created = await (await create('editor', friday)).json()
+  expect(created.songCount).toBe(0)
+  const song = await db.song.create({ data: { title: 'Canción de ejemplo', author: 'Autora Uno', titleKey: 'cancion de ejemplo', authorKey: 'autora uno' } })
+  await db.setlistEntry.createMany({ data: [{ serviceId: created.id, position: 0, songId: song.id }, { serviceId: created.id, position: 1, moment: 'Ofrenda' }] })
+  try {
+    const listed = await (await call('member', '/api/services?month=2026-11')).json()
+    expect(listed.find((item: { id: string }) => item.id === created.id).songCount).toBe(1)
+  } finally {
+    await db.setlistEntry.deleteMany({ where: { serviceId: created.id } })
+    await db.song.delete({ where: { id: song.id } })
+  }
+})
+
 test('the church comes from the session, never from the client', async () => {
   expect((await create('editor', { ...friday, churchId: 'church-b' })).status).toBe(400)
   const created = await (await create('editor', friday)).json()
