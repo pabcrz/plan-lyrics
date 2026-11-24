@@ -324,7 +324,8 @@ describe('TimeWheel', () => {
     const hourList = within(screen.getByRole('listbox', { name: 'Hora' }))
     fireEvent.click(hourList.getByRole('option', { name: '12' }))
     expect(onChange).toHaveBeenLastCalledWith({ hour: 12, minute: 0, meridiem: 'pm' })
-    fireEvent.click(hourList.getByRole('option', { name: '00' }))
+    expect(screen.getAllByRole('option', { name: '00' })).toHaveLength(1) // solo los minutos: no se confunde con las 12 a.m.
+    fireEvent.click(hourList.getByRole('option', { name: '12 a.m.' }))
     expect(onChange).toHaveBeenLastCalledWith({ hour: 12, minute: 0, meridiem: 'am' })
   })
 

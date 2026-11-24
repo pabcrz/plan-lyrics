@@ -9,12 +9,14 @@ function Column<T extends number | string>({
   items,
   value,
   text,
+  name,
   onPick,
 }: {
   label: string
   items: ReadonlyArray<T>
   value: T
   text: (item: T) => string
+  name?: (item: T) => string | undefined
   onPick: (item: T) => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -63,6 +65,7 @@ function Column<T extends number | string>({
           role="option"
           tabIndex={-1}
           aria-selected={i === index}
+          aria-label={name?.(item)}
           onClick={() => {
             move(i)
             ref.current?.scrollTo?.({ top: i * ITEM, behavior: 'smooth' })
@@ -113,6 +116,7 @@ export function TimeWheel({
         items={items}
         value={position}
         text={(h) => (h === 0 ? '00' : String(h))}
+        name={(h) => (h === 0 ? '12 a.m.' : undefined)}
         onPick={(h) => onChange(h === 0 ? { ...value, hour: 12, meridiem: 'am' } : h === 12 ? { ...value, hour: 12, meridiem: 'pm' } : { ...value, hour: h })}
       />
       <span aria-hidden="true" className="text-center text-xl font-semibold text-text-3">

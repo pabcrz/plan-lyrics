@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, Field, Notice, Segmented, Sheet, TextField, inputClass } from '../ui'
-import { ApiError, usePeople, useUpdateService, type ServicePatch } from '../calendar/api'
+import { ApiError, usePeople, useUpdateService, useDeleteService, type ServicePatch } from '../calendar/api'
 import { weekdayOf } from '../calendar/dates'
 import { PersonList } from '../calendar/PeopleSheet'
 import type { Church, Service, Status } from '../calendar/model'
@@ -26,11 +26,13 @@ export function updateFailure(error: unknown) {
 }
 
 /** Corrige título, fecha, hora, estado y dirección de un servicio; solo se envía lo que cambió. */
-export function EditServiceSheet({ church, service, directorId, onClose, onSaved }: {
-  church: Pick<Church, 'sundayDouble'>; service: Current; directorId: string | undefined; onClose: () => void; onSaved: () => void
+export function EditServiceSheet({ church, service, directorId, onClose, onSaved, onDeleted }: {
+  church: Pick<Church, 'sundayDouble'>; service: Current; directorId: string | undefined; onClose: () => void; onSaved: () => void; onDeleted: () => void
 }) {
   const people = usePeople(true, 'direct')
   const update = useUpdateService()
+  const remove = useDeleteService()
+  const [confirming, setConfirming] = useState(false)
   const [title, setTitle] = useState(service.title)
   const [date, setDate] = useState(service.date)
   const [time, setTime] = useState(service.time ?? '')
@@ -64,6 +66,18 @@ export function EditServiceSheet({ church, service, directorId, onClose, onSaved
     }
   }
 
+  async function erase() {
+    setSending(true)
+    setFailure('')
+    try {
+      await remove(service.id)
+      onDeleted()
+    } catch (caught) {
+      setFailure(caught instanceof ApiError && caught.status === 403 ? 'No tienes permiso para eliminar servicios.' : caught instanceof ApiError && caught.status === 404 ? 'Este servicio ya no existe.' : 'No se pudo eliminar. Inténtalo de nuevo.')
+      setSending(false)
+    }
+  }
+
   return (
     <Sheet open onClose={onClose} title="Editar servicio">
       <form onSubmit={(event) => { event.preventDefault(); if (dirty && valid) void save() }} noValidate className="grid gap-4">
@@ -81,6 +95,15 @@ export function EditServiceSheet({ church, service, directorId, onClose, onSaved
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
         <Button type="submit" block loading={sending} disabled={!dirty || !valid}>Guardar cambios</Button>
         <Button variant="quiet" block onClick={onClose}>Cancelar</Button>
+        {confirming ? (
+          <Notice tone="warn" icon="alert" role="alert" title="¿Eliminar este servicio?">
+            Se borran también su lista de canciones, sus participaciones y su predicación. No se puede deshacer.
+            <div className="mt-3 grid gap-2">
+              <Button variant="danger" block loading={sending} onClick={() => void erase()}>Sí, eliminar servicio</Button>
+              <Button variant="quiet" block onClick={() => setConfirming(false)}>No, conservarlo</Button>
+            </div>
+          </Notice>
+        ) : <Button variant="quiet" block onClick={() => setConfirming(true)}>Eliminar servicio</Button>}
       </form>
     </Sheet>
   )
