@@ -98,3 +98,8 @@ Producto no define lo siguiente; se aplicó el criterio más restrictivo y queda
 - La dirección completa se arma con el origen de la página; la API solo entrega la ruta `/m/<token>`.
 
 Verificado a 390 px con un arnés temporal no versionado (doble de Clerk, `fetch` simulado): sin desbordamiento horizontal en la lista, el formulario, las hojas ni la vista pública. 
+
+## Guardar para leer sin conexión y cancionero público
+
+- **Guardar un enlace.** En la vista pública de un enlace (`/m/<token>`), «Guardar para leer sin conexión» deja una copia de lo que se ve (con las letras, si es la vista de congregantes) en este dispositivo; quien abre el enlace no necesita cuenta. Si después el enlace no responde (sin conexión o vencido), se muestra esa copia con el aviso «Copia guardada en este dispositivo»; con conexión, la copia se actualiza sola.
+- **Cancionero.** `GET /api/public/songbook` (pública, sin sesión, con el mismo límite de tasa y las mismas cabeceras `no-store` y `noindex` que los enlaces) devuelve las canciones con letra **publicada**, por título: `[{title, author, sections:[{kind, label, text, repeat}]}]`. Nunca acordes, tonos, ids ni datos de iglesias. La página `/cancionero` las muestra con búsqueda y «Guardar como PDF» (impresión del navegador), y guarda una copia local para leerlas sin conexión. Es abierta a quien conozca la dirección: una letra deja de verse al despublicarla.

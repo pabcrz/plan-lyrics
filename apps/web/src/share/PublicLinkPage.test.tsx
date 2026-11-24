@@ -176,3 +176,24 @@ test('the congregation view shows the published lyrics of a song, and a song wit
   expect(screen.getByText(/Línea uno/).textContent).toContain('Línea dos')
   expect(screen.queryByText('()')).toBeNull()
 })
+
+test('a person without account saves the link and reads it again when it cannot be reached', async () => {
+  serve(200, view())
+  open()
+  fireEvent.click(await screen.findByRole('button', { name: 'Guardar para leer sin conexión' }))
+  expect(await screen.findByRole('button', { name: /Guardado en este dispositivo/ })).toBeTruthy()
+  cleanup()
+
+  vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
+  open()
+  expect(await screen.findByText('Copia guardada en este dispositivo')).toBeTruthy()
+  expect(screen.getByText('Canción de ejemplo')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Guardar para leer sin conexión' })).toBeNull()
+  localStorage.clear()
+})
+
+test('without a saved copy an unreachable link still looks unavailable', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
+  open()
+  expect(await screen.findByText('Este enlace no está disponible')).toBeTruthy()
+})

@@ -224,3 +224,18 @@ test('a link that is revoked, unknown or malformed still answers the same 404, l
     expect(response.headers.get('cache-control')).toBe('no-store')
   }
 })
+
+test('the public songbook lists only published lyrics, without session and without anything internal', async () => {
+  const [open, hidden] = await Promise.all([newSong('Bendito ficticio', 'Autora Uno'), newSong('Secreta ficticia', 'Autor Dos')])
+  expect((await put('library', open.id, { version: 0, published: true, key: 'G', sections: [{ ...verse('Línea pública'), chordPro: '[G]Línea pública' }, chorus('Coro público', 2)] })).status).toBe(200)
+  expect((await put('library', hidden.id, { version: 0, published: false, sections: [verse('Texto interno')] })).status).toBe(200)
+  const response = await api.request('/api/public/songbook')
+  expect(response.status).toBe(200)
+  expect(response.headers.get('cache-control')).toBe('no-store')
+  expect(response.headers.get('x-robots-tag')).toContain('noindex')
+  const body = await json<Array<{ title: string; author: string; sections: unknown[] }>>(response)
+  expect(body).toEqual([{ title: 'Bendito ficticio', author: 'Autora Uno', sections: [
+    { kind: 'VERSE', label: null, text: 'Línea pública', repeat: 1 }, { kind: 'CHORUS', label: null, text: 'Coro público', repeat: 2 },
+  ] }])
+  expect(JSON.stringify(body)).not.toMatch(/chord|\[G\]|Texto interno|"id"|"key"/)
+})
