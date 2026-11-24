@@ -73,8 +73,8 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
       if (!capability?.owner) return c.json({ error: 'Not found' }, 404)
       const body = newChurchBody.safeParse(await c.req.json().catch(() => undefined))
       if (!body.success) return c.json({ error: 'Invalid request' }, 400)
-      const church = await createChurch(database, c.get('clerkSubject'), body.data.name)
-      return church ? c.json(church, 201) : c.json({ error: 'Conflict' }, 409)
+      const church = await createChurch(database, c.get('clerkSubject'), body.data.name, body.data.addMe)
+      return church ? c.json(church, 201) : c.json({ error: 'Not found' }, 404)
     } catch (error) {
       console.error(JSON.stringify({ event: 'church_creation_failed', code: safeErrorCode(error) }))
       return c.json({ error: 'Access unavailable' }, 503)

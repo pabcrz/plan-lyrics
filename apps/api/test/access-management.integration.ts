@@ -377,3 +377,26 @@ test('invalid member bodies are rejected without side effects', async () => {
     await unchanged(() => call('acc-a1', 'POST', '/api/members', body), 400, { error: 'Invalid request' })
   }
 })
+
+test('the owner founds several churches, sees them all and enters one they do not belong to in support mode', async () => {
+  expect((await call('acc-a1', 'POST', '/api/churches', { name: 'Intrusa' })).status).toBe(404)
+  const before = await db.membership.count({ where: { user: { clerkSubject: 'fixture-owner' } } })
+  const apart = await call('owner', 'POST', '/api/churches', { name: 'Iglesia Sur', addMe: false })
+  expect(apart.status).toBe(201)
+  const south = (await apart.json()) as { id: string }
+  expect(await db.membership.count({ where: { user: { clerkSubject: 'fixture-owner' } } })).toBe(before)
+  const own = await call('owner', 'POST', '/api/churches', { name: 'Iglesia Este' })
+  expect(own.status).toBe(201)
+  expect(await db.membership.count({ where: { user: { clerkSubject: 'fixture-owner' } } })).toBe(before + 1)
+  const listed = (await (await call('owner', 'GET', '/api/me/churches')).json()) as Array<{ id: string; name: string; role: string | null }>
+  expect(listed.find(item => item.id === south.id)).toMatchObject({ name: 'Iglesia Sur', role: null })
+  expect(listed.find(item => item.name === 'Iglesia Este')).toMatchObject({ role: 'ADMIN' })
+  // Only the owner sees churches they do not belong to; support mode grants the administrator's powers there.
+  expect((await (await call('acc-a1', 'GET', '/api/me/churches')).json() as unknown[]).length).toBe(1)
+  const support = await call('owner', 'GET', '/api/active-church', undefined, south.id)
+  expect(support.status).toBe(200)
+  expect(await support.json()).toMatchObject({ id: south.id, support: true, canEdit: true, canConfigure: true })
+  expect((await call('acc-a1', 'GET', '/api/active-church', undefined, south.id)).status).toBe(404)
+  expect((await call('owner', 'GET', '/api/members', undefined, south.id)).status).toBe(200)
+  await db.church.deleteMany({ where: { name: { in: ['Iglesia Sur', 'Iglesia Este'] } } })
+})

@@ -12,7 +12,7 @@ import { requireSession, type SessionConfig, type SessionEnvironment } from './s
 
 export const timeZone = 'America/Mexico_City'
 
-export type Active = { churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean }
+export type Active = { support?: boolean; churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean }
 
 /**
  * The active church is one of the caller's memberships. With several, the client picks it with `X-Church-Id`; the
@@ -24,7 +24,7 @@ export async function activeChurch(db: PrismaClient, subject: string, requestedI
     where: { user: { clerkSubject: subject }, ...(requestedId ? { churchId: requestedId } : {}) },
     select: { role: true, church: { select: { id: true, name: true, sundayDouble: true, usesPreaching: true, usesRotation: true, congregationShowsPreacher: true } } },
   })
-  if (memberships.length === 0) return 'none'
+  if (memberships.length === 0) return requestedId ? supportChurch(db, subject, requestedId) : 'none'
   if (memberships.length > 1) return 'ambiguous'
   const { role, church } = memberships[0]
   // Church settings: the church administrator or the platform owner (who still needs an active church).
@@ -33,6 +33,14 @@ export async function activeChurch(db: PrismaClient, subject: string, requestedI
     churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, congregationShowsPreacher: church.congregationShowsPreacher,
     canEdit: role === 'ADMIN' || role === 'EDITOR', canConfigure: role === 'ADMIN' || Boolean(owner),
   }
+}
+
+/** Support mode: the platform owner enters a church they do not belong to, with the powers of its administrator. */
+async function supportChurch(db: PrismaClient, subject: string, id: string): Promise<Active | 'none'> {
+  const owner = await db.platformOwner.findFirst({ where: { user: { clerkSubject: subject } }, select: { id: true } })
+  const church = owner ? await db.church.findUnique({ where: { id }, select: { id: true, name: true, sundayDouble: true, usesPreaching: true, usesRotation: true, congregationShowsPreacher: true } }) : null
+  if (!church) return 'none'
+  return { support: true, churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, congregationShowsPreacher: church.congregationShowsPreacher, canEdit: true, canConfigure: true }
 }
 
 const serviceSelect = {
@@ -93,7 +101,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     })
     return {
       id: church.churchId, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, congregationShowsPreacher: church.congregationShowsPreacher,
-      canEdit: church.canEdit, canConfigure: church.canConfigure, timeZone, days,
+      canEdit: church.canEdit, canConfigure: church.canConfigure, ...(church.support ? { support: true } : {}), timeZone, days,
     }
   }
 
