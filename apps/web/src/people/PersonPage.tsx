@@ -4,6 +4,7 @@ import { Avatar, Button, Icon, Notice, Sheet, TextField } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, usePerson, usePersonActions } from '../calendar/api'
 import type { Church, PersonDetail } from '../calendar/model'
+import { PersonRoles, rolesText, type RoleFlags } from '../calendar/PersonRoles'
 
 export function PersonPage() {
   return <ChurchGate>{(church) => <Loader church={church} />}</ChurchGate>
@@ -41,6 +42,8 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
   const [sending, setSending] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [done, setDone] = useState(false)
+  const [roles, setRoles] = useState<RoleFlags>({ canDirect: person.canDirect, canPreach: person.canPreach })
+  const [roleFailure, setRoleFailure] = useState('')
   const dirty = name.trim() !== saved.name || phone.trim() !== saved.phone
   const edit = church.canEdit
 
@@ -61,6 +64,18 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
       else setFailure(caught instanceof ApiError && caught.status === 403 ? 'No tienes permiso para editar personas.' : caught instanceof ApiError && caught.status === 400 ? 'Revisa el nombre y el teléfono.' : 'No se pudo guardar. Inténtalo de nuevo.')
     }
     setSending(false)
+  }
+  /** Los roles se guardan al cambiar cada interruptor; si el servidor lo rechaza, vuelven a como estaban. */
+  async function changeRoles(next: RoleFlags) {
+    const previous = roles
+    setRoles(next)
+    setRoleFailure('')
+    try {
+      await update(person.id, next)
+    } catch {
+      setRoles(previous)
+      setRoleFailure('No se pudo cambiar el rol. Inténtalo de nuevo.')
+    }
   }
   function discard() {
     setName(saved.name)
@@ -123,7 +138,10 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
 
         <section className="grid gap-2" aria-labelledby="here">
           <h2 id="here" className="m-0 font-display text-lg font-bold">En {church.name}</h2>
-          <p className="m-0 text-[0.9375rem] text-text-2">Sus roles, turnos y participaciones se verán aquí cuando existan las participaciones.</p>
+          {edit ? <PersonRoles value={roles} onChange={(next) => void changeRoles(next)} showPreach={church.usesPreaching} />
+            : <p className="m-0 text-[0.9375rem]"><span className="text-text-3">Roles: </span><b>{rolesText(roles, church.usesPreaching) || 'Ninguno'}</b></p>}
+          {roleFailure && <Notice tone="warn" icon="alert" role="alert">{roleFailure}</Notice>}
+          <p className="m-0 text-[0.8125rem] text-text-3">Sus turnos y participaciones musicales se configuran en Participaciones.</p>
         </section>
 
         <section className="grid gap-2" aria-labelledby="account">
