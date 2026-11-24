@@ -61,7 +61,8 @@ export function useChurch() {
   })
 }
 
-export type MyChurch = { id: string; name: string; role: 'ADMIN' | 'EDITOR' | 'MEMBER' }
+/** `role: null` solo para el superadministrador: iglesias a las que no pertenece (se abren en modo soporte). */
+export type MyChurch = { id: string; name: string; role: 'ADMIN' | 'EDITOR' | 'MEMBER' | null }
 
 /** Iglesias a las que pertenece la cuenta, para elegir la activa. */
 export function useMyChurches() {

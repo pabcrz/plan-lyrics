@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Link, Outlet, useLocation } from 'react-router'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { UserButton } from '@clerk/react'
 import { Button, Icon } from '../ui'
 import { cx } from '../ui/cx'
 import { NewSheet, extras, sections, type Section } from './AppShell'
 import { useChurch } from './api'
 import { ChurchName } from './ChurchGate'
+import { clearActiveChurch } from './active-church'
 
 /** Sección del menú a la que pertenece una ruta; las pantallas de crear servicio cuelgan de Inicio y las de configuración, de «Más». */
 const sectionOf = (pathname: string): Section | null =>
@@ -24,11 +26,25 @@ export function ShellLayout() {
   const church = useChurch().data
   const { pathname } = useLocation()
   const [creating, setCreating] = useState(false)
+  const navigate = useNavigate()
+  const client = useQueryClient()
+  function leaveSupport() {
+    clearActiveChurch()
+    void client.resetQueries({ predicate: (query) => query.queryKey[0] !== 'my-churches' })
+    void navigate('/iglesias')
+  }
   const current = sectionOf(pathname)
   const extra = church ? extras(church) : []
   const link = 'flex min-h-11 items-center gap-3 rounded-md px-3 font-medium no-underline hover:bg-surface-2 hover:text-text'
   const item = (active: boolean) => cx(link, active ? 'bg-accent-soft text-accent-soft-text' : 'text-text-2')
   return (
+    <>
+    {church?.support && (
+      <div role="status" className="flex min-h-11 items-center gap-3 bg-accent-soft px-4 text-sm text-accent-soft-text">
+        <span className="min-w-0 flex-1 truncate font-semibold">Modo soporte · {church.name}</span>
+        <Button variant="quiet" onClick={leaveSupport}>Salir</Button>
+      </div>
+    )}
     <div className={cx('group/app', church && 'lg:grid lg:grid-cols-[248px_minmax(0,1fr)]')} data-frame={church ? '' : undefined}>
       {church && (
         <aside className="sticky top-0 hidden h-dvh flex-col gap-1 border-r border-line bg-surface p-4 lg:flex">
@@ -55,5 +71,6 @@ export function ShellLayout() {
       )}
       <div className="min-w-0"><Outlet /></div>
     </div>
+    </>
   )
 }

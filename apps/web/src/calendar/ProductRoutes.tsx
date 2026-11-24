@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes, useParams } from 'react-router'
+import { ChurchesPage } from './ChurchesPage'
 import { AccessPage } from '../access/AccessPage'
 import { AccountsPage } from '../access/AccountsPage'
 import { BatchPage } from './BatchPage'
@@ -43,6 +44,7 @@ export function ProductRoutes() {
       <Route path="/canciones/:songId/letra/editar" element={<LyricsEditPage />} />
       <Route path="/predicaciones" element={<PreachingPlanPage />} />
       <Route path="/canciones/:songId/letra/acordes" element={<ChordsEditPage />} />
+      <Route path="/iglesias" element={<ChurchesPage />} />
       <Route path="/personas" element={<PeoplePage />} />
       <Route path="/personas/nueva" element={<NewPersonPage />} />
       <Route path="/personas/:personId" element={<PersonPage />} />

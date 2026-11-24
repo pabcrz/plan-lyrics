@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { UserButton } from '@clerk/react'
 import { useQueryClient } from '@tanstack/react-query'
-import { AppearanceSheet, Button, Icon, Notice, Sheet, TextField } from '../ui'
+import { AppearanceSheet, Button, Icon, Notice, Sheet, Switch, TextField } from '../ui'
 import { AccountsLink } from '../access/AccessLinks'
 import { useAccess } from '../access/access-api'
 import { ApiError, useApiFetch, useChurch, useMyChurches, useSwitchChurch } from './api'
@@ -15,7 +15,7 @@ function ChurchList({ activeId, onPick }: { activeId?: string; onPick?: () => vo
   if (!churches.data) return <p role="status" className="m-0 text-text-3">{churches.isError ? 'No se pudo cargar tus iglesias.' : 'Cargando tus iglesias…'}</p>
   return (
     <div className="overflow-hidden rounded-lg border border-line">
-      {churches.data.map((item) => (
+      {churches.data.filter((item) => item.role).map((item) => (
         <button key={item.id} type="button" aria-current={item.id === activeId ? 'true' : undefined} onClick={() => { switchTo(item.id); onPick?.() }}
           className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-line bg-transparent px-4 text-left font-semibold last:border-b-0 hover:bg-surface-2">
           {item.name}{item.id === activeId && <Icon name="check" />}
@@ -28,14 +28,20 @@ function ChurchList({ activeId, onPick }: { activeId?: string; onPick?: () => vo
 /** Nombre de la iglesia activa; con varias iglesias es el botón que abre el cambio de iglesia. */
 export function ChurchName({ name, className }: { name?: string; className: string }) {
   const churches = useMyChurches()
+  const owner = useAccess().data?.owner
   const activeId = useChurch().data?.id
   const [open, setOpen] = useState(false)
   const label = name ?? 'Plan & Lyrics'
-  if (!churches.data || churches.data.length < 2) return <span className={className}>{label}</span>
+  if (!churches.data || (churches.data.filter((item) => item.role).length < 2 && !owner)) return <span className={className}>{label}</span>
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} aria-label={`${label}. Cambiar de iglesia`} className={`${className} cursor-pointer border-0 bg-transparent p-0 text-left text-text`}>{label}</button>
-      <Sheet open={open} onClose={() => setOpen(false)} title="Cambiar de iglesia"><ChurchList activeId={activeId} onPick={() => setOpen(false)} /></Sheet>
+      <Sheet open={open} onClose={() => setOpen(false)} title="Cambiar de iglesia">
+        <div className="grid gap-3">
+          <ChurchList activeId={activeId} onPick={() => setOpen(false)} />
+          {owner && <Link to="/iglesias" onClick={() => setOpen(false)} className="font-semibold">Administrar iglesias</Link>}
+        </div>
+      </Sheet>
     </>
   )
 }
@@ -70,11 +76,12 @@ export function PageHeader({ title, back = '/', backLabel = 'Volver al inicio' }
   )
 }
 
-/** Alta de la primera iglesia: solo la ofrece la pantalla vacía al superadministrador (la API lo vuelve a comprobar). */
-function CreateChurch() {
+/** Alta de una iglesia: solo la ofrece el superadministrador (la API lo vuelve a comprobar). Con `offerMembership` decide si también la administra. */
+export function CreateChurch({ offerMembership = false }: { offerMembership?: boolean }) {
   const api = useApiFetch()
   const client = useQueryClient()
   const [name, setName] = useState('')
+  const [addMe, setAddMe] = useState(true)
   const [sending, setSending] = useState(false)
   const [failure, setFailure] = useState('')
   async function submit(event: React.FormEvent) {
@@ -82,8 +89,11 @@ function CreateChurch() {
     setSending(true)
     setFailure('')
     try {
-      await api('/api/churches', { method: 'POST', body: { name: name.trim() } })
+      await api('/api/churches', { method: 'POST', body: { name: name.trim(), ...(offerMembership ? { addMe } : {}) } })
+      await client.invalidateQueries({ queryKey: ['my-churches'] })
       await client.invalidateQueries({ queryKey: ['church'] })
+      setName('')
+      setSending(false)
     } catch {
       setFailure('No se pudo crear la iglesia. Inténtalo de nuevo.')
       setSending(false)
@@ -92,6 +102,7 @@ function CreateChurch() {
   return (
     <form onSubmit={(event) => void submit(event)} noValidate className="grid gap-4">
       <TextField label="Nombre de la iglesia" value={name} maxLength={120} autoComplete="off" onChange={(event) => setName(event.target.value)} />
+      {offerMembership && <Switch checked={addMe} onCheckedChange={setAddMe} label="Agregarme como administrador" description="Si no, la iglesia queda aparte y podrás entrar en modo soporte." />}
       {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
       <Button type="submit" variant="primary" block loading={sending} disabled={!name.trim()}>Crear iglesia</Button>
     </form>
