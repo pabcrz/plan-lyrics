@@ -37,6 +37,20 @@ test('an editor and an admin create a service in their active church; a member o
   expect(listed.map((s: { date: string }) => s.date)).toEqual(['2026-11-13', '2026-11-20'])
 })
 
+test('a service lists how many songs its setlist has; moments are not counted', async () => {
+  const created = await (await create('editor', friday)).json()
+  expect(created.songCount).toBe(0)
+  const song = await db.song.create({ data: { title: 'Canción de ejemplo', author: 'Autora Uno', titleKey: 'cancion de ejemplo', authorKey: 'autora uno' } })
+  await db.setlistEntry.createMany({ data: [{ serviceId: created.id, position: 0, songId: song.id }, { serviceId: created.id, position: 1, moment: 'Ofrenda' }] })
+  try {
+    const listed = await (await call('member', '/api/services?month=2026-11')).json()
+    expect(listed.find((item: { id: string }) => item.id === created.id).songCount).toBe(1)
+  } finally {
+    await db.setlistEntry.deleteMany({ where: { serviceId: created.id } })
+    await db.song.delete({ where: { id: song.id } })
+  }
+})
+
 test('the church comes from the session, never from the client', async () => {
   expect((await create('editor', { ...friday, churchId: 'church-b' })).status).toBe(400)
   const created = await (await create('editor', friday)).json()
@@ -114,7 +128,7 @@ test('lists a month only, with the director, in date order', async () => {
 test('reads the active church context and its directory only for that church', async () => {
   const context = await (await call('editor', '/api/active-church')).json()
   expect(context).toEqual({
-    id: 'church-a', name: 'Fixture Church A', sundayDouble: false, usesPreaching: false, congregationShowsPreacher: false, canEdit: true, canConfigure: false, timeZone: 'America/Mexico_City',
+    id: 'church-a', name: 'Fixture Church A', sundayDouble: false, usesPreaching: false, usesRotation: false, congregationShowsPreacher: false, canEdit: true, canConfigure: false, timeZone: 'America/Mexico_City',
     days: [
       { weekday: 0, slot: 'SINGLE', time: '10:00', title: 'Servicio dominical' },
       { weekday: 5, slot: 'SINGLE', time: '19:30', title: 'Servicio de viernes' },
@@ -142,9 +156,6 @@ test('today is valid all day and past dates are rejected, with the boundary at M
 
 // A service may be created with its director, its preacher or both; the other side is planned later.
 const withPreaching = async (on: boolean) => { await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: on } }) }
-const put = (subject: string, path: string, body: unknown) => api.request(path, {
-  method: 'PUT', headers: { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-})
 const noDirector = { ...friday, directorId: undefined }
 
 test('a service can be created with only its preacher, with both, and never with neither', async () => {
@@ -180,21 +191,23 @@ test('a preacher is refused, and nothing is created, while the church does not u
   }
 })
 
-test('the director of a service created without one is set once, only by editors and only for people who can direct', async () => {
+test('the director of a service created without one is set by editors, only to people who can direct, and generates its assignments', async () => {
   await withPreaching(true)
   try {
     const { id } = await (await create('editor', { ...noDirector, preacher: { personId: 'person-no-account' } })).json()
-    const path = `/api/services/${id}/director`
-    expect((await put('member', path, { directorId: 'person-a' })).status).toBe(403)
-    expect((await put('editor', path, { directorId: 'person-b' })).status).toBe(400)
-    const set = await put('editor', path, { directorId: 'person-a' })
+    const path = `/api/services/${id}`
+    const patch = (subject: string, target: string, body: unknown) => api.request(target, {
+      method: 'PATCH', headers: { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    })
+    expect((await patch('member', path, { directorId: 'person-a' })).status).toBe(403)
+    expect((await patch('editor', path, { directorId: 'person-b' })).status).toBe(400)
+    await db.churchPerson.update({ where: { churchId_personId: { churchId: 'church-a', personId: 'person-a' } }, data: { canDirect: false } })
+    expect((await patch('editor', path, { directorId: 'person-a' })).status).toBe(400)
+    await db.churchPerson.update({ where: { churchId_personId: { churchId: 'church-a', personId: 'person-a' } }, data: { canDirect: true } })
+    const set = await patch('editor', path, { directorId: 'person-a' })
     expect(set.status).toBe(200)
     expect(await set.json()).toMatchObject({ id, director: { id: 'person-a' } })
-    expect((await put('editor', path, { directorId: 'person-no-account' })).status).toBe(409)
-    expect((await put('editor', '/api/services/missing/director', { directorId: 'person-a' })).status).toBe(404)
-    clock = new Date('2026-11-14T18:00:00Z')
-    const past = await db.service.create({ data: { churchId: 'church-a', title: 'Pasado', date: new Date('2026-11-06T00:00:00Z'), status: 'DRAFT' } })
-    expect((await put('editor', `/api/services/${past.id}/director`, { directorId: 'person-a' })).status).toBe(400)
+    expect((await patch('editor', '/api/services/missing', { directorId: 'person-a' })).status).toBe(404)
   } finally { await withPreaching(false) }
 })
 
@@ -206,4 +219,14 @@ test('a service without a director has an empty musical side that still lists an
     expect(listed).toMatchObject({ service: { id, director: null }, assignments: [] })
     expect((await call('member', '/api/services?month=2026-11').then(r => r.json()))[0]).toMatchObject({ id, director: null })
   } finally { await withPreaching(false) }
+})
+
+test('correcting a service needs a session and an editor', async () => {
+  const { id } = await (await create('editor', friday)).json()
+  const patch = (subject: string | undefined) => api.request(`/api/services/${id}`, {
+    method: 'PATCH', headers: { ...(subject ? { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}` } : {}), 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Otro' }),
+  })
+  expect((await patch(undefined)).status).toBe(401)
+  expect((await patch('member')).status).toBe(403)
+  expect((await patch('editor')).status).toBe(200)
 })

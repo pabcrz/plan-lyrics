@@ -15,7 +15,7 @@ export function AccessPage() {
 
 function ReadOnly({ church }: { church: Church }) {
   return (
-    <main className="mx-auto min-h-dvh max-w-[480px]">
+    <main className="mx-auto min-h-dvh max-w-[480px] lg:max-w-[720px]">
       <TopBar name={church.name} />
       <PageHeader title="Accesos" back="/ajustes" backLabel="Volver a ajustes" />
       <div className="p-4">
@@ -32,7 +32,7 @@ function Members({ church }: { church: Church }) {
   const [toast, setToast] = useState('')
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} settings />
       <PageHeader title="Accesos" back="/ajustes" backLabel="Volver a ajustes" />
       <div className="grid flex-1 content-start gap-4 p-4">
@@ -56,16 +56,19 @@ function Members({ church }: { church: Church }) {
                   {member.protected ? (
                     <div className="flex min-h-14 items-center gap-3 px-3">
                       <Avatar name={nameOf(member)} />
-                      <span className="flex-1"><b className="block text-[0.9375rem] font-semibold">{nameOf(member)}</b><small className="text-[0.8125rem] text-text-3">Cuenta protegida</small></span>
+                      <span className="flex-1"><b className="block text-[0.9375rem] font-semibold">{nameOf(member)}</b><small className="text-[0.8125rem] text-text-3">Cuenta protegida{member.email ? ` · ${member.email}` : ''}</small></span>
                       <span className={chip}>Superadministrador</span>
                     </div>
                   ) : (
                     <button type="button" onClick={() => setEditing(member)}
                       className="flex min-h-14 w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-3 text-left hover:bg-surface-2">
                       <Avatar name={nameOf(member)} />
-                      <span className="flex flex-1 flex-wrap items-center gap-x-2">
-                        <b className="text-[0.9375rem] font-semibold">{nameOf(member)}</b>
-                        {member.self && <span className="text-[0.8125rem] text-text-3">Tú</span>}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-x-2">
+                          <b className="text-[0.9375rem] font-semibold">{nameOf(member)}</b>
+                          {member.self && <span className="text-[0.8125rem] text-text-3">Tú</span>}
+                        </span>
+                        {member.email && <small className="block truncate text-[0.8125rem] text-text-3">{member.email}</small>}
                       </span>
                       <span className={chip}>{ROLE_LABEL[member.role]}</span>
                     </button>
@@ -166,7 +169,10 @@ function GrantForm({ church, candidates, onDone }: { church: Church; candidates:
             <button type="button" aria-pressed={chosen?.personId === candidate.personId} onClick={() => setChosen(candidate)}
               className="flex min-h-14 w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-3 text-left hover:bg-surface-2 aria-pressed:bg-accent-soft">
               <Avatar name={candidate.name} />
-              <b className="flex-1 text-[0.9375rem] font-semibold">{candidate.name}</b>
+              <span className="min-w-0 flex-1">
+                <b className="block text-[0.9375rem] font-semibold">{candidate.name}</b>
+                {candidate.email && <small className="block truncate text-[0.8125rem] text-text-3">{candidate.email}</small>}
+              </span>
               {chosen?.personId === candidate.personId && <Icon name="check" />}
             </button>
           </li>

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Avatar, Button, Icon, Notice, Segmented, Switch, TextField } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from './ChurchGate'
 import { ApiError, usePeople } from './api'
@@ -16,10 +16,11 @@ const count = (n: number) => `${n} ${n === 1 ? 'persona' : 'personas'}`
 const card = 'rounded-lg border border-line bg-surface'
 
 /** Resumen de una línea por cosa configurada, como en la lista de roles del diseño. */
-function summary(role: RoleParticipation) {
+function summary(role: RoleParticipation, usesRotation: boolean) {
   const lines: string[] = []
   if (role.habitual.length > 0) lines.push(`Habitual: ${role.habitual.map((person) => person.name.split(' ')[0]).join(', ')}`)
   const { enabled, mode, sequences } = role.rotation
+  if (!usesRotation) return lines
   if (enabled && mode === 'SHARED') lines.push(`Rotación entre todos · ${count(sequences.find((sequence) => sequence.weekday === null)?.people.length ?? 0)}`)
   else if (enabled) {
     const days = sequences.filter((sequence) => sequence.weekday !== null && sequence.people.length > 0).map((sequence) => DAY_SHORT[sequence.weekday!])
@@ -39,7 +40,7 @@ export function RoleParticipationPage() {
 
 function Shell({ church, title, back, backLabel, children }: { church: Church; title: string; back: string; backLabel: string; children: ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
+    <main className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
       <TopBar name={church.name} />
       <PageHeader title={title} back={back} backLabel={backLabel} />
       <div className="grid flex-1 content-start gap-5 p-4">{children}</div>
@@ -62,7 +63,7 @@ function RolesList({ church }: { church: Church }) {
           {roles.data.length === 0 && <p className="m-0 text-sm text-text-3">Esta iglesia no tiene roles musicales.</p>}
           <ul aria-label="Roles" className={`m-0 grid list-none p-0 ${roles.data.length > 0 ? card : ''}`}>
             {roles.data.map((role) => {
-              const lines = summary(role)
+              const lines = summary(role, church.usesRotation)
               return (
                 <li key={role.roleId} className="border-b border-line last:border-b-0">
                   <button type="button" onClick={() => void navigate(`/participaciones/${encodeURIComponent(role.roleId)}`)}
@@ -143,7 +144,7 @@ function RoleDetail({ church, roleId }: { church: Church; roleId: string }) {
 
   // Quien ya está en la otra lista del mismo rol no se ofrece: habitual y rotación son excluyentes.
   const candidates = (people.data ?? []).filter((person) => {
-    if (!picking) return false
+    if (!picking || !person.roleIds.includes(role.roleId)) return false
     if (picking.kind === 'habitual') return !role.habitual.some((item) => item.id === person.id) && !inRotation(person.id)
     return !role.habitual.some((item) => item.id === person.id) && !sequenceOf(picking.weekday).people.some((item) => item.id === person.id)
   })
@@ -197,33 +198,43 @@ function RoleDetail({ church, roleId }: { church: Church; roleId: string }) {
         <p className="m-0 text-[0.8125rem] text-text-3">Los habituales entran en todos los servicios nuevos. Puede haber varios, por ejemplo varias voces.</p>
       </section>
 
-      <section aria-labelledby="rotation" className="grid gap-3">
-        <h2 id="rotation" className="m-0 text-sm font-semibold">Rotación</h2>
-        <div className={`${card} p-3`}>
-          <Switch checked={rotation.enabled} disabled={!editable || busy} label="Rotar turnos"
-            description="Una persona distinta cada servicio, en orden y de forma cíclica."
-            onCheckedChange={(on) => void apply({ ...role, rotation: { ...rotation, enabled: on, startsOn: on ? (params.get('desde') ?? todayIn()) : rotation.startsOn } })} />
-        </div>
-        {rotation.enabled && (
-          <>
-            <div className="grid gap-1.5">
-              {editable ? (
-                <Segmented<Mode> label="Modalidad" value={rotation.mode} onChange={(mode) => void apply({ ...role, rotation: { ...rotation, mode } })}
-                  options={[{ value: 'BY_DAY', label: 'Por día' }, { value: 'SHARED', label: 'Entre todos' }]} />
-              ) : (
-                <p className="m-0 text-sm font-semibold">Modalidad: {rotation.mode === 'BY_DAY' ? 'por día' : 'entre todos'}</p>
-              )}
-              <p className="m-0 text-[0.8125rem] text-text-3">
-                {rotation.mode === 'BY_DAY' ? 'Cada día de la semana tiene su propia secuencia: un domingo no adelanta los turnos del viernes.' : 'Una sola secuencia para todos los servicios, sin importar el día.'}
-              </p>
-            </div>
-            <TextField label="Primer turno desde" type="date" value={rotation.startsOn ?? ''} disabled={!editable || busy}
-              help="Fecha de referencia: los servicios anteriores no reciben turno. Cambiarla reinicia la rotación desde la primera persona."
-              onChange={(event) => { if (/^\d{4}-\d{2}-\d{2}$/.test(event.target.value)) void apply({ ...role, rotation: { ...rotation, startsOn: event.target.value } }) }} />
-            {rotation.mode === 'SHARED' ? rotationCard(null, 'Todos los servicios') : serviceWeekdays.map((weekday) => rotationCard(weekday, DAY_NAMES[weekday]!))}
-          </>
-        )}
-      </section>
+      {church.usesRotation ? (
+        <section aria-labelledby="rotation" className="grid gap-3">
+          <h2 id="rotation" className="m-0 text-sm font-semibold">Rotación</h2>
+          <div className={`${card} p-3`}>
+            <Switch checked={rotation.enabled} disabled={!editable || busy} label="Rotar turnos"
+              description="Una persona distinta cada servicio, en orden y de forma cíclica."
+              onCheckedChange={(on) => void apply({ ...role, rotation: { ...rotation, enabled: on, startsOn: on ? (params.get('desde') ?? todayIn()) : rotation.startsOn } })} />
+          </div>
+          {rotation.enabled && (
+            <>
+              <div className="grid gap-1.5">
+                {editable ? (
+                  <Segmented<Mode> label="Modalidad" value={rotation.mode} onChange={(mode) => void apply({ ...role, rotation: { ...rotation, mode } })}
+                    options={[{ value: 'BY_DAY', label: 'Por día' }, { value: 'SHARED', label: 'Entre todos' }]} />
+                ) : (
+                  <p className="m-0 text-sm font-semibold">Modalidad: {rotation.mode === 'BY_DAY' ? 'por día' : 'entre todos'}</p>
+                )}
+                <p className="m-0 text-[0.8125rem] text-text-3">
+                  {rotation.mode === 'BY_DAY' ? 'Cada día de la semana tiene su propia secuencia: un domingo no adelanta los turnos del viernes.' : 'Una sola secuencia para todos los servicios, sin importar el día.'}
+                </p>
+              </div>
+              <TextField label="Primer turno desde" type="date" value={rotation.startsOn ?? ''} disabled={!editable || busy}
+                help="Fecha de referencia: los servicios anteriores no reciben turno. Cambiarla reinicia la rotación desde la primera persona."
+                onChange={(event) => { if (/^\d{4}-\d{2}-\d{2}$/.test(event.target.value)) void apply({ ...role, rotation: { ...rotation, startsOn: event.target.value } }) }} />
+              {rotation.mode === 'SHARED' ? rotationCard(null, 'Todos los servicios') : serviceWeekdays.map((weekday) => rotationCard(weekday, DAY_NAMES[weekday]!))}
+            </>
+          )}
+        </section>
+      ) : (
+        <section aria-labelledby="rotation" className="grid gap-2">
+          <h2 id="rotation" className="m-0 text-sm font-semibold">Rotación</h2>
+          <p className="m-0 text-[0.9375rem] text-text-2">
+            La rotación está desactivada en esta iglesia: los servicios nuevos solo llevan a los habituales. {church.canConfigure ? <Link className="font-semibold underline" to="/ajustes">Actívala en Ajustes</Link> : 'Quien administra la iglesia puede activarla en Ajustes.'}
+            {role.rotation.enabled && ' La rotación que ya configuraste se conserva para cuando la actives.'}
+          </p>
+        </section>
+      )}
 
       <section aria-labelledby="preview" className="grid gap-2">
         <h2 id="preview" className="m-0 text-sm font-semibold">Próximos servicios</h2>

@@ -53,15 +53,15 @@ function mount(publishableKey?: string) {
 test('missing key keeps health usable and does not initialize Clerk', async () => {
   mount()
   await screen.findByText('API disponible')
-  expect(screen.getByText('Clerk pendiente: configurá VITE_CLERK_PUBLISHABLE_KEY.')).toBeTruthy()
+  expect(screen.queryByText(/Clerk pendiente/)).toBeNull()
   expect(clerk.provider).not.toHaveBeenCalled()
-  expect(screen.queryByRole('button', { name: 'Iniciar sesión' })).toBeNull()
+  expect((screen.getByRole('button', { name: 'Iniciar sesión' }) as HTMLButtonElement).disabled).toBe(true)
 })
 
 test('a secret key is rejected without reflection or initializing the SDK', () => {
   const forbidden = 'sk_test_never_expose_this_value'
   mount(forbidden)
-  expect(screen.getByRole('alert').textContent).toBe('Configuración de Clerk inválida: usá únicamente una clave publicable.')
+  expect((screen.getByRole('button', { name: 'Iniciar sesión' }) as HTMLButtonElement).disabled).toBe(true)
   expect(document.body.textContent).not.toContain(forbidden)
   expect(clerk.provider).not.toHaveBeenCalled()
 })
@@ -70,14 +70,14 @@ test('loading does not claim a session or offer account controls', () => {
   clerk.state = 'loading'
   mount(publicKey)
   expect(screen.getByText('Cargando autenticación…')).toBeTruthy()
-  expect(screen.queryByRole('button')).toBeNull()
+  expect(screen.queryByRole('button', { name: /Iniciar sesión|Cuenta/ })).toBeNull()
 })
 
 test('SDK failure is visible without granting access', () => {
   clerk.state = 'failed'
   mount(publicKey)
   expect(screen.getByRole('alert').textContent).toBe('No se pudo cargar Clerk. Recargá la página para reintentar.')
-  expect(screen.queryByRole('button')).toBeNull()
+  expect(screen.queryByRole('button', { name: /Iniciar sesión|Cuenta/ })).toBeNull()
 })
 
 test('signed-out view delegates modal sign-in to Clerk', () => {

@@ -67,9 +67,9 @@ test('adds a person with a full name and an optional phone, then opens the recor
   const save = await screen.findByRole('button', { name: 'Agregar persona' }) as HTMLButtonElement
   expect(save.disabled).toBe(true)
   fireEvent.change(screen.getByLabelText('Nombre completo'), { target: { value: ' Juan Pérez Rodríguez ' } })
-  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '555 0101' } })
+  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '5550101234' } })
   fireEvent.click(save)
-  await waitFor(() => expect(sent(calls, 'POST')).toEqual([{ url: '/api/people', body: { name: 'Juan Pérez Rodríguez', phone: '555 0101', canDirect: true, canPreach: false } }]))
+  await waitFor(() => expect(sent(calls, 'POST')).toEqual([{ url: '/api/people', body: { name: 'Juan Pérez Rodríguez', phone: '+525550101234', canDirect: true, canPreach: false } }]))
 })
 
 test('an existing name is not created again: it asks to complete the name and links to the record', async () => {
@@ -84,31 +84,72 @@ test('an existing name is not created again: it asks to complete the name and li
   expect(await screen.findByRole('heading', { name: 'Ana Ramírez', level: 1 })).toBeTruthy()
 })
 
-test('the record shows the account state read-only and the note about shared data', async () => {
-  stubApi({ directory: [detail({ id: 'p1', hasAccount: true, sharedWithOtherChurches: true })], church: member })
+test('a member sees only the name, phone and a WhatsApp link', async () => {
+  stubApi({ directory: [detail({ id: 'p1', hasAccount: true, sharedWithOtherChurches: true, phone: '+525512345678' })], church: member })
   app('/personas/p1')
   expect(await screen.findByRole('heading', { name: 'Ana Ramírez', level: 1 })).toBeTruthy()
-  expect(screen.getByText('Con cuenta vinculada')).toBeTruthy()
-  expect(screen.getByText(/se ve igual en las demás iglesias/)).toBeTruthy()
-  expect(screen.getByText(/Vincular o desvincular la cuenta lo hace el superadministrador/)).toBeTruthy()
+  expect((screen.getByRole('link', { name: 'Contactar por WhatsApp' }) as HTMLAnchorElement).href).toBe('https://wa.me/525512345678')
+  expect(screen.queryByText(/Con cuenta/)).toBeNull()
+  expect(screen.queryByText(/otra iglesia|demás iglesias/)).toBeNull()
   expect(screen.queryByLabelText('Nombre completo')).toBeNull()
   expect(screen.queryByRole('button', { name: /Quitar de/ })).toBeNull()
 })
 
+test('a member sees which profile is theirs, without a WhatsApp link to themselves', async () => {
+  stubApi({ directory: [detail({ id: 'p1', isYou: true, phone: '+525512345678' })], church: member })
+  app('/personas/p1')
+  await screen.findByRole('heading', { name: 'Ana Ramírez', level: 1 })
+  expect(screen.getByText('Tú')).toBeTruthy()
+  expect(screen.getByText(/gestiona el administrador/)).toBeTruthy()
+  expect(screen.queryByRole('link', { name: /WhatsApp/ })).toBeNull()
+})
+
+test('the directory marks your own entry', async () => {
+  stubApi({ directory: [detail({ id: 'p1', isYou: true }), detail({ id: 'p2', name: 'Álvaro Núñez' })], church: member })
+  app('/personas')
+  await screen.findByText('Álvaro Núñez')
+  expect(screen.getAllByText('Tú')).toHaveLength(1)
+})
+
+test('an editor types only 10 digits after a fixed +52 and a legacy phone does not block a name change', async () => {
+  const calls = stubApi({ directory: [detail({ id: 'p1', phone: '23342' })], church: editor, patchPerson: () => ({ body: detail({ id: 'p1', name: 'Ana Soto', phone: '23342' }) }) })
+  app('/personas/p1')
+  const phone = await screen.findByLabelText('Teléfono (opcional)') as HTMLInputElement
+  expect(phone.value).toBe('23342')
+  fireEvent.change(await screen.findByLabelText('Nombre completo'), { target: { value: 'Ana Soto' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+  await waitFor(() => expect(sent(calls, 'PATCH')).toHaveLength(1))
+  expect(sent(calls, 'PATCH')[0]?.body).toEqual({ name: 'Ana Soto' })
+  fireEvent.change(phone, { target: { value: '55 1234-56789012' } })
+  expect(phone.value).toBe('5512345678')
+  fireEvent.change(phone, { target: { value: '55123' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+  expect(await screen.findByText('Escribe los 10 dígitos del teléfono.')).toBeTruthy()
+  expect(sent(calls, 'PATCH')).toHaveLength(1)
+})
+
+test('without a usable phone a member gets no WhatsApp link', async () => {
+  stubApi({ directory: [detail({ id: 'p1', phone: '23342' })], church: member })
+  app('/personas/p1')
+  await screen.findByRole('heading', { name: 'Ana Ramírez', level: 1 })
+  expect(screen.queryByRole('link', { name: /WhatsApp/ })).toBeNull()
+})
+
 test('an editor changes name and phone; save and discard appear only when something changed', async () => {
-  const calls = stubApi({ directory, church: editor, patchPerson: () => ({ body: detail({ id: 'p1', name: 'Ana Ramírez Soto', phone: '555-0199' }) }) })
+  const calls = stubApi({ directory, church: editor, patchPerson: () => ({ body: detail({ id: 'p1', name: 'Ana Ramírez Soto', phone: '+525550199000', email: 'ana@example.com' }) }) })
   app('/personas/p1')
   const name = await screen.findByLabelText('Nombre completo') as HTMLInputElement
   expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
   fireEvent.change(name, { target: { value: 'Ana Ramírez Soto' } })
-  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '555-0199' } })
+  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '5550199000' } })
   fireEvent.click(screen.getByRole('button', { name: 'Descartar cambios' }))
   expect(name.value).toBe('Ana Ramírez')
   fireEvent.change(name, { target: { value: 'Ana Ramírez Soto' } })
-  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '555-0199' } })
+  fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '5550199000' } })
+  fireEvent.change(screen.getByLabelText('Correo (opcional)'), { target: { value: ' ana@example.com ' } })
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   expect(await screen.findByText('Cambios guardados')).toBeTruthy()
-  expect(sent(calls, 'PATCH')).toEqual([{ url: '/api/people/p1', body: { name: 'Ana Ramírez Soto', phone: '555-0199' } }])
+  expect(sent(calls, 'PATCH')).toEqual([{ url: '/api/people/p1', body: { name: 'Ana Ramírez Soto', phone: '+525550199000', email: 'ana@example.com' } }])
   expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
 })
 
@@ -145,47 +186,22 @@ test('a person of another church is not found', async () => {
   expect(await screen.findByText('No encontramos a esta persona')).toBeTruthy()
 })
 
-const preaching: Church = { ...editor, usesPreaching: true }
-
-test('a new person is added with the roles chosen; «Predica» exists only when the church uses preaching', async () => {
-  stubApi({ directory, church: editor })
-  app('/personas/nueva')
-  expect(await screen.findByRole('switch', { name: /Dirige alabanza/ })).toBeTruthy()
-  expect(screen.queryByRole('switch', { name: /Predica/ })).toBeNull()
-  cleanup(); vi.unstubAllGlobals()
-  const calls = stubApi({ directory, church: preaching, createPerson: () => ({ body: detail({ id: 'new', name: 'Marta Díaz Soto' }) }) })
-  app('/personas/nueva')
-  fireEvent.change(await screen.findByLabelText('Nombre completo'), { target: { value: 'Marta Díaz Soto' } })
-  fireEvent.click(screen.getByRole('switch', { name: /Dirige alabanza/ }))
-  fireEvent.click(screen.getByRole('switch', { name: /Predica/ }))
-  fireEvent.click(screen.getByRole('button', { name: 'Agregar persona' }))
-  await waitFor(() => expect(sent(calls, 'POST')[0]?.body).toEqual({ name: 'Marta Díaz Soto', canDirect: false, canPreach: true }))
+test('an administrator sets the musical roles of a person; an editor only reads them', async () => {
+  const calls = stubApi({ directory: [detail({ id: 'p1', name: 'Ana Ramírez', roleIds: ['r-drums'] })], church })
+  app('/personas/p1')
+  const piano = await screen.findByRole('button', { name: 'Piano' })
+  expect(screen.getByRole('button', { name: 'Batería' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.queryByRole('button', { name: 'Guardar roles' })).toBeNull()
+  fireEvent.click(piano)
+  fireEvent.click(screen.getByRole('button', { name: 'Batería' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar roles' }))
+  expect(await screen.findByText('Roles guardados')).toBeTruthy()
+  expect(sent(calls, 'PUT')).toEqual([{ url: '/api/people/p1/roles', body: { roleIds: ['r-piano'] } }])
 })
 
-test('an editor changes the roles of a person from the record, and a rejected change is undone', async () => {
-  const calls = stubApi({ directory: [detail({ id: 'p1', name: 'Ana Ramírez', canDirect: true, canPreach: false })], church: preaching })
+test('without administration the roles are text, not controls', async () => {
+  stubApi({ directory: [detail({ id: 'p1', name: 'Ana Ramírez', roleIds: ['r-drums', 'r-voices'] })], church: editor })
   app('/personas/p1')
-  const preach = await screen.findByRole('switch', { name: /Predica/ })
-  expect(preach.getAttribute('aria-checked')).toBe('false')
-  fireEvent.click(preach)
-  await waitFor(() => expect(sent(calls, 'PATCH')).toEqual([{ url: '/api/people/p1', body: { canDirect: true, canPreach: true } }]))
-  expect((await screen.findByRole('switch', { name: /Predica/ })).getAttribute('aria-checked')).toBe('true')
-  cleanup(); vi.unstubAllGlobals()
-  stubApi({ directory: [detail({ id: 'p1', name: 'Ana Ramírez', canDirect: true, canPreach: false })], church: preaching, patchPerson: () => ({ status: 500, body: { error: 'x' } }) })
-  app('/personas/p1')
-  fireEvent.click(await screen.findByRole('switch', { name: /Predica/ }))
-  expect(await screen.findByText('No se pudo cambiar el rol. Inténtalo de nuevo.')).toBeTruthy()
-  expect(screen.getByRole('switch', { name: /Predica/ }).getAttribute('aria-checked')).toBe('false')
-})
-
-test('the list tells who directs and who preaches, and members only read the roles', async () => {
-  stubApi({ directory: [detail({ id: 'p1', name: 'Ana Ramírez', canDirect: true, canPreach: true }), detail({ id: 'p2', name: 'Luis Herrera', canDirect: false, canPreach: true })], church: preaching })
-  app('/personas')
-  expect(await screen.findByText('Dirige · Predica')).toBeTruthy()
-  expect(screen.getByText('Predica')).toBeTruthy()
-  cleanup(); vi.unstubAllGlobals()
-  stubApi({ directory: [detail({ id: 'p1', name: 'Ana Ramírez', canDirect: true, canPreach: true })], church: { ...member, usesPreaching: true } })
-  app('/personas/p1')
-  expect(await screen.findByText('Dirige · Predica')).toBeTruthy()
-  expect(screen.queryByRole('switch')).toBeNull()
+  expect(await screen.findByText('Batería, Voces')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Piano' })).toBeNull()
 })

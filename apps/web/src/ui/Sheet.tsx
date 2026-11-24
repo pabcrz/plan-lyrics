@@ -67,7 +67,7 @@ export function Sheet({
   return createPortal(
     <div
       role="presentation"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-[oklch(0_0_0/0.42)]"
+      className="fixed inset-0 z-50 flex items-end justify-center md:items-center bg-[oklch(0_0_0/0.42)]"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -78,7 +78,7 @@ export function Sheet({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="max-h-[90dvh] w-full max-w-[480px] overflow-y-auto rounded-t-[20px] bg-surface px-4 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] shadow-3 outline-none"
+        className="max-h-[90dvh] w-full max-w-[480px] overflow-y-auto rounded-t-[20px] md:rounded-[20px] bg-surface px-4 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] shadow-3 outline-none"
       >
         <div aria-hidden="true" className="mx-auto mt-1 mb-3 h-1 w-9 rounded bg-line-strong" />
         <h2 id={titleId} className="mb-3 font-display text-xl leading-tight font-bold tracking-tight">

@@ -4,9 +4,10 @@ import { useApiFetch } from '../calendar/api'
 
 export type Role = 'ADMIN' | 'EDITOR' | 'MEMBER'
 /** Miembro de la iglesia activa. `protected` es la cuenta del superadministrador: no se cambia desde una iglesia. */
-export type Member = { userId: string; role: Role; self: boolean; protected: boolean; person: { id: string; name: string } | null }
+/** `email` solo llega a quien gestiona cuentas; para el resto es `null`. */
+export type Member = { userId: string; role: Role; self: boolean; protected: boolean; email: string | null; person: { id: string; name: string } | null }
 /** Persona del directorio con cuenta y sin membresía: la única que se puede agregar. */
-export type Candidate = { personId: string; name: string }
+export type Candidate = { personId: string; name: string; email: string | null }
 export type Members = { members: Member[]; candidates: Candidate[] }
 
 export type Account = {

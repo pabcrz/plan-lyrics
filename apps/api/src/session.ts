@@ -5,19 +5,27 @@ export type SessionConfig = { jwtKey?: string; issuer?: string; authorizedParty?
 export type SessionEnvironment = { Variables: { clerkSubject: string } }
 const localOrigin = 'http://127.0.0.1:5173'
 
-// The authorized party must be one exact web origin; anything else fails closed.
-function authorizedOrigin(value = localOrigin) {
+function exactOrigin(value: string) {
   try {
-    return new URL(value).origin === value ? value : undefined
+    return new URL(value).origin === value
   } catch {
-    return undefined
+    return false
   }
+}
+
+/**
+ * `CLERK_AUTHORIZED_PARTY`: one or more exact web origins separated by commas (e.g. production plus a stable preview).
+ * Absent means the local origin only. Any invalid entry fails closed (undefined) instead of being dropped or widened.
+ */
+export function authorizedOrigins(value?: string) {
+  const entries = (value?.trim() ? value.split(',').map(part => part.trim()) : [localOrigin])
+  return entries.length > 0 && entries.every(exactOrigin) ? entries : undefined
 }
 
 // Startup diagnostics only: a missing value silently means "local origin only".
 export function authorizedPartyWarning(value?: string) {
   if (!value?.trim()) return `CLERK_AUTHORIZED_PARTY is not set: accepting only the local origin ${localOrigin}`
-  if (!authorizedOrigin(value.trim())) return 'CLERK_AUTHORIZED_PARTY is not an exact origin: authenticated routes respond 503'
+  if (!authorizedOrigins(value)) return 'CLERK_AUTHORIZED_PARTY has an entry that is not an exact origin: authenticated routes respond 503'
   return undefined
 }
 
@@ -30,16 +38,16 @@ export function requireSession(config: SessionConfig) {
     }
     const match = /^Bearer ([\w-]+\.[\w-]+\.[\w-]+)$/i.exec(c.req.header('Authorization') ?? '')
     if (!match) return reject()
-    const origin = authorizedOrigin(config.authorizedParty?.trim() || undefined)
-    if (!config.jwtKey?.trim() || !config.issuer?.trim() || !origin) {
+    const origins = authorizedOrigins(config.authorizedParty)
+    if (!config.jwtKey?.trim() || !config.issuer?.trim() || !origins) {
       return c.json({ error: 'Authentication unavailable' }, 503)
     }
     try {
       const claims = await verifyToken(match[1], {
-        jwtKey: config.jwtKey, issuer: config.issuer, authorizedParties: [origin],
+        jwtKey: config.jwtKey, issuer: config.issuer, authorizedParties: origins,
       })
       // A verified JWT is not necessarily a session token; require session identity.
-      if (claims.azp !== origin || typeof claims.sub !== 'string' || !claims.sub ||
+      if (typeof claims.azp !== 'string' || !origins.includes(claims.azp) || typeof claims.sub !== 'string' || !claims.sub ||
           typeof claims.sid !== 'string' || !claims.sid) return reject()
       c.set('clerkSubject', claims.sub)
     } catch {

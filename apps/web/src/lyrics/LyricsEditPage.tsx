@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { Button, Field, Icon, Notice, Sheet, Switch, TextField, Toast, inputClass } from '../ui'
 import { ApiError } from '../calendar/api'
+import { ChordsLost } from './ChordParts'
 import { LyricsHeader, LyricsLoadFailure } from './LyricsPage'
 import { useLyrics, useReloadLyrics, useSaveLyrics } from './lyrics-api'
 import {
@@ -18,7 +19,7 @@ export function saveFailureText(error: unknown) {
   return 'No se pudo guardar la letra. Inténtalo de nuevo.'
 }
 
-function Header({ title, onBack }: { title: string; onBack: () => void }) {
+export function EditHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <div className="flex min-h-14 items-center gap-1 border-b border-line px-2">
       <Button variant="quiet" icon aria-label="Volver a la letra" onClick={onBack}><Icon name="right" className="-scale-x-100" /></Button>
@@ -36,17 +37,17 @@ export function LyricsEditPage() {
   const viewPath = `/canciones/${encodeURIComponent(songId)}/letra`
   const lyrics = query.data
 
-  if (lyrics?.canEdit) return <Editor key={query.dataUpdatedAt} songId={songId} lyrics={lyrics} title={nav.title} back={nav.back} />
+  if (lyrics?.canEdit) return <Editor key={query.dataUpdatedAt} songId={songId} lyrics={lyrics} title={nav.title ?? lyrics.title} back={nav.back} serviceKey={nav.key} />
   return (
-    <div className="mx-auto min-h-dvh max-w-[480px]">
-      <Header title="Editar letra" onBack={() => void navigate(viewPath, { state: { title: nav.title, back: nav.back } })} />
+    <div className="mx-auto min-h-dvh max-w-[480px] lg:max-w-[720px]">
+      <EditHeader title="Editar letra" onBack={() => void navigate(viewPath, { state: { title: nav.title, back: nav.back, key: nav.key } })} />
       <main className="grid gap-4 p-4">
         {query.isPending && <p role="status" className="m-0 text-text-2">Cargando la letra…</p>}
         {query.isError && <LyricsLoadFailure error={query.error} onRetry={() => void query.refetch()} />}
         {lyrics && !lyrics.canEdit && (
           <>
             <Notice tone="warn" icon="lock" title="Solo quien edita la biblioteca puede editar letras">Puedes leerla, pero no cambiarla.</Notice>
-            <Link to={viewPath} state={{ title: nav.title, back: nav.back }} className="inline-flex min-h-touch items-center font-semibold text-accent underline">Ver la letra</Link>
+            <Link to={viewPath} state={{ title: nav.title, back: nav.back, key: nav.key }} className="inline-flex min-h-touch items-center font-semibold text-accent underline">Ver la letra</Link>
           </>
         )}
       </main>
@@ -56,7 +57,7 @@ export function LyricsEditPage() {
 
 type Undo = { message: string; restore: () => void }
 
-function Editor({ songId, lyrics, title, back }: { songId: string; lyrics: Lyrics; title?: string; back?: string }) {
+function Editor({ songId, lyrics, title, back, serviceKey }: { songId: string; lyrics: Lyrics; title?: string; back?: string; serviceKey?: string }) {
   const navigate = useNavigate()
   const save = useSaveLyrics(songId)
   const reload = useReloadLyrics(songId)
@@ -67,6 +68,7 @@ function Editor({ songId, lyrics, title, back }: { songId: string; lyrics: Lyric
   const [leaving, setLeaving] = useState(false)
   const [sending, setSending] = useState(false)
   const [conflict, setConflict] = useState(false)
+  const [lost, setLost] = useState<ApiError['affected'] | null>(null)
   const [failure, setFailure] = useState('')
   const [notice, setNotice] = useState<Undo | null>(null)
   const [announcement, setAnnouncement] = useState('')
@@ -128,21 +130,23 @@ function Editor({ songId, lyrics, title, back }: { songId: string; lyrics: Lyric
     setConfirming(false)
     setSending(true)
     setFailure('')
+    setLost(null)
     try {
       await save(toBody(lyrics.version, sections, published))
-      void navigate(viewPath, { replace: true, state: { title, back, saved: true } })
+      void navigate(viewPath, { replace: true, state: { title, back, key: serviceKey, saved: true } })
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 409) setConflict(true)
+      if (caught instanceof ApiError && caught.status === 409 && caught.code === 'chords_would_be_lost') setLost(caught.affected)
+      else if (caught instanceof ApiError && caught.status === 409) setConflict(true)
       else setFailure(saveFailureText(caught))
       setSending(false)
     }
   }
 
-  const leave = () => void navigate(viewPath, { state: { title, back } })
+  const leave = () => void navigate(viewPath, { state: { title, back, key: serviceKey } })
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
-      <Header title="Editar letra" onBack={() => (dirty ? setLeaving(true) : leave())} />
+    <div className="mx-auto flex min-h-dvh max-w-[480px] lg:max-w-[720px] flex-col">
+      <EditHeader title="Editar letra" onBack={() => (dirty ? setLeaving(true) : leave())} />
       <main className="flex-1 pb-4">
         <LyricsHeader title={title} lyrics={lyrics} />
         <p role="status" className="sr-only">{announcement}</p>
@@ -153,6 +157,7 @@ function Editor({ songId, lyrics, title, back }: { songId: string; lyrics: Lyric
               <span className="mt-2 block"><Button variant="secondary" onClick={() => void reload()}>Recargar la letra</Button></span>
             </Notice>
           )}
+          {lost && <ChordsLost sections={lost} intro="Esta letra tiene acordes y el cambio de texto los movería o los perdería en estas secciones. No se guardó nada; por ahora el texto de una sección con acordes no se puede cambiar desde aquí." onReload={() => void reload()} />}
           {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
           {lyrics.published && !conflict && <Notice tone="warn" icon="alert" title="Esta letra ya está publicada">Lo que guardes se verá enseguida en los enlaces compartidos con la congregación.</Notice>}
         </div>
@@ -213,7 +218,7 @@ function Editor({ songId, lyrics, title, back }: { songId: string; lyrics: Lyric
         </div>
       </main>
       {notice && (
-        <div className="fixed inset-x-0 bottom-32 z-40 mx-auto max-w-[480px] px-4">
+        <div className="fixed inset-x-0 bottom-32 z-40 mx-auto max-w-[480px] lg:max-w-[720px] px-4">
           <Toast message={notice.message} onUndo={notice.restore} onDismiss={() => setNotice(null)} />
         </div>
       )}

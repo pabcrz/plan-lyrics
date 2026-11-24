@@ -74,7 +74,15 @@ test('accepts only the configured authorized party when one is set', async () =>
   await unauthorized(await request(`Bearer ${token()}`, custom))
 })
 
-test.each(['*', 'https://app.fixture.test/', 'https://app.fixture.test/path', 'not a url'])(
+test('accepts every origin of a comma-separated list and no other', async () => {
+  const list = 'https://app.fixture.test, https://preview.fixture.test'
+  const custom = createApp({ jwtKey: publicKey, issuer, authorizedParty: list })
+  expect((await request(`Bearer ${token({ azp: 'https://app.fixture.test' })}`, custom)).status).toBe(200)
+  expect((await request(`Bearer ${token({ azp: 'https://preview.fixture.test' })}`, custom)).status).toBe(200)
+  await unauthorized(await request(`Bearer ${token({ azp: 'https://other.fixture.test' })}`, custom))
+})
+
+test.each(['*', 'https://app.fixture.test,*', 'https://app.fixture.test,', 'https://app.fixture.test/', 'https://app.fixture.test/path', 'not a url'])(
   'fails closed when the authorized party is not an exact origin: %s', async authorizedParty => {
     const invalid = createApp({ jwtKey: publicKey, issuer, authorizedParty })
     const response = await request(`Bearer ${token({ azp: authorizedParty })}`, invalid)
@@ -86,7 +94,7 @@ test.each(['*', 'https://app.fixture.test/', 'https://app.fixture.test/path', 'n
 test.each([
   [undefined, 'CLERK_AUTHORIZED_PARTY is not set: accepting only the local origin http://127.0.0.1:5173'],
   ['  ', 'CLERK_AUTHORIZED_PARTY is not set: accepting only the local origin http://127.0.0.1:5173'],
-  ['https://app.fixture.test/', 'CLERK_AUTHORIZED_PARTY is not an exact origin: authenticated routes respond 503'],
+  ['https://app.fixture.test/', 'CLERK_AUTHORIZED_PARTY has an entry that is not an exact origin: authenticated routes respond 503'],
   ['https://app.fixture.test', undefined],
 ])('warns at startup about the authorized party configuration: %j', (value, warning) => {
   expect(authorizedPartyWarning(value)).toBe(warning)

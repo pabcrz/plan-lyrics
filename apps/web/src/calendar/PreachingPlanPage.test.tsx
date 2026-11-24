@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { CalendarPage } from './CalendarPage'
+import { HomePage } from './HomePage'
+import { ProductRoutes } from './ProductRoutes'
 import type { Who } from './participations-api'
 import type { Preaching } from './preaching-api'
 import { PreachingPlanPage } from './PreachingPlanPage'
@@ -58,12 +59,12 @@ test('members read the plan but cannot create; a church without preaching explai
 
 test('the «Predicaciones» tab exists only when the church uses preaching', async () => {
   stubApi({ church: withPreaching, services })
-  mount(<Routes><Route path="*" element={<CalendarPage />} /></Routes>)
-  expect(await screen.findByRole('button', { name: 'Predicaciones' })).toBeTruthy()
+  mount(<HomePage />)
+  expect((await screen.findAllByRole('button', { name: 'Predicaciones' })).length).toBeGreaterThan(0)
   cleanup(); vi.unstubAllGlobals()
   stubApi({ church, services })
-  mount(<Routes><Route path="*" element={<CalendarPage />} /></Routes>)
-  await screen.findByRole('button', { name: 'Personas' })
+  mount(<HomePage />)
+  await screen.findAllByRole('button', { name: 'Personas' })
   expect(screen.queryByRole('button', { name: 'Predicaciones' })).toBeNull()
 })
 
@@ -71,4 +72,13 @@ test('a month without services invites to create the first one', async () => {
   stubApi({ church: withPreaching, services: [] })
   page()
   await waitFor(() => expect(screen.getByText(/No hay servicios en/)).toBeTruthy())
+})
+
+test.each(['Servicio individual', 'Lote mensual'])('elegir «%s» en «Nuevo» cierra la hoja', async (option) => {
+  stubApi({ services })
+  mount(<ProductRoutes />)
+  fireEvent.click((await screen.findAllByRole('button', { name: 'Nuevo' }))[0]!)
+  fireEvent.click(within(await screen.findByRole('dialog', { name: 'Nuevo' })).getByRole('button', { name: new RegExp(option) }))
+  await screen.findByRole('heading', { name: option === 'Lote mensual' ? /lote/i : 'Nuevo servicio' })
+  expect(screen.queryByRole('dialog', { name: 'Nuevo' })).toBeNull()
 })

@@ -66,7 +66,7 @@ test('a member who cannot edit sees no editing action and is told why', async ()
   page()
   await screen.findAllByRole('listitem')
   expect(screen.queryByRole('button', { name: /letra$/i })).not.toBeInTheDocument()
-  expect(screen.getByText('Solo quien edita la biblioteca puede cambiar la letra.')).toBeInTheDocument()
+  expect(screen.getByText('Solo quien edita la biblioteca puede cambiar la letra y los acordes.')).toBeInTheDocument()
 })
 
 test('a song without lyrics shows an empty state, with the way to write them only for editors', async () => {

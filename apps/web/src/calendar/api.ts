@@ -5,9 +5,16 @@ import type { Church, ChurchSettings, ClosedDate, Person, PersonDetail, Service,
 import { apiUrl } from '../api-url'
 
 export class ApiError extends Error {
-  constructor(readonly status: number, readonly code = '', readonly issues: string[] = [], readonly existing?: { id: string; name: string }, readonly services?: number) {
+  constructor(readonly status: number, readonly code = '', readonly issues: string[] = [], readonly existing?: { id: string; name: string }, readonly services?: number, readonly affected: Array<{ position: number; kind: string; label: string | null }> = []) {
     super(`API ${status}`)
   }
+}
+
+/** Secciones que la API nombra al rechazar un guardado que perdería acordes (`chords_would_be_lost`). */
+function affectedSections(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item: { position?: unknown; kind?: unknown; label?: unknown }) =>
+    typeof item?.position === 'number' && typeof item.kind === 'string' ? [{ position: item.position, kind: item.kind, label: typeof item.label === 'string' ? item.label : null }] : [])
 }
 
 /** Petición con el Bearer de Clerk; sin cookies ni caché. La API decide siempre los permisos. */
@@ -32,6 +39,7 @@ export function useApiFetch() {
         Array.isArray(issues) ? issues.filter((item): item is string => typeof item === 'string') : [],
         typeof existing?.id === 'string' && typeof existing.name === 'string' ? { id: existing.id, name: existing.name } : undefined,
         typeof (body as { services?: unknown } | null)?.services === 'number' ? (body as { services: number }).services : undefined,
+        affectedSections((body as { sections?: unknown } | null)?.sections),
       )
     }
     return (response.status === 204 ? undefined : await response.json()) as T
@@ -70,21 +78,26 @@ export function usePersonActions() {
   const api = useApiFetch()
   const client = useQueryClient()
   const refresh = useCallback(() => Promise.all([client.invalidateQueries({ queryKey: ['people'] }), client.invalidateQueries({ queryKey: ['person'] })]), [client])
-  const create = useCallback(async (person: { name: string; phone?: string; canDirect?: boolean; canPreach?: boolean }) => {
+  const create = useCallback(async (person: { name: string; phone?: string; email?: string; canDirect?: boolean; canPreach?: boolean }) => {
     const created = await api<Omit<PersonDetail, 'sharedWithOtherChurches' | 'upcomingServices'>>('/api/people', { method: 'POST', body: person })
     await refresh()
     return created
   }, [api, refresh])
-  const update = useCallback(async (id: string, patch: { name?: string; phone?: string | null; canDirect?: boolean; canPreach?: boolean }) => {
+  const update = useCallback(async (id: string, patch: { name?: string; phone?: string | null; email?: string | null; canDirect?: boolean; canPreach?: boolean }) => {
     const saved = await api<Omit<PersonDetail, 'sharedWithOtherChurches' | 'upcomingServices'>>(`/api/people/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
     await refresh()
     return saved
   }, [api, refresh])
+  const setRoles = useCallback(async (id: string, roleIds: string[]) => {
+    const saved = await api<{ roleIds: string[] }>(`/api/people/${encodeURIComponent(id)}/roles`, { method: 'PUT', body: { roleIds } })
+    await Promise.all([refresh(), client.invalidateQueries({ queryKey: ['participations'] })])
+    return saved
+  }, [api, client, refresh])
   const remove = useCallback(async (id: string) => {
     await api<void>(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE' })
     await refresh()
   }, [api, refresh])
-  return { create, update, remove }
+  return { create, update, setRoles, remove }
 }
 
 /** Servicios de uno o varios meses (`YYYY-MM`), cada uno en su propia consulta. */
@@ -123,15 +136,17 @@ export function useCreateService() {
   }, [api, client])
 }
 
-/** Asigna la dirección a un servicio que no la tiene; refresca el calendario aunque el servidor lo rechace. */
-export function useSetDirector() {
+export type ServicePatch = { title?: string; date?: string; slot?: 'MORNING' | 'AFTERNOON'; time?: string | null; status?: Status; directorId?: string }
+
+/** Corregir un servicio; el servidor decide permisos, fechas y combinaciones de roles, y todo lo que lo muestra se vuelve a leer. */
+export function useUpdateService() {
   const api = useApiFetch()
   const client = useQueryClient()
-  return useCallback(async (serviceId: string, directorId: string) => {
+  return useCallback(async (id: string, patch: ServicePatch) => {
     try {
-      return await api<Service>(`/api/services/${encodeURIComponent(serviceId)}/director`, { method: 'PUT', body: { directorId } })
+      return await api<Service>(`/api/services/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
     } finally {
-      await client.invalidateQueries({ queryKey: ['services'] })
+      await Promise.all(['services', 'setlist', 'assignments', 'closed'].map((key) => client.invalidateQueries({ queryKey: [key] })))
     }
   }, [api, client])
 }

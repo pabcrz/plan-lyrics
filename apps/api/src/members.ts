@@ -3,6 +3,7 @@ import type { PrismaClient } from './generated/prisma/client.ts'
 import { guarded } from './active-guard.js'
 import { memberGrantBody, memberRoleBody, planMemberChange, type MemberRole } from './access-rules.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
+import { userCapability } from './users.js'
 
 type Tx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0]
 
@@ -11,6 +12,7 @@ const roleOrder: Record<MemberRole, number> = { ADMIN: 0, EDITOR: 1, MEMBER: 2 }
 const memberSelect = (churchId: string) => ({
   userId: true, role: true,
   user: { select: {
+    email: true,
     ownership: { select: { id: true } },
     // The name is shown only when the person belongs to this church's directory.
     person: { select: { id: true, name: true, churches: { where: { churchId }, select: { churchId: true } } } },
@@ -18,10 +20,12 @@ const memberSelect = (churchId: string) => ({
 }) as const
 type MemberRow = {
   userId: string; role: MemberRole
-  user: { ownership: { id: number } | null; person: { id: string; name: string; churches: unknown[] } | null }
+  user: { email: string | null; ownership: { id: number } | null; person: { id: string; name: string; churches: unknown[] } | null }
 }
-const present = (row: MemberRow, viewerId: string | undefined) => ({
-  userId: row.userId, role: row.role, self: row.userId === viewerId, protected: row.user.ownership !== null,
+type Viewer = { id: string | undefined; email: boolean }
+const present = (row: MemberRow, viewer: Viewer) => ({
+  userId: row.userId, role: row.role, self: row.userId === viewer.id, protected: row.user.ownership !== null,
+  email: viewer.email ? row.user.email : null,
   person: row.user.person && row.user.person.churches.length > 0 ? { id: row.user.person.id, name: row.user.person.name } : null,
 })
 
@@ -37,7 +41,11 @@ export function memberRoutes(config: SessionConfig, db?: PrismaClient) {
     routes.use(path, async (c, next) => { await next(); c.header('Cache-Control', 'no-store') })
   }
   const lockChurch = (tx: Tx, churchId: string) => tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${churchId} FOR UPDATE`
-  const viewerId = async (db: PrismaClient, subject: string) => (await db.user.findUnique({ where: { clerkSubject: subject }, select: { id: true } }))?.id
+  // The address is read only by whoever may already read accounts: the owner and account managers, never a church role.
+  const viewer = async (db: PrismaClient, subject: string): Promise<Viewer> => {
+    const [user, capability] = await Promise.all([db.user.findUnique({ where: { clerkSubject: subject }, select: { id: true } }), userCapability(db, subject)])
+    return { id: user?.id, email: Boolean(capability?.owner || capability?.accountManager) }
+  }
 
   routes.get('/api/members', guarded(db, 'members_list_failed', async (c, db, church) => {
     if (!church.canConfigure) return c.json({ error: 'Forbidden' }, 403)
@@ -46,13 +54,13 @@ export function memberRoutes(config: SessionConfig, db?: PrismaClient) {
       // Offered: directory people with an account that has no membership anywhere (no switcher yet, see docs/accesos.md).
       db.churchPerson.findMany({
         where: { churchId: church.churchId, removedAt: null, person: { user: { is: { memberships: { none: {} } } } } },
-        select: { person: { select: { id: true, name: true } } },
+        select: { person: { select: { id: true, name: true, user: { select: { email: true } } } } },
       }),
-      viewerId(db, c.get('clerkSubject')),
+      viewer(db, c.get('clerkSubject')),
     ])
     const members = rows.map(row => present(row, me)).sort((a, b) =>
       roleOrder[a.role] - roleOrder[b.role] || (a.person?.name ?? '￿').localeCompare(b.person?.name ?? '￿', 'es'))
-    const candidates = links.map(link => ({ personId: link.person.id, name: link.person.name })).sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    const candidates = links.map(link => ({ personId: link.person.id, name: link.person.name, email: me.email ? link.person.user?.email ?? null : null })).sort((a, b) => a.name.localeCompare(b.name, 'es'))
     return c.json({ members, candidates })
   }))
 
@@ -80,7 +88,7 @@ export function memberRoutes(config: SessionConfig, db?: PrismaClient) {
     if (outcome === 'exists') return c.json({ error: 'Member exists' }, 409)
     if (outcome === 'unavailable') return c.json({ error: 'Account unavailable' }, 409)
     const row = await db.membership.findUniqueOrThrow({ where: { userId_churchId: { userId: outcome, churchId: church.churchId } }, select: memberSelect(church.churchId) })
-    return c.json(present(row, await viewerId(db, c.get('clerkSubject'))), 201)
+    return c.json(present(row, await viewer(db, c.get('clerkSubject'))), 201)
   }))
 
   /** Shared body of role change and removal: one transaction under the church lock, so the last administrator is safe. */
@@ -105,7 +113,7 @@ export function memberRoutes(config: SessionConfig, db?: PrismaClient) {
     if (outcome === 'last-admin') return c.json({ error: 'Last administrator' }, 409)
     if (!next) return c.body(null, 204)
     const row = await db.membership.findUniqueOrThrow({ where: { userId_churchId: { userId, churchId: church.churchId } }, select: memberSelect(church.churchId) })
-    return c.json(present(row, await viewerId(db, c.get('clerkSubject'))))
+    return c.json(present(row, await viewer(db, c.get('clerkSubject'))))
   })
   routes.patch('/api/members/:userId', change('member_role_change_failed', true))
   routes.delete('/api/members/:userId', change('member_removal_failed', false))

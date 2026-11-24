@@ -1,3 +1,5 @@
+export { AppearanceSheet } from './AppearanceSheet'
+export { initAppearance } from './appearance'
 export { Button, type ButtonVariant } from './Button'
 export { Field, TextField, inputClass, type ControlProps } from './Field'
 export { Icon, type IconName } from './Icon'

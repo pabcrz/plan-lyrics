@@ -34,6 +34,7 @@ export function accountFailure(caught: unknown) {
   if (caught instanceof ApiError) {
     if (caught.status === 503 && caught.code === 'Identity provider unavailable') return 'El envío de invitaciones todavía no está configurado en el servidor. No se creó ninguna cuenta.'
     if (caught.status === 502) return 'El proveedor de acceso no respondió. No se creó ninguna cuenta; inténtalo de nuevo en unos minutos.'
+    if (caught.status === 409 && caught.code === 'Email registered') return 'Ese correo ya tiene una cuenta. No se envió otra invitación.'
     if (caught.status === 409 && caught.code === 'Person linked') return 'Esa persona ya tiene una cuenta vinculada.'
     if (caught.status === 409 && caught.code === 'Account linked') return 'Esta cuenta ya tiene una persona vinculada.'
     if (caught.status === 409) return 'Ese correo ya pertenece a otra cuenta.'

@@ -7,8 +7,15 @@ export const POSITION_OFFSET = 1000
 const text = (max: number) => z.string().transform(value => value.trim().replace(/\s+/g, ' ')).pipe(z.string().min(1).max(max))
 
 // Identity of a song is title + author. Neither the church nor lyrics or chords are part of the body.
-export const newSongBody = z.strictObject({ title: text(120), author: text(120) })
+// The author may be unknown: it is then stored as an empty string (and compared as such).
+export const newSongBody = z.strictObject({ title: text(120), author: z.string().transform(value => value.trim().replace(/\s+/g, ' ')).pipe(z.string().max(120)).default('') })
 export const songSearch = z.string().max(120)
+/** The library list: a search, an optional «missing» filter and an offset (pages of 50). */
+export const songListQuery = z.object({
+  q: songSearch,
+  filter: z.enum(['no-lyrics', 'no-chords']).optional(),
+  offset: z.coerce.number().int().min(0).max(100000).optional(),
+})
 
 const contextualKey = z.string().regex(/^(C|C#|D|Eb|E|F|F#|G|Ab|A|Bb|B)m?$/)
 

@@ -93,7 +93,7 @@ test('a link for a range is valid until 30 days after the last service it covers
   expect(link).toEqual({
     id: expect.any(String), version: 'FULL', scope: { kind: 'range', from: '2026-11-01', to: '2026-11-30' },
     blocks: { keys: false, notes: false, people: true }, status: 'ACTIVE', activeUntil: '2026-12-27', reactivated: false, canReactivate: false,
-    createdAt: expect.any(String), path: expect.stringMatching(/^\/m\/[A-Za-z0-9_-]{43}$/),
+    createdAt: expect.any(String), path: expect.stringMatching(/^\/m\/[A-Za-z0-9_-]{12}$/),
   })
   // The database holds the nonce and the hash, never the token itself.
   const stored = JSON.stringify(await db.shareLink.findMany())
@@ -230,7 +230,7 @@ test('a missing, malformed, expired or revoked token answers the same 404, priva
   await call('editor', 'POST', `/api/share-links/${revoked.id}/revoke`)
   const expired = await json(await create('editor'))
   await db.shareLink.update({ where: { id: expired.id }, data: { activeUntil: at('2026-11-11') } })
-  const guesses = [`/api/public/links/${'a'.repeat(43)}`, '/api/public/links/short', `/api/public/links/${'a'.repeat(44)}`, `/api/public/links/${tokenOf(revoked.path)}`, `/api/public/links/${tokenOf(expired.path)}`]
+  const guesses = [`/api/public/links/${'a'.repeat(12)}`, '/api/public/links/short', `/api/public/links/${'a'.repeat(13)}`, `/api/public/links/${tokenOf(revoked.path)}`, `/api/public/links/${tokenOf(expired.path)}`]
   const answers = await Promise.all(guesses.map(path => call(undefined, 'GET', path)))
   for (const answer of answers) {
     expect(answer.status).toBe(404)
@@ -310,9 +310,9 @@ test('two people reactivating at once: exactly one succeeds', async () => {
 test('the public view is throttled per address', async () => {
   const limited = createApp(fixture.config, db, () => clock, { shareSecret: secret, publicLimiter: createLimiter({ limit: 2, windowMs: 60_000 }) })
   const statuses: number[] = []
-  for (let index = 0; index < 4; index += 1) statuses.push((await call(undefined, 'GET', `/api/public/links/${'a'.repeat(43)}`, undefined, limited)).status)
+  for (let index = 0; index < 4; index += 1) statuses.push((await call(undefined, 'GET', `/api/public/links/${'a'.repeat(12)}`, undefined, limited)).status)
   expect(statuses).toEqual([404, 404, 429, 429])
-  const blocked = await call(undefined, 'GET', `/api/public/links/${'a'.repeat(43)}`, undefined, limited)
+  const blocked = await call(undefined, 'GET', `/api/public/links/${'a'.repeat(12)}`, undefined, limited)
   expect(blocked.headers.get('Retry-After')).toBe('60')
   expect(blocked.headers.get('X-Robots-Tag')).toBe('noindex, nofollow, noarchive')
 })

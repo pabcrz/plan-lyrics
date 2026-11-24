@@ -21,8 +21,9 @@ const reset = async () => {
   await db.rolePlan.deleteMany()
   await db.roleRestriction.deleteMany({ where: { churchId: { in: churches } } })
   await db.musicalRole.deleteMany({ where: { churchId: { in: churches } } })
-  await db.church.updateMany({ where: { id: { in: churches } }, data: { rolesSeeded: false } })
-  await db.churchPerson.updateMany({ data: { removedAt: null } })
+  // The rotation is opt-in per church: these tests are about it, so they start with it on (one test turns it off).
+  await db.church.updateMany({ where: { id: { in: churches } }, data: { rolesSeeded: false, usesRotation: true } })
+  await db.churchPerson.updateMany({ data: { removedAt: null, roleIds: [] } })
 }
 beforeAll(async () => {
   await seedFixtures(db)
@@ -30,7 +31,7 @@ beforeAll(async () => {
   await reset()
 })
 beforeEach(reset)
-afterAll(async () => { await reset(); await db.person.deleteMany({ where: { id: { in: people } } }); await db.$disconnect() })
+afterAll(async () => { await reset(); await db.church.updateMany({ where: { id: { in: churches } }, data: { usesRotation: false } }); await db.person.deleteMany({ where: { id: { in: people } } }); await db.$disconnect() })
 
 function call(subject: string | undefined, method: string, path: string, body?: unknown) {
   return api.request(path, {
@@ -40,7 +41,15 @@ function call(subject: string | undefined, method: string, path: string, body?: 
   })
 }
 const json = async <T = any>(response: Response) => (await response.json()) as T // eslint-disable-line @typescript-eslint/no-explicit-any
-const roleId = async (name: string, subject = 'member') => (await json<{ id: string; name: string }[]>(await call(subject, 'GET', '/api/roles'))).find(role => role.name === name)!.id
+// A person only holds the roles an administrator established for them, so looking a role up also establishes it for every test person.
+const roleId = async (name: string, subject = 'member') => {
+  const id = (await json<{ id: string; name: string }[]>(await call(subject, 'GET', '/api/roles'))).find(role => role.name === name)!.id
+  for (const personId of [...people, 'person-a']) {
+    const link = await db.churchPerson.findFirst({ where: { churchId: 'church-a', personId }, select: { roleIds: true } })
+    if (link && !link.roleIds.includes(id)) await db.churchPerson.updateMany({ where: { churchId: 'church-a', personId }, data: { roleIds: { push: id } } })
+  }
+  return id
+}
 const [luis, pedro, juan, ana] = people
 const rotation = (sequences: { weekday: number | null; personIds: string[] }[], over: Record<string, unknown> = {}) =>
   ({ enabled: true, mode: 'SHARED', startsOn: '2026-11-01', sequences, ...over })
@@ -103,6 +112,21 @@ test('creating a service loads the habitual people and the next rotation turn, a
   const voices = (await json<{ name: string; preview: { date: string; rotation: { id: string } | null }[] }[]>(await call('member', 'GET', '/api/role-participations'))).find(role => role.name === 'Voces')!
   expect(voices.preview.slice(0, 2).map(entry => [entry.date, entry.rotation?.id])).toEqual([['2026-11-13', juan], ['2026-11-15', luis]])
   expect((await db.rotationSequence.findFirstOrThrow()).nextPersonId).toBe(juan)
+})
+
+test('with the rotation off for the church no turn is applied or previewed, and the saved rotation comes back when it is turned on again', async () => {
+  await configure('Voces', [ana], shared(luis, pedro))
+  await db.church.update({ where: { id: 'church-a' }, data: { usesRotation: false } })
+  const first = await json(await createService('2026-11-13'))
+  expect(await pairs(first.id)).toEqual([`Voces:${ana}`])
+  expect(await db.assignment.count({ where: { source: 'ROTATION' } })).toBe(0)
+  const voices = (await json<{ name: string; rotation: { enabled: boolean }; preview: { rotation: { id: string } | null }[] }[]>(await call('member', 'GET', '/api/role-participations'))).find(role => role.name === 'Voces')!
+  expect(voices.rotation.enabled).toBe(true) // the saved configuration stays
+  expect(voices.preview.every(entry => entry.rotation === null)).toBe(true)
+  expect((await db.rotationSequence.findFirstOrThrow()).nextPersonId).toBe(luis) // the cursor did not move
+  await db.church.update({ where: { id: 'church-a' }, data: { usesRotation: true } })
+  expect((await createService('2026-11-15')).status).toBe(201)
+  expect(await turnFor('2026-11-15')).toBe(luis)
 })
 
 test('by weekday, a Sunday does not advance the Friday sequence', async () => {

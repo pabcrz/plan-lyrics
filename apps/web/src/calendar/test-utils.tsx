@@ -9,28 +9,28 @@ import type { Preaching, PreachingTurn } from './preaching-api'
 import type { MusicalRole, RoleRestriction } from './roles-api'
 
 export const church: Church = {
-  id: 'church-a', name: 'Betel', sundayDouble: false, usesPreaching: false, congregationShowsPreacher: false, canEdit: true, canConfigure: true, timeZone: 'America/Mexico_City',
+  id: 'church-a', name: 'Betel', sundayDouble: false, usesPreaching: false, usesRotation: true, congregationShowsPreacher: false, canEdit: true, canConfigure: true, timeZone: 'America/Mexico_City',
   days: [
     { weekday: 5, slot: 'SINGLE', time: '19:30', title: 'Servicio de viernes' },
     { weekday: 0, slot: 'SINGLE', time: '10:00', title: 'Servicio dominical' },
   ],
 }
-export const people = [{ id: 'p1', name: 'Ana Ramírez' }, { id: 'p2', name: 'Luis Herrera' }]
-export const service = (over: Partial<Service>): Service => ({
-  id: 's1', title: 'Servicio de viernes', date: '2026-11-13', slot: 'SINGLE', time: '19:30', status: 'PUBLISHED',
-  director: people[0], ...over,
-})
-
 export const defaultRoles: MusicalRole[] = [
   { id: 'r-drums', name: 'Batería' }, { id: 'r-guitar', name: 'Guitarra' }, { id: 'r-piano', name: 'Piano' }, { id: 'r-voices', name: 'Voces' },
 ]
+export const people = [{ id: 'p1', name: 'Ana Ramírez' }, { id: 'p2', name: 'Luis Herrera' }].map((person) => ({ ...person, roleIds: defaultRoles.map((role) => role.id) }))
+export const service = (over: Partial<Service>): Service => ({
+  id: 's1', title: 'Servicio de viernes', date: '2026-11-13', slot: 'SINGLE', time: '19:30', status: 'PUBLISHED',
+  director: people[0], songCount: 0, ...over,
+})
+
 export const defaultRestrictions: RoleRestriction[] = [{ id: 'x1', first: 'DIRIGIR', second: 'r-drums' }]
 
 type Handler =(url: string, init?: RequestInit) => { status?: number; body?: unknown } | undefined
 
 /** Doble de fetch por ruta; devuelve las peticiones hechas para poder inspeccionarlas. */
 export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
-  id: 'p1', name: 'Ana Ramírez', phone: null, hasAccount: false, canDirect: true, canPreach: true, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
+  id: 'p1', name: 'Ana Ramírez', phone: null, email: null, hasAccount: false, isYou: false, roleIds: defaultRoles.map((role) => role.id), canDirect: true, canPreach: true, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
 })
 
 export function stubApi(routes: {
@@ -41,8 +41,6 @@ export function stubApi(routes: {
   roles?: MusicalRole[]; restrictions?: RoleRestriction[]; createRole?: Handler; addRestriction?: Handler
   /** Lote mensual: período (por URL) y creación. */
   period?: Handler; batch?: Handler
-  /** Asignar la dirección a un servicio que no la tiene. */
-  director?: Handler
   /** Participaciones por rol, asignaciones por servicio, turnos para intercambiar y servicios futuros por rol (avisa al quitarlo). */
   participations?: RoleParticipation[]; assignments?: Record<string, Assignment[]>; turns?: Turn[]; futureServices?: Record<string, number>
   /** Respuestas a guardar un rol, y a reemplazar, agregar, quitar e intercambiar asignaciones. */
@@ -111,12 +109,6 @@ export function stubApi(routes: {
       }
       return reply(200, participations[index])
     }
-    if (url.startsWith('/api/services/') && url.endsWith('/director') && init?.method === 'PUT') {
-      const result = routes.director?.(url, init)
-      if (result?.status && result.status >= 400) return reply(result.status, result.body ?? { error: 'x' })
-      const body = JSON.parse(String(init.body)) as { directorId: string }
-      return reply(200, result?.body ?? service({ id: decodeURIComponent(url.split('/')[3] ?? ''), director: directoryPeople().find((person) => person.id === body.directorId) ?? null }))
-    }
     if (url.startsWith('/api/services/') && url.endsWith('/preaching')) {
       const serviceId = decodeURIComponent(url.split('/')[3] ?? '')
       if (init?.method === 'PUT') {
@@ -139,6 +131,12 @@ export function stubApi(routes: {
     if (url === '/api/preaching/swap' && init?.method === 'POST') {
       const result = routes.preachingChange?.(url, init)
       return result?.status && result.status >= 400 ? reply(result.status, result.body ?? { error: 'x' }) : reply(200, { swapped: [] })
+    }
+    // Pantalla del servicio: un setlist vacío con los datos del servicio de la lista, para quien solo prueba las otras secciones.
+    if (url.startsWith('/api/services/') && url.endsWith('/setlist') && init?.method !== 'POST') {
+      const found = (routes.services ?? []).find((item) => item.id === decodeURIComponent(url.split('/')[3] ?? ''))
+      if (!found) return reply(404, { error: 'Not found' })
+      return reply(200, { service: { id: found.id, title: found.title, date: found.date, slot: found.slot, time: found.time, status: found.status }, version: 1, canEdit: (routes.church && typeof routes.church !== 'number' ? routes.church : church).canEdit, canCreateSongs: false, entries: [] })
     }
     if (url.startsWith('/api/services/') && url.endsWith('/assignments')) {
       const serviceId = decodeURIComponent(url.split('/')[3] ?? '')
@@ -174,8 +172,9 @@ export function stubApi(routes: {
     if (url === '/api/people' || url.startsWith('/api/people?')) {
       const role = new URL(url, 'http://local').searchParams.get('role')
       const list = (routes.directory ?? people.map((person) => detail(person))).filter((person) => (role === 'direct' ? person.canDirect : role === 'preach' ? person.canPreach : true))
-      return reply(200, list.map(({ id, name, hasAccount, canDirect, canPreach }) => ({ id, name, hasAccount, canDirect, canPreach })))
+      return reply(200, list.map(({ id, name, hasAccount, isYou, roleIds, canDirect, canPreach }) => ({ id, name, hasAccount, isYou, roleIds, canDirect, canPreach })))
     }
+    if (/^\/api\/people\/[^/]+\/roles$/.test(url) && init?.method === 'PUT') return reply(200, { roleIds: JSON.parse(String(init.body)).roleIds })
     if (url.startsWith('/api/people/')) {
       const id = decodeURIComponent(url.split('/').pop() ?? '')
       if (init?.method === 'PATCH') {

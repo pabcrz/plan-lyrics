@@ -1,10 +1,9 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes, useLocation, useParams } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { CalendarPage } from '../calendar/CalendarPage'
-import { church, mount, service as calendarService, stubApi } from '../calendar/test-utils'
+import { church, mount } from '../calendar/test-utils'
 import { fold } from '../ui'
-import { SetlistPage } from './SetlistPage'
+import { ServicePage } from './ServicePage'
 import type { Entry, Setlist, Song } from './setlist-api'
 
 vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-ficticio' }), UserButton: () => <button>Cuenta</button> }))
@@ -27,7 +26,8 @@ const initial = () => [
   song('e3', lib[2], { key: 'Bbm' }),
 ]
 
-type Options = { canEdit?: boolean; canCreateSongs?: boolean; entries?: Entry[]; status?: number; staleOnce?: boolean; createSong?: { status: number; body?: unknown } }
+type Lyr = { key: string | null; sections: Array<{ kind: string; label: string | null; text: string; chordPro: string | null; repeat: number }> }
+type Options = { services?: unknown[]; lyrics?: Record<string, Lyr>; moved?: Record<string, Lyr & { semitones: number }>; canEdit?: boolean; canCreateSongs?: boolean; entries?: Entry[]; status?: number; staleOnce?: boolean; createSong?: { status: number; body?: unknown } }
 
 /** Servidor ficticio en memoria con las mismas reglas que la API: versión, orden y respuestas completas. */
 function stubSetlist(options: Options = {}) {
@@ -42,6 +42,15 @@ function stubSetlist(options: Options = {}) {
     const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : undefined
     calls.push({ method, url, body })
     const reply = (status: number, payload: unknown) => new Response(JSON.stringify(payload), { status })
+    const lyricsUrl = /^\/api\/songs\/([^/]+)\/lyrics(?:\?(.*))?$/.exec(url)
+    if (lyricsUrl) {
+      const stored = options.lyrics?.[lyricsUrl[1]]
+      if (!stored) return reply(200, { version: 0, published: false, key: null, canEdit: true, sections: [] })
+      const moved = lyricsUrl[2] ? options.moved?.[lyricsUrl[2]] : stored
+      return moved ? reply(200, { version: 1, published: false, canEdit: true, ...moved }) : reply(400, { error: 'Invalid request' })
+    }
+    if (url === '/api/active-church') return reply(200, church)
+    if (url.startsWith('/api/services?month=')) return reply(200, options.services ?? [])
     if (url.startsWith('/api/songs')) {
       if (method === 'POST') {
         if (options.createSong) return reply(options.createSong.status, options.createSong.body ?? { error: 'x' })
@@ -92,7 +101,7 @@ function stubSetlist(options: Options = {}) {
   return { calls, state, writes: () => calls.filter((call) => call.method !== 'GET' && !call.url.startsWith('/api/songs')) }
 }
 
-const page = () => mount(<Routes><Route path="/servicios/:serviceId/setlist" element={<SetlistPage />} /><Route path="*" element={<p>Calendario</p>} /></Routes>, '/servicios/s1/setlist')
+const page = () => mount(<Routes><Route path="/servicios/:serviceId" element={<ServicePage />} /><Route path="*" element={<p>Calendario</p>} /></Routes>, '/servicios/s1')
 const titles = () => within(screen.getByRole('list', { name: 'Setlist' })).getAllByRole('listitem').map((row) => row.querySelector('b')?.textContent)
 const grip = (label: RegExp) => screen.getByRole('button', { name: label })
 
@@ -143,8 +152,7 @@ test('a member only reads: no handle, no add button, and the entry opens read-on
   page()
   await screen.findByRole('heading', { name: 'Servicio dominical' })
   expect(screen.queryByRole('button', { name: /Mover/ })).toBeNull()
-  expect(screen.queryByRole('button', { name: 'Agregar al setlist' })).toBeNull()
-  expect(screen.getByText('Solo quien edita los servicios puede cambiar el setlist.')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Agregar' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Ver Canción de ejemplo' }))
   const sheet = await screen.findByRole('dialog')
   const link = within(sheet).getByRole('link', { name: /Abrir en YouTube/ })
@@ -157,7 +165,7 @@ test('a member only reads: no handle, no add button, and the entry opens read-on
 test('adds a song from the library by title or author, marking the ones already included', async () => {
   const server = stubSetlist()
   page()
-  fireEvent.click(await screen.findByRole('button', { name: 'Agregar al setlist' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Agregar' }))
   const sheet = await screen.findByRole('dialog', { name: 'Agregar al setlist' })
   expect(await within(sheet).findByRole('button', { name: 'Agregar Tema inventado, Autora Tres' })).toBeTruthy()
   // Dos canciones con el mismo título se distinguen por su autor.
@@ -175,7 +183,7 @@ test('adds a song from the library by title or author, marking the ones already 
 test('a person who cannot edit the library is told so when nothing matches, and gets no quick add', async () => {
   stubSetlist({ canCreateSongs: false })
   page()
-  fireEvent.click(await screen.findByRole('button', { name: 'Agregar al setlist' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Agregar' }))
   const sheet = await screen.findByRole('dialog')
   expect(within(sheet).queryByRole('button', { name: 'Agregar canción nueva' })).toBeNull()
   fireEvent.change(await within(sheet).findByRole('searchbox'), { target: { value: 'inexistente' } })
@@ -185,15 +193,17 @@ test('a person who cannot edit the library is told so when nothing matches, and 
 test('a library editor creates a song with title and author and adds it to the setlist', async () => {
   const server = stubSetlist({ canCreateSongs: true })
   page()
-  fireEvent.click(await screen.findByRole('button', { name: 'Agregar al setlist' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Agregar' }))
   const sheet = await screen.findByRole('dialog')
   fireEvent.change(await within(sheet).findByRole('searchbox'), { target: { value: 'Canto nuevo' } })
   fireEvent.click(within(sheet).getByRole('button', { name: 'Agregar canción nueva' }))
   expect((within(sheet).getByLabelText('Título') as HTMLInputElement).value).toBe('Canto nuevo')
+  fireEvent.change(within(sheet).getByLabelText('Título'), { target: { value: '  ' } })
   fireEvent.click(within(sheet).getByRole('button', { name: 'Guardar y agregar' }))
-  expect(await within(sheet).findByText('Escribe el autor.')).toBeTruthy()
+  expect(await within(sheet).findByText('Escribe el título.')).toBeTruthy()
   expect(server.writes()).toEqual([])
-  fireEvent.change(within(sheet).getByLabelText('Autor'), { target: { value: '  Autor Nuevo ' } })
+  fireEvent.change(within(sheet).getByLabelText('Título'), { target: { value: 'Canto nuevo' } })
+  fireEvent.change(within(sheet).getByLabelText('Autor (opcional)'), { target: { value: '  Autor Nuevo ' } })
   fireEvent.click(within(sheet).getByRole('button', { name: 'Guardar y agregar' }))
   await waitFor(() => expect(titles()).toContain('Canto nuevo'))
   expect(server.calls.filter((call) => call.method === 'POST').map((call) => [call.url, call.body])).toEqual([
@@ -205,11 +215,11 @@ test('a library editor creates a song with title and author and adds it to the s
 test('quick add reports a song that already exists with the same title and author', async () => {
   const server = stubSetlist({ canCreateSongs: true, createSong: { status: 409, body: { error: 'Song exists' } } })
   page()
-  fireEvent.click(await screen.findByRole('button', { name: 'Agregar al setlist' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Agregar' }))
   const sheet = await screen.findByRole('dialog')
   fireEvent.click(await within(sheet).findByRole('button', { name: 'Agregar canción nueva' }))
   fireEvent.change(within(sheet).getByLabelText('Título'), { target: { value: 'Tema inventado' } })
-  fireEvent.change(within(sheet).getByLabelText('Autor'), { target: { value: 'Autora Tres' } })
+  fireEvent.change(within(sheet).getByLabelText('Autor (opcional)'), { target: { value: 'Autora Tres' } })
   fireEvent.click(within(sheet).getByRole('button', { name: 'Guardar y agregar' }))
   expect((await within(sheet).findByRole('alert')).textContent).toContain('Ya existe una canción con ese título y autor')
   expect(server.writes()).toEqual([])
@@ -218,7 +228,7 @@ test('quick add reports a song that already exists with the same title and autho
 test('adds a common moment, or a free one that needs a name', async () => {
   const server = stubSetlist({ entries: [] })
   page()
-  fireEvent.click(await screen.findByRole('button', { name: 'Agregar al setlist' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Agregar' }))
   const sheet = await screen.findByRole('dialog')
   fireEvent.click(within(sheet).getByRole('button', { name: 'Momento' }))
   fireEvent.click(within(sheet).getByRole('button', { name: 'Agregar' }))
@@ -226,7 +236,7 @@ test('adds a common moment, or a free one that needs a name', async () => {
   fireEvent.change(within(sheet).getByLabelText('Otro momento'), { target: { value: 'bautismos' } })
   fireEvent.click(within(sheet).getByRole('button', { name: 'Agregar' }))
   await waitFor(() => expect(titles()).toEqual(['Bautismos']))
-  fireEvent.click(screen.getByRole('button', { name: 'Agregar al setlist' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Agregar' }))
   fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Momento' }))
   fireEvent.click(screen.getByRole('button', { name: 'Ofrenda' }))
   await waitFor(() => expect(titles()).toEqual(['Bautismos', 'Ofrenda']))
@@ -341,36 +351,23 @@ test('when someone else reordered meanwhile the server rejects the change and th
   await waitFor(() => expect(titles()).toEqual(['Himno ficticio', 'Ofrenda', 'Canción de ejemplo']))
 })
 
-test('the calendar detail leads to the setlist: «Preparar setlist» for editors, «Ver setlist» for members', async () => {
-  stubApi({ services: [calendarService({ id: 's1', date: '2026-11-13' })] })
-  mount(<Routes><Route path="/servicios/:serviceId/setlist" element={<p>Pantalla del setlist</p>} /><Route path="*" element={<CalendarPage />} /></Routes>)
-  fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Servicio de viernes/ }))
-  fireEvent.click(await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Preparar setlist' }))
-  expect(await screen.findByText('Pantalla del setlist')).toBeTruthy()
-  cleanup()
-  stubApi({ services: [calendarService({ id: 's1', date: '2026-11-13' })], church: { ...church, canEdit: false } })
-  mount(<Routes><Route path="*" element={<CalendarPage />} /></Routes>)
-  fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Servicio de viernes/ }))
-  expect(await within(await screen.findByRole('dialog')).findByRole('button', { name: 'Ver setlist' })).toBeTruthy()
-})
-
 function LyricsRoute() {
   const location = useLocation()
   const { songId } = useParams()
-  const state = location.state as { title: string; back: string }
-  return <p>{`Letra de ${songId}: ${state.title}, desde ${state.back}`}</p>
+  const state = location.state as { title: string; back: string; key?: string }
+  return <p>{`Letra de ${songId}: ${state.title}, desde ${state.back}${state.key ? `, tono ${state.key}` : ''}`}</p>
 }
 
 test('every member can open the lyrics of a song from its entry, with the title and the way back', async () => {
   stubSetlist({ canEdit: false })
   mount(<Routes>
-    <Route path="/servicios/:serviceId/setlist" element={<SetlistPage />} />
+    <Route path="/servicios/:serviceId" element={<ServicePage />} />
     <Route path="/canciones/:songId/letra" element={<LyricsRoute />} />
-  </Routes>, '/servicios/s1/setlist')
+  </Routes>, '/servicios/s1')
   fireEvent.click(await screen.findByRole('button', { name: 'Ver Canción de ejemplo' }))
   const sheet = await screen.findByRole('dialog')
   fireEvent.click(within(sheet).getByRole('link', { name: 'Ver letra' }))
-  expect(await screen.findByText('Letra de l1: Canción de ejemplo, desde /servicios/s1/setlist')).toBeTruthy()
+  expect(await screen.findByText('Letra de l1: Canción de ejemplo, desde /servicios/s1, tono G')).toBeTruthy()
 })
 
 test('a moment has no lyrics to open', async () => {
@@ -379,4 +376,80 @@ test('a moment has no lyrics to open', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Editar Ofrenda' }))
   const sheet = await screen.findByRole('dialog', { name: 'Ofrenda' })
   expect(within(sheet).queryByRole('link', { name: 'Ver letra' })).toBeNull()
+})
+
+// Letra ficticia con acordes: base en G, y lo que devolvería el servidor al pedirla en A.
+const based = (key: string | null): Lyr => ({ key, sections: [{ kind: 'VERSE', label: null, text: 'Primera línea de ejemplo', chordPro: '[G]Primera línea [Em]de ejemplo', repeat: 1 }] })
+const inA: Lyr & { semitones: number } = { key: 'A', semitones: 2, sections: [{ kind: 'VERSE', label: null, text: 'Primera línea de ejemplo', chordPro: '[A]Primera línea [F#m]de ejemplo', repeat: 1 }] }
+
+test('the key of a service offers only keys of the same mode as the song, with a short preview in the chosen one', async () => {
+  const server = stubSetlist({ lyrics: { l1: based('G') }, moved: { 'toKey=A': inA } })
+  page()
+  fireEvent.click(await screen.findByRole('button', { name: 'Editar Canción de ejemplo' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Canción de ejemplo' })
+  const keys = within(await within(sheet).findByRole('group', { name: 'Tonalidad en este servicio' }))
+  expect((await keys.findByRole('button', { name: 'G' })).getAttribute('aria-pressed')).toBe('true')
+  expect(keys.getAllByRole('button').map((button) => button.textContent)).toEqual(['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'])
+  expect(within(sheet).queryByRole('button', { name: 'Menor' })).toBeNull()
+  expect(within(sheet).getByText(/está en G \(mayor\)/)).toBeTruthy()
+  fireEvent.click(keys.getByRole('button', { name: 'A' }))
+  const preview = await within(sheet).findByRole('region', { name: 'Vista previa en A' })
+  expect(within(preview).getByText('F#m').parentElement?.textContent).toBe('F#mde ejemplo')
+  fireEvent.click(within(sheet).getByRole('button', { name: 'Listo' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(server.writes()).toEqual([{ method: 'PATCH', url: '/api/services/s1/setlist/entries/e1', body: { key: 'A' } }])
+})
+
+test('a minor song offers only minor keys', async () => {
+  stubSetlist({ lyrics: { l3: based('Em') } })
+  page()
+  fireEvent.click(await screen.findByRole('button', { name: 'Editar Himno ficticio' }))
+  const keys = within(await screen.findByRole('group', { name: 'Tonalidad en este servicio' }))
+  await keys.findByRole('button', { name: 'Em' })
+  expect(keys.getAllByRole('button').map((button) => button.textContent)).toEqual(['Cm', 'C#m', 'Dm', 'Ebm', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'Bbm', 'Bm'])
+})
+
+test('a key saved before in another mode is kept, not cleared, and the sheet warns that it will not transpose', async () => {
+  const server = stubSetlist({ lyrics: { l3: based('Em') }, entries: [song('e3', lib[2], { key: 'Bb' })] })
+  page()
+  fireEvent.click(await screen.findByRole('button', { name: 'Editar Himno ficticio' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Himno ficticio' })
+  expect(await within(sheet).findByText(/Bb es de otro modo/)).toBeTruthy()
+  fireEvent.click(within(sheet).getByRole('button', { name: 'Listo' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(server.writes()).toEqual([])
+})
+
+test('a song without a saved key keeps the free choice of mode and key', async () => {
+  stubSetlist({ lyrics: { l1: based(null) } })
+  page()
+  fireEvent.click(await screen.findByRole('button', { name: 'Editar Canción de ejemplo' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Canción de ejemplo' })
+  expect(within(sheet).getByRole('button', { name: 'Menor' })).toBeTruthy()
+  expect(within(sheet).queryByRole('region', { name: /Vista previa/ })).toBeNull()
+})
+
+test('the lyrics link carries the key of the service, so the chords are shown in it', async () => {
+  stubSetlist({ canEdit: false })
+  mount(<Routes>
+    <Route path="/servicios/:serviceId" element={<ServicePage />} />
+    <Route path="/canciones/:songId/letra" element={<LyricsRoute />} />
+  </Routes>, '/servicios/s1')
+  fireEvent.click(await screen.findByRole('button', { name: 'Ver Canción de ejemplo' }))
+  fireEvent.click(within(await screen.findByRole('dialog')).getByRole('link', { name: 'Ver letra' }))
+  expect(await screen.findByText('Letra de l1: Canción de ejemplo, desde /servicios/s1, tono G')).toBeTruthy()
+})
+
+const withoutDirector = [{ id: 's1', title: 'Servicio dominical', date: '2026-11-15', slot: 'SINGLE', time: '10:00', status: 'DRAFT', director: null, songCount: 0 }]
+
+test('a service created with only its preaching says «Sin director» and lets editors assign one; members only read it', async () => {
+  stubSetlist({ services: withoutDirector })
+  page()
+  expect(await screen.findByText('Sin director')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Asignar director' })).toBeTruthy()
+  cleanup(); vi.unstubAllGlobals()
+  stubSetlist({ services: withoutDirector, canEdit: false })
+  page()
+  expect(await screen.findByText('Sin director')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Asignar director' })).toBeNull()
 })

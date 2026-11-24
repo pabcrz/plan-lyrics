@@ -3,7 +3,7 @@ import { cors } from 'hono/cors'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { accountRoutes } from './accounts.js'
-import { readChurch } from './church-access.js'
+import { createChurch, newChurchBody, readChurch } from './church-access.js'
 import { safeErrorCode } from './errors.js'
 import type { IdentityProvider } from './identity-provider.js'
 import { memberRoutes } from './members.js'
@@ -53,6 +53,21 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
     } catch (error) {
       // Log only a short driver/Prisma code: never messages, connection strings or identities.
       console.error(JSON.stringify({ event: 'church_access_failed', code: safeErrorCode(error) }))
+      return c.json({ error: 'Access unavailable' }, 503)
+    }
+  })
+  // Only the platform owner founds churches (the first one is how a fresh deployment gets started).
+  app.post('/api/churches', requireSession(config), async (c) => {
+    if (!database) return c.json({ error: 'Access unavailable' }, 503)
+    try {
+      const capability = await userCapability(database, c.get('clerkSubject'))
+      if (!capability?.owner) return c.json({ error: 'Not found' }, 404)
+      const body = newChurchBody.safeParse(await c.req.json().catch(() => undefined))
+      if (!body.success) return c.json({ error: 'Invalid request' }, 400)
+      const church = await createChurch(database, c.get('clerkSubject'), body.data.name)
+      return church ? c.json(church, 201) : c.json({ error: 'Conflict' }, 409)
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'church_creation_failed', code: safeErrorCode(error) }))
       return c.json({ error: 'Access unavailable' }, 503)
     }
   })

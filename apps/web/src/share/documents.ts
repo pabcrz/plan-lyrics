@@ -14,9 +14,9 @@ const SLOT_TEXT = { SINGLE: '', MORNING: ' · mañana', AFTERNOON: ' · tarde' }
 const SLOT_ORDER = { SINGLE: 0, MORNING: 1, AFTERNOON: 2 } as const
 
 /** La fecha y las canciones numeradas, cada una con su autor entre paréntesis; los momentos no son canciones. */
-export function setlistDoc({ church, date, entries }: { church: string; date: string; entries: ReadonlyArray<Entry> }): PaperDoc {
+export function setlistDoc({ church, date, entries, director }: { church: string; date: string; entries: ReadonlyArray<Entry>; director?: string }): PaperDoc {
   const songs = entries.flatMap((entry) => (entry.song ? [entry.song] : []))
-  return { title: `Setlist · ${formatDay(date)}`, meta: church, rows: songs.map((song, index) => ({ lead: String(index + 1), text: `${song.title} (${song.author})` })) }
+  return { title: `Setlist · ${formatDay(date)}`, meta: director ? `${church} · Dirige: ${director}` : church, rows: songs.map((song, index) => ({ lead: String(index + 1), text: song.author ? `${song.title} (${song.author})` : song.title })) }
 }
 
 /** Un mes se nombra por el mes; un rango que cruza meses, por sus dos fechas. */

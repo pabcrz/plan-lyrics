@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Button, Icon, Notice, Sheet } from '../ui'
-import { ChurchGate, MainTabbar, TopBar } from './ChurchGate'
+import { AppShell } from './AppShell'
+import { ChurchGate } from './ChurchGate'
 import { formatDay, monthOf, monthTitle, shiftMonth, todayIn } from './dates'
 import type { Church, Service } from './model'
 import { PreachingSection } from './PreachingSection'
@@ -26,8 +27,7 @@ function Plan({ church }: { church: Church }) {
   const open = plan.data?.find((item) => item.service.id === openId)
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col">
-      <TopBar name={church.name} settings={church.canConfigure} share={church.canEdit} />
+    <AppShell church={church} current="preaching">
       <main className="grid flex-1 content-start gap-3 pb-4">
         <div className="flex items-center gap-1 px-4 py-3">
           <h1 className="m-0 flex-1 font-display text-xl font-bold">Predicaciones · {monthTitle(month)}</h1>
@@ -49,10 +49,9 @@ function Plan({ church }: { church: Church }) {
         </div>
       </main>
       <Sheet open={Boolean(open)} onClose={() => setOpenId(null)} title={open?.service.title ?? 'Predicación'}>
-        {open && <PreachingSection service={{ ...open.service, director: null } satisfies Service} canEdit={church.canEdit} />}
+        {open && <PreachingSection service={{ ...open.service, director: null, songCount: 0 } satisfies Service} canEdit={church.canEdit} />}
       </Sheet>
-      <MainTabbar church={church} current="preaching" />
-    </div>
+    </AppShell>
   )
 }
 

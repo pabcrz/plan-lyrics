@@ -220,3 +220,12 @@ test('a role that does not exist says so', async () => {
   pages('/participaciones/r-nada')
   expect((await screen.findByRole('alert')).textContent).toBe('Este rol no existe en tu iglesia.')
 })
+
+test('with the rotation off for the church the role shows only habituals, keeps what was saved and points to Settings', async () => {
+  stubApi({ church: { ...church, usesRotation: false }, participations: [voices], directory })
+  pages('/participaciones/r-voices')
+  expect(await screen.findByText(/La rotación está desactivada en esta iglesia/)).toBeTruthy()
+  expect(screen.getByRole('link', { name: 'Actívala en Ajustes' }).getAttribute('href')).toBe('/ajustes')
+  expect(screen.queryByRole('switch', { name: 'Rotar turnos' })).toBeNull()
+  expect(screen.getByText(/se conserva para cuando la actives/)).toBeTruthy()
+})

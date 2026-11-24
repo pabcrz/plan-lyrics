@@ -3,7 +3,8 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useApiFetch } from '../calendar/api'
 import type { Slot, Status } from '../calendar/model'
 
-export type Song = { id: string; title: string; author: string }
+/** `hasLyrics` y `hasChords` solo vienen en la lista de la biblioteca. */
+export type Song = { id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean }
 export type Entry = { id: string; kind: 'SONG' | 'MOMENT'; song: Song | null; moment: string | null; key: string | null; link: string | null }
 export type Setlist = {
   service: { id: string; title: string; date: string; slot: Slot; time: string | null; status: Status }
@@ -15,9 +16,11 @@ export type Setlist = {
   entries: Entry[]
 }
 
+/** «Título, autor»; sin autor, solo el título. */
+export const songLabel = (song: Pick<Song, 'title' | 'author'>) => (song.author ? `${song.title}, ${song.author}` : song.title)
+
 export const entryLabel = (entry: Entry) => entry.song?.title ?? entry.moment ?? ''
 
-export const tonalities = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'] as const
 
 /** Origen de un enlace de referencia manual; el servidor vuelve a validarlo. */
 export function referenceOrigin(value: string): 'YouTube' | 'Spotify' | null {
@@ -69,7 +72,7 @@ export function useSetlistActions(serviceId: string) {
   const edit = useCallback((entryId: string, patch: { key?: string | null; link?: string | null; moment?: string }) =>
     api<Setlist>(`${base}/entries/${encodeURIComponent(entryId)}`, { method: 'PATCH', body: patch }).then(accept), [api, base, accept])
   const remove = useCallback((entryId: string) => api<Setlist>(`${base}/entries/${encodeURIComponent(entryId)}`, { method: 'DELETE' }).then(accept), [api, base, accept])
-  const createSong = useCallback(async (song: { title: string; author: string }) => {
+  const createSong = useCallback(async (song: { title: string; author?: string }) => {
     const created = await api<Song>('/api/songs', { method: 'POST', body: song })
     await client.invalidateQueries({ queryKey: ['songs'] })
     return created

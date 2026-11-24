@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { CalendarPage } from './CalendarPage'
-import { ProductRoutes } from './ProductRoutes'
+import { HomePage } from './HomePage'
 import { church, mount, service, stubApi } from './test-utils'
 
 vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-ficticio' }), UserButton: () => <button>Cuenta</button> }))
@@ -11,58 +11,94 @@ afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() })
 
 const services = [
   service({ id: 'a', date: '2026-11-06', title: 'Servicio pasado', status: 'COMPLETED' }),
-  service({ id: 'b', date: '2026-11-13', title: 'Servicio de viernes', status: 'DRAFT' }),
+  service({ id: 'b', date: '2026-11-13', title: 'Servicio de viernes', status: 'DRAFT', songCount: 4 }),
   service({ id: 'c', date: '2026-11-20', title: 'Viernes cancelado', status: 'CANCELLED', time: null }),
   service({ id: 'd', date: '2026-12-04', title: 'Servicio de diciembre', status: 'PUBLISHED' }),
 ]
+const openCalendar = async () => fireEvent.click(await screen.findByRole('button', { name: /Noviembre 2026/ }))
 
-test('shows the month grid with a status mark in text, Sunday first, and the month agenda', async () => {
+test('lists the upcoming services as cards with date, time and director, soonest first, and hides what passed', async () => {
   stubApi({ services })
-  mount(<CalendarPage />)
-  expect(await screen.findByRole('heading', { name: 'Noviembre 2026' })).toBeTruthy()
+  mount(<HomePage />)
+  const card = await screen.findByRole('link', { name: /Servicio de viernes/ })
+  expect(within(card).getByText('Ana Ramírez')).toBeTruthy()
+  expect(within(card).getByText('Borrador')).toBeTruthy()
+  expect(within(card).getByText('4 canciones en el setlist')).toBeTruthy()
+  expect(within(screen.getByRole('link', { name: /Servicio de diciembre/ })).getByText('Setlist sin preparar')).toBeTruthy()
+  expect(screen.getByText('Próximos servicios')).toBeTruthy()
+  expect(screen.getAllByRole('link', { name: /,/ }).map((item) => item.getAttribute('aria-label'))).toEqual([
+    expect.stringContaining('Servicio de viernes'), expect.stringContaining('Viernes cancelado'), expect.stringContaining('Servicio de diciembre'),
+  ])
+  expect(screen.queryByText('Servicio pasado')).toBeNull()
+})
+
+test('the month grid is collapsed by default, marks every state in text, and opens with the title', async () => {
+  stubApi({ services })
+  mount(<HomePage />)
+  const toggle = await screen.findByRole('button', { name: /Noviembre 2026/ })
+  expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  expect(await screen.findByText('3 servicios')).toBeTruthy()
+  fireEvent.click(toggle)
+  expect(toggle.getAttribute('aria-expanded')).toBe('true')
   const grid = await screen.findByRole('group', { name: 'Días de Noviembre 2026' })
   expect(within(grid).getByRole('button', { name: /13 de noviembre: Servicio de viernes, Borrador/ })).toBeTruthy()
   expect(within(grid).getByRole('button', { name: /20 de noviembre: Viernes cancelado, Cancelado/ })).toBeTruthy()
   expect(grid.firstElementChild?.textContent).toContain('1') // 1 de noviembre de 2026 es domingo: abre la primera columna
-  expect(screen.getByText('Próximos servicios')).toBeTruthy()
-  expect(screen.queryByText('Servicio pasado')).toBeNull()
-  fireEvent.click(screen.getByRole('button', { name: 'Ver anteriores (1)' }))
-  expect(screen.getByText('Servicio pasado')).toBeTruthy()
 })
 
-test('navigates between months and loads each month from the API', async () => {
+test('navigates between months, loads each from the API, and shows that month in full', async () => {
   const calls = stubApi({ services })
-  mount(<CalendarPage />)
-  await screen.findByText('Servicio de viernes', { selector: 'span' })
-  fireEvent.click(screen.getByRole('button', { name: 'Mes siguiente' }))
-  expect(await screen.findByRole('heading', { name: 'Diciembre 2026' })).toBeTruthy()
-  expect(await screen.findByText('Servicio de diciembre')).toBeTruthy()
+  mount(<HomePage />)
+  await openCalendar()
+  fireEvent.click(await screen.findByRole('button', { name: 'Mes siguiente' }))
+  expect(await screen.findByRole('button', { name: /Diciembre 2026/ })).toBeTruthy()
+  expect(await screen.findByText('Servicios de diciembre')).toBeTruthy()
+  expect(await screen.findByRole('link', { name: /Servicio de diciembre/ })).toBeTruthy()
   expect(calls.map((call) => call.url)).toContain('/api/services?month=2026-12')
   fireEvent.click(screen.getByRole('button', { name: 'Hoy' }))
-  expect(await screen.findByRole('heading', { name: 'Noviembre 2026' })).toBeTruthy()
+  expect(await screen.findByText('Próximos servicios')).toBeTruthy()
 })
 
-test('opens the service detail with its director', async () => {
+test('a card and a day with a service lead to the service screen', async () => {
   stubApi({ services })
-  mount(<CalendarPage />)
+  mount(<Routes><Route path="/servicios/:serviceId" element={<p>Pantalla del servicio</p>} /><Route path="/" element={<HomePage />} /></Routes>)
+  fireEvent.click(await screen.findByRole('link', { name: /Servicio de viernes/ }))
+  expect(await screen.findByText('Pantalla del servicio')).toBeTruthy()
+  cleanup()
+  stubApi({ services })
+  mount(<Routes><Route path="/servicios/:serviceId" element={<p>Pantalla del servicio</p>} /><Route path="/" element={<HomePage />} /></Routes>)
   fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Servicio de viernes/ }))
-  const sheet = await screen.findByRole('dialog')
-  expect(within(sheet).getByText('Dirección')).toBeTruthy()
-  expect(within(sheet).getByText('Ana Ramírez')).toBeTruthy()
-  expect(within(sheet).getByText('Borrador')).toBeTruthy()
+  expect(await screen.findByText('Pantalla del servicio')).toBeTruthy()
 })
 
-test('shows an empty month, and hides creation from members who can only read', async () => {
-  stubApi({ services: [], church: { ...church, canEdit: false } })
-  mount(<CalendarPage />)
-  expect(await screen.findByText(/No hay servicios en noviembre 2026/)).toBeTruthy()
+test('a reader sees the same cards without creation, and an empty state without the shortcut', async () => {
+  stubApi({ services: [], church: { ...church, canEdit: false, canConfigure: false } })
+  mount(<HomePage />)
+  expect(await screen.findByText('No hay servicios próximos')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Nuevo' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Crear servicio' })).toBeNull()
+  cleanup()
+  stubApi({ services: [] })
+  mount(<HomePage />)
+  expect(await screen.findByText('No hay servicios próximos')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Crear servicio' })).toBeTruthy()
 })
 
-test('offers creation to editors', async () => {
+test('offers creation to editors in the header', async () => {
   stubApi({ services })
-  mount(<CalendarPage />)
+  mount(<HomePage />)
   expect(await screen.findByRole('button', { name: 'Nuevo' })).toBeTruthy()
+})
+
+test('the mobile bar has the same sections for every role, and «Más» only when it has something', async () => {
+  stubApi({ church: { ...church, canEdit: false, canConfigure: false } })
+  mount(<HomePage />)
+  const bar = await screen.findByRole('navigation', { name: 'Principal' })
+  expect(within(bar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Inicio', 'Canciones', 'Personas'])
+  cleanup()
+  stubApi({})
+  mount(<HomePage />)
+  expect(within(await screen.findByRole('navigation', { name: 'Principal' })).getAllByRole('button').map((button) => button.textContent)).toEqual(['Inicio', 'Canciones', 'Personas', 'Más'])
 })
 
 test.each([
@@ -71,7 +107,7 @@ test.each([
   [503, 'No se pudo cargar tu iglesia'],
 ])('explains church context failure %i', async (status, title) => {
   stubApi({ church: status })
-  mount(<CalendarPage />)
+  mount(<HomePage />)
   expect(await screen.findByText(title)).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Nuevo' })).toBeNull()
 })
@@ -81,7 +117,7 @@ const writes = (calls: ReturnType<typeof stubApi>) => calls.filter((call) => cal
 
 test('shows a closed date in the grid, the agenda and the day detail with the «No hay culto» legend', async () => {
   stubApi({ services, closed })
-  mount(<CalendarPage />)
+  mount(<HomePage />)
   const grid = await screen.findByRole('group', { name: 'Días de Noviembre 2026' })
   const cell = await within(grid).findByRole('button', { name: /27 de noviembre: No hay culto, Feriado/ })
   expect(cell.textContent).toContain('27')
@@ -98,7 +134,7 @@ test('shows a closed date in the grid, the agenda and the day detail with the «
 
 test('a free future date offers «Crear servicio» as the main action, before marking «No hay culto»', async () => {
   stubApi({ services })
-  mount(<CalendarPage />)
+  mount(<HomePage />)
   fireEvent.click(await screen.findByRole('button', { name: /25 de noviembre: sin servicio/ }))
   const sheet = await screen.findByRole('dialog')
   const names = within(sheet).getAllByRole('button').map((button) => button.textContent)
@@ -108,7 +144,7 @@ test('a free future date offers «Crear servicio» as the main action, before ma
 
 test('an editor marks a free future date with a reason and the calendar reloads', async () => {
   const calls = stubApi({ services })
-  mount(<CalendarPage />)
+  mount(<HomePage />)
   fireEvent.click(await screen.findByRole('button', { name: /25 de noviembre: sin servicio/ }))
   const sheet = await screen.findByRole('dialog')
   fireEvent.change(within(sheet).getByLabelText(/Motivo/), { target: { value: ' Feriado ' } })
@@ -123,7 +159,7 @@ test('an editor marks a free future date with a reason and the calendar reloads'
 
 test('an editor unmarks a closed date', async () => {
   const calls = stubApi({ services, closed })
-  mount(<CalendarPage />)
+  mount(<HomePage />)
   fireEvent.click(await screen.findByRole('button', { name: /27 de noviembre: No hay culto/ }))
   fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Desmarcar fecha' }))
   expect(await screen.findByText('Fecha desmarcada')).toBeTruthy()
@@ -132,19 +168,20 @@ test('an editor unmarks a closed date', async () => {
 
 test('past and service dates cannot be marked; the grid offers marking only for free dates from today', async () => {
   stubApi({ services })
-  mount(<CalendarPage />)
+  mount(<HomePage />)
   const grid = await screen.findByRole('group', { name: 'Días de Noviembre 2026' })
   expect(await within(grid).findByRole('button', { name: /13 de noviembre: Servicio de viernes/ })).toBeTruthy()
   expect(within(grid).queryByRole('button', { name: /10 de noviembre/ })).toBeNull() // pasado
   expect(within(grid).queryByRole('button', { name: /12 de noviembre: sin servicio/ })).toBeNull() // pasado
   expect(within(grid).queryByRole('button', { name: /14 de noviembre: sin servicio/ })).not.toBeNull()
+  // Un día con servicio abre el servicio, no la hoja de marcar: no hay forma de marcar una fecha que ya lo tiene.
   fireEvent.click(await within(grid).findByRole('button', { name: /20 de noviembre: Viernes cancelado/ }))
-  expect(within(await screen.findByRole('dialog')).queryByRole('button', { name: 'Marcar «No hay culto»' })).toBeNull()
+  expect(screen.queryByRole('dialog')).toBeNull()
 })
 
 test('a member only reads closed dates: no marking, no unmarking', async () => {
   stubApi({ services, closed, church: { ...church, canEdit: false } })
-  mount(<CalendarPage />)
+  mount(<HomePage />)
   const grid = await screen.findByRole('group', { name: 'Días de Noviembre 2026' })
   expect(within(grid).queryByRole('button', { name: /25 de noviembre: sin servicio/ })).toBeNull()
   fireEvent.click(await within(grid).findByRole('button', { name: /27 de noviembre: No hay culto/ }))
@@ -154,52 +191,38 @@ test('a member only reads closed dates: no marking, no unmarking', async () => {
 
 test('shows the server rejection when the date got a service meanwhile', async () => {
   stubApi({ services, mark: () => ({ status: 409, body: { error: 'Date has service' } }) })
-  mount(<CalendarPage />)
+  mount(<HomePage />)
   fireEvent.click(await screen.findByRole('button', { name: /25 de noviembre: sin servicio/ }))
   fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Marcar «No hay culto»' }))
   expect((await screen.findByRole('alert')).textContent).toContain('ya tiene un servicio')
 })
 
-test('offers the settings entry point only to the church administrator', async () => {
+test('the «Más» sheet offers settings only to the church administrator', async () => {
   stubApi({})
-  mount(<CalendarPage />)
-  expect(await screen.findByRole('button', { name: 'Ajustes' })).toBeTruthy()
+  mount(<HomePage />)
+  fireEvent.click(within(await screen.findByRole('navigation', { name: 'Principal' })).getByRole('button', { name: 'Más' }))
+  expect(within(screen.getByRole('dialog', { name: 'Más' })).getByRole('button', { name: 'Ajustes' })).toBeTruthy()
   cleanup()
   stubApi({ church: { ...church, canConfigure: false } })
-  mount(<CalendarPage />)
-  await screen.findByText(/Cargando servicios|No hay servicios/)
-  expect(screen.queryByRole('button', { name: 'Ajustes' })).toBeNull()
+  mount(<HomePage />)
+  fireEvent.click(within(await screen.findByRole('navigation', { name: 'Principal' })).getByRole('button', { name: 'Más' }))
+  expect(within(screen.getByRole('dialog', { name: 'Más' })).queryByRole('button', { name: 'Ajustes' })).toBeNull()
 })
 
-test.each(['Servicio individual', 'Lote mensual'])('elegir «%s» en «Nuevo» cierra la hoja', async (option) => {
+test('the services of this month that already passed are one tap away and hide again', async () => {
   stubApi({ services })
-  mount(<ProductRoutes />)
-  fireEvent.click(await screen.findByRole('button', { name: 'Nuevo' }))
-  fireEvent.click(within(await screen.findByRole('dialog', { name: 'Nuevo' })).getByRole('button', { name: new RegExp(option) }))
-  await screen.findByRole('heading', { name: option === 'Lote mensual' ? /lote/i : 'Nuevo servicio' })
-  expect(screen.queryByRole('dialog', { name: 'Nuevo' })).toBeNull()
+  mount(<HomePage />)
+  expect(screen.queryByText('Servicio pasado')).toBeNull()
+  fireEvent.click(await screen.findByRole('button', { name: 'Ver anteriores (1)' }))
+  expect(screen.getByText('Servicio pasado')).toBeTruthy()
+  expect(screen.getAllByRole('link', { name: /,/ }).map((item) => item.getAttribute('aria-label'))[0]).toContain('Servicio pasado')
+  fireEvent.click(screen.getByRole('button', { name: 'Ocultar anteriores' }))
+  expect(screen.queryByText('Servicio pasado')).toBeNull()
 })
 
-const preachingOnly = service({ id: 'z', date: '2026-11-13', title: 'Solo predicación', director: null })
-
-test('a service without a director says so in the agenda and lets editors assign one', async () => {
-  const calls = stubApi({ services: [preachingOnly] })
-  mount(<CalendarPage />)
-  expect((await screen.findAllByText(/Sin director/)).length).toBeGreaterThan(0)
-  fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Solo predicación/ }))
-  const sheet = await screen.findByRole('dialog')
-  fireEvent.click(within(sheet).getByRole('button', { name: 'Asignar director' }))
-  const picker = await screen.findByRole('dialog', { name: 'Asignar director' })
-  fireEvent.click(await within(picker).findByText('Luis Herrera'))
-  await vi.waitFor(() => expect(calls.some((call) => call.url === '/api/services/z/director' && call.init?.method === 'PUT' && call.init.body === JSON.stringify({ directorId: 'p2' }))).toBe(true))
-  expect(calls.some((call) => call.url === '/api/people?role=direct')).toBe(true)
-})
-
-test('members read «Sin director asignado» and cannot assign', async () => {
-  stubApi({ services: [preachingOnly], church: { ...church, canEdit: false } })
-  mount(<CalendarPage />)
-  fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Solo predicación/ }))
-  const sheet = await screen.findByRole('dialog')
-  expect(within(sheet).getByText('Sin director asignado.')).toBeTruthy()
-  expect(within(sheet).queryByRole('button', { name: 'Asignar director' })).toBeNull()
+test('there is no «Ver anteriores» when nothing passed this month or when looking at another month', async () => {
+  stubApi({ services: services.filter((item) => item.id !== 'a') })
+  mount(<HomePage />)
+  await screen.findByRole('link', { name: /Servicio de viernes/ })
+  expect(screen.queryByRole('button', { name: /Ver anteriores/ })).toBeNull()
 })

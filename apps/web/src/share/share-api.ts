@@ -33,7 +33,8 @@ export function useShareLinkActions() {
 }
 
 /** Lo que muestra la vista pública: solo lo que la versión y los bloques del enlace incluyen. */
-export type PublicSong = { kind: 'SONG'; title: string; author: string; key?: string | null }
+export type PublicSection = { kind: 'INTRO' | 'VERSE' | 'CHORUS' | 'BRIDGE' | 'OUTRO' | 'CLOSING'; label: string | null; text: string; repeat: number }
+export type PublicSong = { kind: 'SONG'; title: string; author: string; key?: string | null; lyrics?: PublicSection[] }
 export type PublicMoment = { kind: 'MOMENT'; name: string | null }
 export type PublicService = {
   date: string; slot: 'SINGLE' | 'MORNING' | 'AFTERNOON'; time?: string | null; director?: string

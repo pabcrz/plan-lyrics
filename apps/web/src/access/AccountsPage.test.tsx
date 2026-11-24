@@ -39,15 +39,25 @@ test('an invalid e-mail is caught before sending, and provider failures are expl
   fireEvent.click(screen.getByRole('button', { name: 'Enviar invitación' }))
   expect(await screen.findByText('Escribe un correo válido.')).toBeTruthy()
   expect(sent(calls, 'POST')).toEqual([])
-  fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'ana@example.com' } })
+  fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'libre@example.com' } })
   fireEvent.click(screen.getByRole('button', { name: 'Enviar invitación' }))
   expect((await screen.findByRole('alert')).textContent).toMatch(/proveedor de acceso no respondió/)
+})
+
+test('an e-mail that already has an account is refused in the form, with no request sent', async () => {
+  const calls = stubAccess({ access: manager })
+  app()
+  await screen.findByText('Ana Ramírez')
+  fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'ANA@example.com' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar invitación' }))
+  expect(await screen.findByText('Ese correo ya tiene una cuenta.')).toBeTruthy()
+  expect(sent(calls, 'POST')).toEqual([])
 })
 
 test('says when the server has no identity provider configured', async () => {
   stubAccess({ access: owner, fail: { 'POST /api/accounts': { status: 503, body: { error: 'Identity provider unavailable' } } } })
   app()
-  fireEvent.change(await screen.findByLabelText('Correo electrónico'), { target: { value: 'ana@example.com' } })
+  fireEvent.change(await screen.findByLabelText('Correo electrónico'), { target: { value: 'libre@example.com' } })
   fireEvent.click(screen.getByRole('button', { name: 'Enviar invitación' }))
   expect((await screen.findByRole('alert')).textContent).toMatch(/todavía no está configurado/)
 })

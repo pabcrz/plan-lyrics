@@ -2,10 +2,11 @@ import { describe, expect, test } from 'vitest'
 import { addEntryBody, entryPatch, isReferenceLink, newSongBody, orderBody, placeAt, sameIds } from './setlist-rules.js'
 
 describe('song body', () => {
-  test('trims and collapses spaces; title and author are both required', () => {
+  test('trims and collapses spaces; the author is optional and defaults to empty', () => {
     expect(newSongBody.parse({ title: '  Canción   de ejemplo ', author: ' Autor  Ficticio ' })).toEqual({ title: 'Canción de ejemplo', author: 'Autor Ficticio' })
-    expect(newSongBody.safeParse({ title: 'Solo título' }).success).toBe(false)
-    expect(newSongBody.safeParse({ title: 'Título', author: '   ' }).success).toBe(false)
+    expect(newSongBody.parse({ title: 'Solo título' })).toEqual({ title: 'Solo título', author: '' })
+    expect(newSongBody.parse({ title: 'Título', author: '   ' })).toEqual({ title: 'Título', author: '' })
+    expect(newSongBody.safeParse({ author: 'Sin título' }).success).toBe(false)
     expect(newSongBody.safeParse({ title: 'x'.repeat(121), author: 'Autor' }).success).toBe(false)
   })
 

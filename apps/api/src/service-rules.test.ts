@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { newServiceBody, planSlot, todayInZone, weekdayOf } from './service-rules.js'
+import { newServiceBody, planEdit, planSlot, servicePatch, todayInZone, weekdayOf } from './service-rules.js'
 
 const base = { title: 'Servicio', date: '2026-11-15', status: 'DRAFT', directorId: 'p1' }
 
@@ -59,4 +59,26 @@ test('today is the Mexico City day: the boundary is local midnight, not UTC midn
   expect(todayInZone(new Date('2026-11-14T05:59:59Z'))).toBe('2026-11-13') // 23:59:59 local
   expect(todayInZone(new Date('2026-11-14T06:00:00Z'))).toBe('2026-11-14') // 00:00:00 local
   expect(todayInZone(new Date('2026-11-13T00:30:00Z'))).toBe('2026-11-12') // UTC already the 13th
+})
+
+describe('servicePatch and planEdit', () => {
+  const current = { date: '2026-11-22', slot: 'SINGLE' as const, time: '10:00' }
+  test('accepts any subset, clears the hour with null, and refuses an empty or foreign body', () => {
+    expect(servicePatch.parse({ title: ' Nuevo ' }).title).toBe('Nuevo')
+    expect(servicePatch.parse({ time: null }).time).toBeNull()
+    expect(servicePatch.safeParse({}).success).toBe(false)
+    expect(servicePatch.safeParse({ churchId: 'x' }).success).toBe(false)
+    expect(servicePatch.safeParse({ status: 'ARCHIVED' }).success).toBe(false)
+  })
+  test('keeps what was not touched', () => {
+    expect(planEdit(current, { time: null }, false)).toEqual({ date: '2026-11-22', slot: 'SINGLE', time: null })
+    expect(planEdit(current, { date: '2026-11-27' }, false)).toEqual({ date: '2026-11-27', slot: 'SINGLE', time: '10:00' })
+  })
+  test('a slot only exists on an enabled double Sunday', () => {
+    expect(planEdit(current, { slot: 'MORNING' }, false)).toEqual({ error: 'Invalid request' })
+    expect(planEdit({ ...current, slot: 'MORNING', time: '09:00' }, { date: '2026-11-27' }, true)).toEqual({ date: '2026-11-27', slot: 'SINGLE', time: '09:00' })
+    expect(planEdit({ ...current, slot: 'MORNING', time: '09:00' }, { slot: 'AFTERNOON' }, true)).toEqual({ error: 'Invalid request' })
+    expect(planEdit({ ...current, slot: 'MORNING', time: '09:00' }, { slot: 'AFTERNOON', time: '17:00' }, true)).toEqual({ date: '2026-11-22', slot: 'AFTERNOON', time: '17:00' })
+    expect(planEdit(current, {}, true)).toEqual({ error: 'Invalid request' })
+  })
 })

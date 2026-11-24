@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { CalendarPage } from './CalendarPage'
+import { ServicePage } from '../setlist/ServicePage'
 import type { Who } from './participations-api'
 import type { Preaching, PreachingTurn } from './preaching-api'
 import { church, detail, mount, service, stubApi } from './test-utils'
@@ -24,11 +24,11 @@ const turns: PreachingTurn[] = [
 const friday = service({ id: 's1', date: '2026-11-13' })
 const base = { church: withPreaching, services: [friday], directory, preaching: { s1: section() } }
 
-async function openService(over: Parameters<typeof stubApi>[0] = {}, name = 'Servicio de viernes') {
+async function openService(over: Parameters<typeof stubApi>[0] = {}) {
   const calls = stubApi({ ...base, ...over })
-  mount(<Routes><Route path="*" element={<CalendarPage />} /></Routes>)
-  fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Servicio de viernes/ }))
-  const sheet = await screen.findByRole('dialog', { name })
+  mount(<Routes><Route path="/servicios/:serviceId" element={<ServicePage />} /></Routes>, '/servicios/s1')
+  await screen.findByRole('heading', { level: 1, name: 'Servicio de viernes' })
+  const sheet = screen.getByRole('main')
   await waitFor(() => expect(within(sheet).queryByText('Cargando predicación…')).toBeNull())
   return { calls, sheet: within(sheet) }
 }
@@ -36,9 +36,9 @@ const writes = (calls: ReturnType<typeof stubApi>) => calls.filter((call) => cal
 
 test('the section is hidden, and never requested, when the church does not use preaching', async () => {
   const calls = stubApi({ ...base, church: church })
-  mount(<Routes><Route path="*" element={<CalendarPage />} /></Routes>)
-  fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Servicio de viernes/ }))
-  const sheet = within(await screen.findByRole('dialog', { name: 'Servicio de viernes' }))
+  mount(<Routes><Route path="/servicios/:serviceId" element={<ServicePage />} /></Routes>, '/servicios/s1')
+  await screen.findByRole('heading', { level: 1, name: 'Servicio de viernes' })
+  const sheet = within(screen.getByRole('main'))
   await waitFor(() => expect(sheet.queryByText('Cargando participaciones…')).toBeNull())
   expect(sheet.queryByText('Predicación')).toBeNull()
   expect(calls.some((call) => call.url.includes('/preaching'))).toBe(false)

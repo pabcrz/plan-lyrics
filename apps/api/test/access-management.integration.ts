@@ -117,18 +117,25 @@ test('a provider failure creates nothing and leaks no detail; a missing provider
   expect(await response.json()).toEqual({ error: 'Identity provider unavailable' })
 })
 
-test('inviting the same e-mail again resends the invitation without duplicating the account', async () => {
-  const first = await (await call('owner', 'POST', '/api/accounts', { email: 'repetida@example.com' })).json()
+test('inviting an e-mail that already has an account is refused before the provider is called', async () => {
+  await call('owner', 'POST', '/api/accounts', { email: 'repetida@example.com' })
   const again = await call('accounts', 'POST', '/api/accounts', { email: 'REPETIDA@example.com' })
-  expect(again.status).toBe(200)
-  expect(await again.json()).toEqual(first)
-  expect(inviteByEmail).toHaveBeenCalledTimes(2)
+  expect(again.status).toBe(409)
+  expect(await again.json()).toEqual({ error: 'Email registered' })
+  expect(inviteByEmail).toHaveBeenCalledTimes(1)
   expect(await db.user.count({ where: { clerkSubject: 'fixture-invited-repetida' } })).toBe(1)
 })
 
-test('an e-mail already used by another account conflicts without writes', async () => {
-  inviteByEmail.mockResolvedValueOnce({ subject: 'fixture-invited-otro' })
-  await unchanged(() => call('owner', 'POST', '/api/accounts', { email: 'acc-a1@example.com' }), 409, { error: 'Conflict' })
+test('a concurrent registration of the same e-mail conflicts without a second account', async () => {
+  // The other registration lands while the provider is called: the first e-mail check passed, the insert then clashes on the e-mail.
+  inviteByEmail.mockImplementationOnce(async () => {
+    await db.user.create({ data: { clerkSubject: 'fixture-invited-concurrente', email: 'carrera@example.com' } })
+    return { subject: 'fixture-invited-carrera' }
+  })
+  const response = await call('owner', 'POST', '/api/accounts', { email: 'carrera@example.com' })
+  expect(response.status).toBe(409)
+  expect(await response.json()).toEqual({ error: 'Conflict' })
+  expect(await db.user.count({ where: { email: 'carrera@example.com' } })).toBe(1)
 })
 
 test('signing in grants nothing: an invited account sees no church and no management', async () => {
@@ -240,7 +247,7 @@ test('library editing never grants church access, and church admin never grants 
 
 const memberOf = async (subject: string) => {
   const body = await (await call(subject, 'GET', '/api/members')).json()
-  return body as { members: Array<{ userId: string; role: string; person: { id: string; name: string } | null; self: boolean; protected: boolean }>; candidates: Array<{ personId: string; name: string }> }
+  return body as { members: Array<{ userId: string; role: string; email: string | null; person: { id: string; name: string } | null; self: boolean; protected: boolean }>; candidates: Array<{ personId: string; name: string; email: string | null }> }
 }
 
 test('an administrator lists only the members of their own church, with candidates that have an account', async () => {
@@ -251,8 +258,10 @@ test('an administrator lists only the members of their own church, with candidat
   expect(ids).not.toContain('b-editor')
   expect(body.members.find(member => member.userId === 'acc-a1')).toMatchObject({ role: 'ADMIN', self: true, protected: false, person: { id: 'person-acc-a1', name: 'Prueba acceso A1' } })
   // acc-free has an account and is in A's directory (shared with B) but has no membership here; acc-none has no account.
-  expect(body.candidates).toEqual([{ personId: 'person-acc-free', name: 'Prueba acceso Libre' }])
-  expect(JSON.stringify(body)).not.toMatch(/clerkSubject|fixture-|email|church-b/)
+  // A church role never reads addresses: only the owner and account managers do.
+  expect(body.candidates).toEqual([{ personId: 'person-acc-free', name: 'Prueba acceso Libre', email: null }])
+  expect(body.members.every(member => member.email === null)).toBe(true)
+  expect(JSON.stringify(body)).not.toMatch(/clerkSubject|fixture-|church-b/)
 })
 
 test('the church always comes from the session, never from the request', async () => {

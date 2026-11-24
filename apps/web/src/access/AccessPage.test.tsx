@@ -25,6 +25,14 @@ test('lists the members of the church with their role, marks you, and protects t
   expect(screen.queryByRole('button', { name: /Pablo Cruz/ })).toBeNull()
 })
 
+test('shows each member\'s email under the name when the server sends it, and nothing when it does not', async () => {
+  stubAccess({ members: { members: members.map((member) => (member.userId === 'u-editor' ? { ...member, email: 'luis@example.com' } : member)), candidates: [] } })
+  app()
+  await screen.findByText('Luis Herrera')
+  expect(screen.getByText('luis@example.com')).toBeTruthy()
+  expect(screen.queryByText(/@/, { selector: 'small' })?.textContent).toBe('luis@example.com')
+})
+
 test('offers no account creation or invitation here: that belongs to «Cuentas»', async () => {
   stubAccess()
   app()

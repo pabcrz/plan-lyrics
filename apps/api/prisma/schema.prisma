@@ -86,6 +86,8 @@ model Person {
   name String
   // General personal data, shared by every church the person belongs to; optional.
   phone String?
+  // Contact email, general like the phone; unrelated to the account email (User.email).
+  email String?
   userId String? @unique
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   churches ChurchPerson[]
@@ -100,6 +102,8 @@ model Church {
   sundayDouble Boolean @default(false)
   // Opt-in per church: when off the API rejects every preaching read and write; stored data is kept.
   usesPreaching Boolean @default(false)
+  // Opt-in per church: when off no rotation is applied (new services, previews); each role keeps its saved rotation.
+  usesRotation Boolean @default(false)
   // Opt-in per church: the congregation view then shows each service's preacher and topic (never notes or passages).
   congregationShowsPreacher Boolean @default(false)
   // Set once the default musical roles and restriction were created; deleting every role never re-seeds them.
@@ -143,6 +147,8 @@ model ChurchPerson {
   // Who the pickers offer for each job; a person may have both, either or (until chosen) neither.
   canDirect Boolean @default(false)
   canPreach Boolean @default(false)
+  // Musical roles (MusicalRole ids, not foreign keys) this person may hold in this church; only an administrator changes them.
+  roleIds String[] @default([])
   // Removed from this church's directory: hidden from lists and pickers, kept for past services.
   removedAt DateTime?
   createdAt DateTime @default(now())
@@ -315,7 +321,7 @@ enum LyricsSectionKind {
   CLOSING
 }
 
-// The single lyrics of a library song (plain text in ordered sections; no chords yet). `version` guards concurrent
+// The single lyrics of a library song (ordered sections; chords travel inline in each section's chordPro). `version` guards concurrent
 // edits and is bumped by every replacement. Only editors of the library write it; `published` is the only thing
 // the public share view may reveal, and it is false until an editor says otherwise.
 model SongLyrics {
@@ -323,6 +329,8 @@ model SongLyrics {
   songId String @unique
   version Int @default(1)
   published Boolean @default(false)
+  // Tonality of the chorded text (e.g. G, Em). Internal: the public view never reads it.
+  key String?
   song Song @relation(fields: [songId], references: [id], onDelete: Restrict)
   sections LyricsSection[]
   createdAt DateTime @default(now())
@@ -338,6 +346,8 @@ model LyricsSection {
   kind LyricsSectionKind
   label String?
   text String
+  // The same section with its chords as ChordPro marks ([Am]); null when it has none. Internal: never public.
+  chordPro String?
   repeat Int @default(1)
   lyrics SongLyrics @relation(fields: [lyricsId], references: [id], onDelete: Cascade)
   @@unique([lyricsId, position])

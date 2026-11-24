@@ -63,6 +63,7 @@ El repertorio de letras permanece local y no se publica en este repositorio por 
 - Configurar roles musicales por iglesia, inicialmente batería, guitarra, piano y voces, presentados en orden alfabético. Permitir crear o eliminar roles. Al eliminar un rol con asignaciones: las de servicios pasados se conservan solo como registro; si hay asignaciones en servicios futuros, se advierte antes de continuar y, si se procede, esas asignaciones quedan marcadas como pendientes con un marcador genérico en lugar de una persona, sin dejar datos inconsistentes.
 - Configurar participaciones habituales y personas en rotación por iglesia y rol; no es una propiedad global de la persona. Cualquier rol puede tener asignaciones habituales o en rotación. Puede haber varias voces habituales.
 - Al crear un servicio, individualmente o en lote, cargar las participaciones habituales y calcular a quién corresponde cada turno configurado.
+- La rotación es opcional por iglesia y viene **desactivada**: un interruptor «Usa rotación de turnos» en la configuración de la iglesia la activa (con un ejemplo de cómo funciona). Con ella desactivada, los servicios nuevos y la vista previa solo llevan a los habituales; lo ya configurado en cada rol se conserva y se reanuda al activarla de nuevo, y los servicios ya creados no cambian. Una iglesia que ya tenía alguna rotación activa al introducirse este interruptor la conserva activada.
 - Elegir la modalidad por rotación dentro de cada iglesia: **por día de la semana**, con secuencias independientes, o **entre todos los servicios**, con una secuencia compartida sin importar el día. No imponer una sola modalidad para todos los roles de la iglesia.
 - En modalidad por día, un domingo no avanza los turnos de viernes. En modalidad compartida, el orden Luis → Pedro → Juan produce Luis el viernes, Pedro el domingo, Juan el siguiente viernes y Luis el siguiente domingo. La preferencia inicial expresada por la persona usuaria es por día; no es una regla universal.
 - Iniciar cada rotación manualmente desde un servicio o fecha de referencia, eligiendo las personas y su orden y, en modalidad por día, el día al que pertenecen. Repetir el orden de manera cíclica entre lotes y meses hasta interrumpirlo manualmente o cambiar el orden. El efecto sobre servicios ya generados de un cambio posterior de orden sigue pendiente.
@@ -97,14 +98,14 @@ Quien recibe lo compartido no necesita crear una cuenta: pastores, familiares y 
 
 ### Accesos acordados
 
-La administración de una iglesia y la edición de la biblioteca compartida son responsabilidades independientes. Una persona puede combinar accesos; por ejemplo, ser administradora de una iglesia y editora de biblioteca. Ninguno de esos dos accesos implica el otro.
+La administración de una iglesia y la edición de la biblioteca compartida son responsabilidades distintas, pero quien administra una iglesia o edita servicios también puede editar la biblioteca (decisión explícita: «los editores también pueden editar la biblioteca»). Editar la biblioteca por sí solo no da administración alguna.
 
 | Acceso | Alcance acordado |
 | --- | --- |
 | Superadministrador | Existe uno solo: la persona propietaria del proyecto. Tiene acceso total a la plataforma, a todas las iglesias y a la biblioteca musical compartida, y puede modificar todos los roles. Ningún otro nivel equivale a este acceso global. |
-| Administrador de iglesia | Gestiona personas, servicios, asignaciones y configuración de su iglesia. No obtiene automáticamente permiso para editar la biblioteca compartida. |
+| Administrador de iglesia | Gestiona personas, servicios, asignaciones y configuración de su iglesia. También puede editar la biblioteca compartida. |
 | Editor de biblioteca (editor general) | Crea y modifica canciones compartidas, sus letras y acordes. No administra iglesias ni usuarios salvo que tenga también el acceso correspondiente. |
-| Editor de servicios | Crea y edita servicios, fechas, dirección, participantes y setlists, y ajusta tonos dentro de su iglesia. No administra miembros, accesos ni configuración de iglesia, ni obtiene automáticamente edición de la biblioteca compartida. |
+| Editor de servicios | Crea y edita servicios, fechas, dirección, participantes y setlists, y ajusta tonos dentro de su iglesia. No administra miembros, accesos ni configuración de iglesia, También puede editar la biblioteca compartida (canciones, letras y acordes). |
 | Integrante | Consulta la información interna que le corresponda, sin editar. |
 | Gestor de cuentas | Capacidad global que solo el superadministrador otorga y retira a personas concretas. Crea cuentas, envía invitaciones y vincula o desvincula la cuenta de una persona. No concede por sí sola acceso a iglesias, roles por iglesia ni edición de la biblioteca, y no equivale al superadministrador. |
 
@@ -152,9 +153,9 @@ No ampliar la primera entrega con confirmaciones de asistencia, servicios recurr
 - Existe un único superadministrador, correspondiente a la persona propietaria del proyecto, con acceso total a todas las iglesias y capacidad de modificar todos los roles.
 - Solo el superadministrador o un gestor de cuentas puede crear usuarios, invitarlos y vincular o desvincular la cuenta de una persona; no hay registro público. Un administrador de iglesia, editor o integrante sin esa capacidad no puede realizar esas altas.
 - Un gestor de cuentas sin otros accesos no puede ver ni modificar iglesias, roles por iglesia ni la biblioteca; solo el superadministrador le otorga o retira esa capacidad.
-- Un administrador de iglesia sin acceso editorial global no puede modificar la biblioteca compartida.
+- Un administrador de iglesia puede modificar la biblioteca compartida; un integrante no.
 - Un editor de biblioteca sin acceso administrativo no puede administrar iglesias ni usuarios; una persona con ambos accesos puede ejercer cada uno en su ámbito.
-- Un editor de servicios puede preparar setlists y ajustar tonos de su iglesia sin modificar la biblioteca compartida; un integrante no puede editar.
+- Un editor de servicios puede preparar setlists, ajustar tonos de su iglesia y modificar la biblioteca compartida; un integrante no puede editar.
 - Un enlace público permite consultar el setlist sin cuenta y no revela asignaciones privadas, BPM, acordes o notas internas.
 - En etapas posteriores, una modificación heredada se refleja donde no exista override y un override explícito permanece intacto.
 - En etapas posteriores, la vista de letras y la vista con acordes derivan de una misma fuente; la transposición conserva alineación.
