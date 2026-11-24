@@ -41,24 +41,14 @@ export function NewSheet({ open, onClose }: { open: boolean; onClose: () => void
   )
 }
 
-/** Acción principal en móvil: va en el encabezado de la sección (en escritorio vive en la barra lateral). Solo para quien edita. */
-export function NewServiceButton({ church }: { church: Pick<Church, 'canEdit'> }) {
-  const [open, setOpen] = useState(false)
-  if (!church.canEdit) return null
-  return (
-    <span className="lg:hidden">
-      <Button variant="primary" onClick={() => setOpen(true)}><Icon name="plus" />Nuevo</Button>
-      <NewSheet open={open} onClose={() => setOpen(false)} />
-    </span>
-  )
-}
-
 /**
  * Marco móvil de las secciones principales: barra superior con la iglesia y la cuenta, y barra inferior con las secciones y «Más»
  * (solo si hay algo dentro). En escritorio (≥1024 px, la frontera de `lg:`) la navegación es la barra lateral de `ShellLayout`.
  */
-export function AppShell({ church, current, wide = false, focus = false, children }: {
-  church: Church; current: Section; wide?: boolean; /** En móvil, pantalla completa sin barras (un formulario con su propio regreso). */ focus?: boolean; children: ReactNode
+export function AppShell({ church, current, wide = false, focus = false, action, children }: {
+  church: Church; current: Section; wide?: boolean; /** En móvil, pantalla completa sin barras (un formulario con su propio regreso). */ focus?: boolean
+  /** Acción principal de la sección en móvil: un botón flotante sobre la barra inferior (en escritorio vive en la pantalla o en la barra lateral). */
+  action?: { label: string; onAction: () => void }; children: ReactNode
 }) {
   const navigate = useNavigate()
   const [more, setMore] = useState(false)
@@ -68,6 +58,11 @@ export function AppShell({ church, current, wide = false, focus = false, childre
       <div className="lg:hidden">{!focus && <TopBar name={church.name} />}</div>
       {children}
       <div className={cx('sticky bottom-0 lg:hidden', focus && 'hidden')}>
+        {action && (
+          <Button variant="primary" icon aria-label={action.label} onClick={action.onAction} className="absolute right-4 bottom-[calc(100%+1rem)] z-10 h-14! w-14! rounded-full! shadow-2">
+            <Icon name="plus" />
+          </Button>
+        )}
         <Tabbar label="Principal" current={current} items={[...sections(church), ...(extra.length > 0 ? [{ id: 'more', label: 'Más', icon: 'more' as const }] : [])]}
           onSelect={(id) => (id === 'more' ? setMore(true) : void navigate(sections(church).find((section) => section.id === id)?.path ?? '/'))} />
         <Sheet open={more} onClose={() => setMore(false)} title="Más">

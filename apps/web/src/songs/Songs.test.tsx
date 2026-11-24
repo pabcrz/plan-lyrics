@@ -61,7 +61,7 @@ test('lists and searches the library, and opening a song goes to its lyrics', as
 test('a library editor creates a song and lands on its lyrics', async () => {
   const calls = stub(true)
   app('/canciones')
-  fireEvent.click(await screen.findByRole('button', { name: /Nueva/ }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Nueva canción' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Guardar y escribir la letra' }))
   expect(screen.getByText('Escribe el título.')).toBeTruthy()
   fireEvent.change(screen.getByLabelText('Título'), { target: { value: ' Tema inventado ' } })

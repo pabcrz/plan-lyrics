@@ -77,7 +77,7 @@ test('a month without services invites to create the first one', async () => {
 test.each(['Servicio individual', 'Lote mensual'])('elegir «%s» en «Nuevo» cierra la hoja', async (option) => {
   stubApi({ services })
   mount(<ProductRoutes />)
-  fireEvent.click((await screen.findAllByRole('button', { name: 'Nuevo' }))[0]!)
+  fireEvent.click((await screen.findAllByRole('button', { name: 'Nuevo servicio' }))[0]!)
   fireEvent.click(within(await screen.findByRole('dialog', { name: 'Nuevo' })).getByRole('button', { name: new RegExp(option) }))
   await screen.findByRole('heading', { name: option === 'Lote mensual' ? /lote/i : 'Nuevo servicio' })
   expect(screen.queryByRole('dialog', { name: 'Nuevo' })).toBeNull()
