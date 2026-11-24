@@ -140,7 +140,7 @@ test('the rotation switch is saved with the settings and explains itself with an
   mount(<SettingsPage />)
   const toggle = await screen.findByRole('switch', { name: 'Usa rotación de turnos' })
   expect(toggle.getAttribute('aria-checked')).toBe('false')
-  expect(within(screen.getByRole('list', { name: 'Ejemplo de rotación' })).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['1.er servicio · Luis', '2.º servicio · Mariana', '3.er servicio · Juan', '4.º servicio · Luis, otra vez'])
+  expect(within(screen.getByRole('list', { name: 'Ejemplo de rotación' })).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Servicio 1 · Luis', 'Servicio 2 · Mariana', 'Servicio 3 · Juan', 'Servicio 4 · Luis, otra vez'])
   fireEvent.click(toggle)
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   await waitFor(() => expect(calls.some((call) => call.init?.method === 'PUT' && JSON.parse(String(call.init.body)).usesRotation === true)).toBe(true))

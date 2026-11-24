@@ -243,7 +243,7 @@ function RotationExample() {
       <p className="m-0 text-sm font-semibold">Así funciona la rotación, con un ejemplo</p>
       <p className="m-0 text-[0.8125rem] text-text-2">En el rol «Voces», con Luis, Mariana y Juan en ese orden, cada servicio le toca a uno y, al terminar la lista, vuelve a empezar:</p>
       <ol aria-label="Ejemplo de rotación" className="m-0 grid list-none gap-1 p-0 text-sm">
-        {['1.er servicio · Luis', '2.º servicio · Mariana', '3.er servicio · Juan', '4.º servicio · Luis, otra vez'].map((line) => <li key={line}>{line}</li>)}
+        {['Servicio 1 · Luis', 'Servicio 2 · Mariana', 'Servicio 3 · Juan', 'Servicio 4 · Luis, otra vez'].map((line) => <li key={line}>{line}</li>)}
       </ol>
       <p className="m-0 text-[0.8125rem] text-text-3">Se activa aquí y se configura en cada rol. Puedes apagarla cuando quieras: los servicios que ya existen no cambian.</p>
     </div>
