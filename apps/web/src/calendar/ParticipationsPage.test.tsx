@@ -229,3 +229,40 @@ test('with the rotation off for the church the role shows only habituals, keeps 
   expect(screen.queryByRole('switch', { name: 'Rotar turnos' })).toBeNull()
   expect(screen.getByText(/se conserva para cuando la actives/)).toBeTruthy()
 })
+
+const rolePuts = (calls: ReturnType<typeof stubApi>) => calls.filter((call) => call.init?.method === 'PUT' && /^\/api\/people\/[^/]+\/roles$/.test(call.url))
+  .map((call) => ({ person: call.url.split('/')[3], roleIds: JSON.parse(String(call.init?.body)).roleIds as string[] }))
+const team = [detail({ ...ana, roleIds: ['r-drums'] }), detail({ ...luis, roleIds: ['r-guitar'] })]
+
+test('the team of a role is built from the role: members are listed and anyone else can be added', async () => {
+  const calls = stubApi({ participations: [role('r-drums', 'Batería')], directory: team })
+  pages('/participaciones/r-drums')
+  expect(await screen.findByText('1 persona en el equipo de batería.')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Administrar equipo' }))
+  const sheet = within(await screen.findByRole('dialog', { name: 'Equipo de batería' }))
+  expect(within(sheet.getByRole('list', { name: 'Equipo' })).getByText('Ana Ramírez')).toBeTruthy()
+  expect(sheet.queryByText('Luis Herrera')).toBeNull()
+  fireEvent.click(sheet.getByRole('button', { name: 'Agregar al equipo' }))
+  expect(sheet.queryByRole('button', { name: /Ana Ramírez/ })).toBeNull()
+  fireEvent.click(sheet.getByRole('button', { name: /Luis Herrera/ }))
+  await waitFor(() => expect(rolePuts(calls)).toEqual([{ person: 'p2', roleIds: ['r-guitar', 'r-drums'] }]))
+})
+
+test('someone leaves the team unless they are still habitual or rotating in the role', async () => {
+  const calls = stubApi({ participations: [role('r-drums', 'Batería', { habitual: [luis] })], directory: [detail({ ...ana, roleIds: ['r-drums'] }), detail({ ...luis, roleIds: ['r-drums'] })] })
+  pages('/participaciones/r-drums')
+  fireEvent.click(await screen.findByRole('button', { name: 'Administrar equipo' }))
+  const sheet = within(await screen.findByRole('dialog', { name: 'Equipo de batería' }))
+  fireEvent.click(sheet.getByRole('button', { name: 'Quitar a Luis Herrera del equipo' }))
+  expect((await sheet.findByRole('alert')).textContent).toContain('es habitual o rota en este rol')
+  expect(rolePuts(calls)).toEqual([])
+  fireEvent.click(sheet.getByRole('button', { name: 'Quitar a Ana Ramírez del equipo' }))
+  await waitFor(() => expect(rolePuts(calls)).toEqual([{ person: 'p1', roleIds: [] }]))
+})
+
+test('only the administrator manages the team; everyone else just sees how many there are', async () => {
+  stubApi({ participations: [role('r-drums', 'Batería')], directory: team, church: { ...church, canConfigure: false } })
+  pages('/participaciones/r-drums')
+  expect(await screen.findByText('1 persona en el equipo de batería.')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Administrar equipo' })).toBeNull()
+})

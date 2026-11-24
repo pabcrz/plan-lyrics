@@ -8,6 +8,7 @@ import { PublicLinkPage } from './share/PublicLinkPage'
 import { watchInstall } from './install'
 import { persistCache, restoreCache } from './offline-cache'
 import { registerServiceWorker } from './pwa'
+import { SongbookPage } from './share/SongbookPage'
 import { initAppearance } from './ui'
 import './styles.css'
 
@@ -31,6 +32,8 @@ createRoot(document.getElementById('root')!).render(
           )}
           {/* Vista pública de un enlace del ministerio: sin Clerk ni sesión. */}
           <Route path="/m/:token" element={<PublicLinkPage />} />
+          {/* Cancionero público: letras publicadas, sin Clerk ni sesión. */}
+          <Route path="/cancionero" element={<SongbookPage />} />
           <Route path="*" element={<ClerkApp publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY} />} />
         </Routes>
       </QueryClientProvider>

@@ -48,7 +48,7 @@ const toReview = async (...names: string[]) => {
 test('the creation selector offers an individual service or a monthly batch', async () => {
   stubApi({})
   mount(<Routes><Route path="/servicios/lote" element={<p>Pantalla del lote</p>} /><Route path="/" element={<HomePage />} /></Routes>, '/')
-  fireEvent.click(await screen.findByRole('button', { name: 'Nuevo' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Nuevo servicio' }))
   const dialog = screen.getByRole('dialog', { name: 'Nuevo' })
   expect(within(dialog).getByRole('button', { name: /Servicio individual/ })).toBeTruthy()
   fireEvent.click(within(dialog).getByRole('button', { name: /Lote mensual/ }))
