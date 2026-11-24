@@ -10,6 +10,8 @@ export type BatchDraft = {
   preachers: Person[]; repeatPreachers: boolean
 }
 
+const isObject = (value: unknown) => typeof value === 'object' && value !== null && !Array.isArray(value)
+const isReview = (value: unknown) => isObject(value) && isObject((value as BatchDraft['review']).assignment) && isObject((value as BatchDraft['review']).preachers) && Array.isArray((value as BatchDraft['review']).removed)
 const STEPS: readonly string[] = ['period', 'directors', 'preachers', 'review']
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000
 const key = (churchId: string) => `plan-lyrics:batch-draft:${churchId}`
@@ -31,7 +33,7 @@ export function loadBatchDraft(churchId: string, now = Date.now()): BatchDraft |
     const draft = JSON.parse(raw) as Partial<BatchDraft> | null
     const savedAt = draft?.savedAt ? Date.parse(draft.savedAt) : NaN
     const valid = draft?.version === 1 && STEPS.includes(draft.step ?? '') && typeof draft.month === 'string' && /^\d{4}-\d{2}$/.test(draft.month)
-      && Array.isArray(draft.weekdays) && typeof draft.configs === 'object' && draft.configs !== null && typeof draft.review === 'object' && draft.review !== null
+      && Array.isArray(draft.weekdays) && typeof draft.configs === 'object' && draft.configs !== null && isReview(draft.review)
       && Array.isArray(draft.preachers) && (draft.list === null || Array.isArray(draft.list)) && Number.isFinite(savedAt) && now - savedAt <= MAX_AGE_MS
     return valid ? (draft as BatchDraft) : null
   } catch {

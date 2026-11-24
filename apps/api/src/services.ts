@@ -213,6 +213,8 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       // Serialize creations per church so the capacity check cannot race another request.
       await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
       if (await tx.closedDate.findUnique({ where: { churchId_date: { churchId: church.churchId, date: dateValue } }, select: { date: true } })) return 'closed' as const
+      // The switch is read again under the lock: an administrator may have turned preaching off since the first check.
+      if (preacher && !(await tx.church.findUniqueOrThrow({ where: { id: church.churchId }, select: { usesPreaching: true } })).usesPreaching) return 'off' as const
       // Each job only accepts people the church marked for it.
       if (directorId && !await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: directorId, canDirect: true }, select: { personId: true } })) return 'person' as const
       if (preacher && !await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: preacher.personId, canPreach: true }, select: { personId: true } })) return 'person' as const
@@ -228,6 +230,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       if (directorId) await generateForServices(tx, church.churchId, [{ id: created.id, date, slot: plan.slot, directorId }])
       return created
     }).catch(error => { if (safeErrorCode(error) === 'P2002') return 'full' as const; throw error })
+    if (result === 'off') return c.json({ error: 'Preaching disabled' }, 409)
     if (result === 'person') return c.json({ error: 'Invalid request' }, 400)
     if (result === 'full') return c.json({ error: 'Date full' }, 409)
     if (result === 'closed') return c.json({ error: 'Date closed' }, 409)

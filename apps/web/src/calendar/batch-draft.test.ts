@@ -22,6 +22,7 @@ test.each([
   ['another version', JSON.stringify({ ...draft(), version: 2 })],
   ['an unknown step', JSON.stringify({ ...draft(), step: 'done' })],
   ['a missing month', JSON.stringify({ ...draft(), month: undefined })],
+  ['a review without its parts', JSON.stringify({ ...draft(), review: {} })],
   ['an older draft than 14 days', JSON.stringify(draft({ savedAt: '2026-10-20T00:00:00.000Z' }))],
 ])('%s is ignored', (_name, raw) => {
   localStorage.setItem('plan-lyrics:batch-draft:a', raw)
