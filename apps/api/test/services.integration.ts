@@ -145,7 +145,7 @@ const withPreaching = async (on: boolean) => { await db.church.update({ where: {
 const put = (subject: string, path: string, body: unknown) => api.request(path, {
   method: 'PUT', headers: { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
 })
-const { directorId: _omitted, ...noDirector } = friday
+const noDirector = { ...friday, directorId: undefined }
 
 test('a service can be created with only its preacher, with both, and never with neither', async () => {
   await withPreaching(true)
