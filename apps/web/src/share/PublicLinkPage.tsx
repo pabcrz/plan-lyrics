@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Icon, Notice, format12h, from24h } from '../ui'
@@ -7,6 +7,7 @@ import { compareSlots } from '../calendar/model'
 import { Notes } from '../calendar/PreachingSection'
 import { kindLabel } from '../lyrics/lyrics-model'
 import { fetchPublicLink, PublicLinkError, type PublicSection, type PublicService, type PublicView } from './share-api'
+import { clearSaved, readSaved, writeSaved } from './public-saved'
 import { formatFull, versionLabel } from './share-model'
 
 /** Lo que se lee en el encabezado: la congregación ve «Setlist», no el nombre interno de la versión. */
@@ -113,8 +114,25 @@ function Closed({ date, reason }: { date: string; reason: string | null }) {
 /** Vista de solo lectura de un enlace del ministerio. Cualquier fallo de acceso se ve igual: el enlace no está disponible. */
 export function PublicLinkPage() {
   const { token = '' } = useParams()
-  const view = useQuery({ queryKey: ['public-link', token], queryFn: ({ signal }) => fetchPublicLink(token, signal), retry: false })
-  const data = view.data
+  // Si el enlace no responde (sin conexión, vencido) y la persona lo guardó, se muestra su copia.
+  const view = useQuery({
+    queryKey: ['public-link', token], retry: false,
+    queryFn: async ({ signal }) => {
+      try {
+        const fresh = await fetchPublicLink(token, signal)
+        if (readSaved(token)) writeSaved(token, fresh)
+        return { view: fresh, copy: false }
+      } catch (caught) {
+        const saved = readSaved(token)
+        if (saved) return { view: saved, copy: true }
+        throw caught
+      }
+    },
+  })
+  const data = view.data?.view
+  const copy = view.data?.copy ?? false
+  const [kept, setKept] = useState(() => readSaved(token) !== null)
+  const [keepFailed, setKeepFailed] = useState(false)
   useDiscreet(data ? `${heading(data.version)} · ${data.church}` : 'Servicios compartidos')
   const status = view.error instanceof PublicLinkError ? view.error.status : 0
 
@@ -147,6 +165,11 @@ export function PublicLinkPage() {
             <h1 className="m-0 font-display text-2xl leading-tight font-bold tracking-tight">{heading(data.version)}</h1>
             <p className="m-0 mt-1 text-[0.8125rem] text-text-3">Solo lectura · disponible hasta el {formatFull(data.activeUntil)}</p>
           </header>
+          {copy && <Notice icon="info" title="Copia guardada en este dispositivo">No se pudo consultar el enlace; esto es lo último que guardaste.</Notice>}
+          {!copy && (kept
+            ? <Button variant="quiet" onClick={() => { clearSaved(token); setKept(false) }}><Icon name="check" />Guardado en este dispositivo · Quitar</Button>
+            : <Button variant="secondary" onClick={() => { const ok = writeSaved(token, data); setKept(ok); setKeepFailed(!ok) }}>Guardar para leer sin conexión</Button>)}
+          {keepFailed && <Notice tone="warn" icon="alert" role="alert">No se pudo guardar: el dispositivo no tiene espacio o bloqueó el almacenamiento.</Notice>}
           {rows.length === 0
             ? <Notice title="Sin servicios por ahora">Cuando haya fechas, aparecerán aquí.</Notice>
             : <ul className="m-0 grid list-none gap-3 p-0">{rows.map((row) => row.node)}</ul>}

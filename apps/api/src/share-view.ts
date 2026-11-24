@@ -111,6 +111,22 @@ export function publicShareRoutes(db: PrismaClient | undefined, now: () => Date,
     c.header('X-Robots-Tag', 'noindex, nofollow, noarchive')
     c.header('Referrer-Policy', 'no-referrer')
   })
+  // The public songbook: every song whose lyrics an editor published, by title. Never chords, keys, ids or anything of a church.
+  routes.get('/api/public/songbook', async c => {
+    if (!limiter(clientKey(c, trustClientIpHeaders))) { c.header('Retry-After', '60'); return c.json({ error: 'Too many requests' }, 429) }
+    if (!db) return c.json({ error: 'Access unavailable' }, 503)
+    try {
+      const rows = await db.songLyrics.findMany({
+        where: { published: true, sections: { some: {} } },
+        select: { published: true, song: { select: { title: true, author: true } }, sections: { orderBy: { position: 'asc' }, select: { kind: true, label: true, text: true, repeat: true, position: true } } },
+      })
+      const songs = rows.flatMap(row => { const sections = publicLyrics(row); return sections ? [{ title: row.song.title, author: row.song.author, sections }] : [] })
+      return c.json(songs.sort((a, b) => a.title.localeCompare(b.title, 'es')))
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'public_songbook_failed', code: safeErrorCode(error) }))
+      return c.json({ error: 'Access unavailable' }, 503)
+    }
+  })
   routes.get('/api/public/links/:token', async c => {
     if (!limiter(clientKey(c, trustClientIpHeaders))) { c.header('Retry-After', '60'); return c.json({ error: 'Too many requests' }, 429) }
     const token = c.req.param('token')
