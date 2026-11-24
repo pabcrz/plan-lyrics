@@ -140,6 +140,9 @@ model ChurchPerson {
   directedServices Service[]
   assignments Assignment[]
   preachings ServicePreaching[]
+  // Who the pickers offer for each job; a person may have both, either or (until chosen) neither.
+  canDirect Boolean @default(false)
+  canPreach Boolean @default(false)
   // Removed from this church's directory: hidden from lists and pickers, kept for past services.
   removedAt DateTime?
   createdAt DateTime @default(now())
@@ -170,13 +173,13 @@ model Service {
   // Local start time "HH:mm" in America/Mexico_City; optional.
   time String?
   status ServiceStatus @default(DRAFT)
-  directorId String
+  directorId String?
   // Bumped by every setlist change: a reorder sent with a stale version is rejected.
   setlistVersion Int @default(0)
   setlist SetlistEntry[]
   church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
   // The director must belong to the same church: composite key, not just a Person id.
-  director ChurchPerson @relation(fields: [churchId, directorId], references: [churchId, personId], onDelete: Restrict)
+  director ChurchPerson? @relation(fields: [churchId, directorId], references: [churchId, personId], onDelete: Restrict)
   assignments Assignment[]
   preaching ServicePreaching?
   shareLinks ShareLink[]
