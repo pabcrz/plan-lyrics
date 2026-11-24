@@ -1,6 +1,6 @@
 # Propuesta: Plan & Lyrics como PWA
 
-**Estado:** las fases 1 y 2 están implementadas; las fases 3 y 4 esperan decisión (ver «Por decidir»).
+**Estado:** las cuatro fases están implementadas. Falta comprobarlas en dispositivos reales (el navegador integrado de desarrollo no permitió registrar el service worker).
 
 ## Objetivo
 
@@ -29,11 +29,13 @@ Antes de esta propuesta no había manifiesto, íconos propios, service worker ni
 - **La API no pasa por el service worker**: los datos viajan por la caché de consultas (fase 4), para no mezclar respuestas entre cuentas ni iglesias.
 - El aviso se captura al arrancar (`watchInstall`), porque el navegador puede lanzar `beforeinstallprompt` antes de que React monte.
 
-## Por decidir
+## Cómo quedó lo sin conexión
 
-1. **Abrir con sesión sin red.** Clerk descarga su script de un CDN; sin red, `ClerkFailed` sale y la app no entra. Opciones: (a) el service worker guarda también ese script y se comprueba si Clerk arranca con la sesión local (no verificado), o (b) si Clerk no carga y hay datos guardados, mostrar la caché en solo lectura sin verificar la sesión (los datos ya están en el dispositivo de la persona; cerrar sesión los borra).
-2. **Letras en la caché** de la fase 4: decidido que sí se guardan.
-3. Si las fases 3 y 4 se hacen antes o junto con las letras públicas (la vista `/m/:token` no usa Clerk y es el camino sin red más fiable).
+- **Service worker** (`public/sw.js`): guarda `/assets/*` (con hash), tipografías e `index.html`; nunca `/api/*` ni `/m/*`. No se activa solo: la página muestra «Hay una versión nueva · Actualizar».
+- **Datos** (`src/offline-cache.ts`): la caché de consultas se guarda en `localStorage` (límite ~2.5 MB; si no cabe se conserva lo anterior) con su iglesia activa y su cuenta. Solo se restaura si es de la misma iglesia; iniciar sesión con otra cuenta la descarta y cerrar sesión la borra.
+- **Precarga**: con conexión, el Inicio deja guardados el setlist y las letras de los próximos servicios (hasta 6) de la iglesia activa.
+- **Sin Clerk** (camino elegido): si Clerk no carga (por ejemplo, sin red) y hay datos guardados, se abre la aplicación en solo lectura con lo último visto; sin datos, se muestra el error de siempre.
+- Límites conocidos: los cambios siempre requieren conexión; la precarga cubre la iglesia activa; si el almacenamiento crece, pasar a IndexedDB.
 
 ## Cómo comprobarlo
 
