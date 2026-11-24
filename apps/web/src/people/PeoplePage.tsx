@@ -22,11 +22,11 @@ function Directory({ church }: { church: Church }) {
   const add = () => void navigate('/personas/nueva', { state: { name: query.trim() } })
 
   return (
-    <AppShell church={church} current="people">
+    <AppShell church={church} current="people" action={church.canEdit ? { label: 'Agregar persona', onAction: add } : undefined}>
         <main className="grid flex-1 content-start gap-3 p-4">
           <div className="flex items-center gap-3">
             <h1 className="m-0 flex-1 font-display text-2xl font-bold tracking-tight">Personas</h1>
-            {church.canEdit && <Button variant="primary" onClick={add}><Icon name="plus" />Agregar</Button>}
+            {church.canEdit && <Button variant="primary" onClick={add} className="max-lg:hidden"><Icon name="plus" />Agregar</Button>}
           </div>
           <div className="relative">
             <Icon name="search" className="pointer-events-none absolute top-3.5 left-3 text-text-3" />

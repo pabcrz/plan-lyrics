@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { Button, Icon, Notice, Sheet, StatusChip, Toast } from '../ui'
 import { cx } from '../ui/cx'
-import { AppShell, NewServiceButton } from './AppShell'
+import { AppShell, NewSheet } from './AppShell'
 import { ChurchGate } from './ChurchGate'
 import { DaySheet } from './DaySheet'
 import { MonthGrid, closedOn } from './MonthGrid'
@@ -32,6 +32,7 @@ function Home({ church }: { church: Church }) {
   const [toast, setToast] = useState(created ? 'Servicio creado' : '')
   const [openDate, setOpenDate] = useState<string | null>(null)
   const [showPast, setShowPast] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [expanded, setExpanded] = useState(() => window.matchMedia?.(DESKTOP).matches ?? false)
   const today = todayIn()
   const requested = params.get('mes') ?? ''
@@ -85,11 +86,10 @@ function Home({ church }: { church: Church }) {
   )
 
   return (
-    <AppShell church={church} current="home" wide>
+    <AppShell church={church} current="home" wide action={church.canEdit ? { label: 'Nuevo servicio', onAction: () => setCreating(true) } : undefined}>
       <main className="grid flex-1 content-start gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-6 lg:px-6">
         <div className="flex items-center gap-3 lg:col-start-1">
           <h1 className="m-0 flex-1 font-display text-2xl font-bold tracking-tight">Inicio</h1>
-          <NewServiceButton church={church} />
         </div>
         <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1">{calendar}</div>
         <div className="flex items-center gap-2 lg:col-start-1">
@@ -118,6 +118,7 @@ function Home({ church }: { church: Church }) {
           )}
         </div>
       </main>
+      <NewSheet open={creating} onClose={() => setCreating(false)} />
       {toast !== '' && <div className="px-4 pb-2"><Toast message={toast} onDismiss={() => setToast('')} /></div>}
       <Sheet open={openDate !== null} onClose={() => setOpenDate(null)} title={openDate && closedOn(monthClosed.closed, openDate) ? 'No hay culto' : openDate ? formatLongDay(openDate) : 'Fecha'}>
         {openDate && <DaySheet key={openDate} date={openDate} item={closedOn(monthClosed.closed, openDate)} canEdit={church.canEdit}

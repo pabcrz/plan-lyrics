@@ -75,7 +75,7 @@ test('a reader sees the same cards without creation, and an empty state without 
   stubApi({ services: [], church: { ...church, canEdit: false, canConfigure: false } })
   mount(<HomePage />)
   expect(await screen.findByText('No hay servicios próximos')).toBeTruthy()
-  expect(screen.queryByRole('button', { name: 'Nuevo' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Nuevo servicio' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Crear servicio' })).toBeNull()
   cleanup()
   stubApi({ services: [] })
@@ -84,10 +84,10 @@ test('a reader sees the same cards without creation, and an empty state without 
   expect(screen.getByRole('button', { name: 'Crear servicio' })).toBeTruthy()
 })
 
-test('offers creation to editors in the header', async () => {
+test('offers creation to editors with the floating button', async () => {
   stubApi({ services })
   mount(<HomePage />)
-  expect(await screen.findByRole('button', { name: 'Nuevo' })).toBeTruthy()
+  expect(await screen.findByRole('button', { name: 'Nuevo servicio' })).toBeTruthy()
 })
 
 test('the mobile bar has the same sections for every role, and «Más» only when it has something', async () => {
@@ -109,7 +109,7 @@ test.each([
   stubApi({ church: status })
   mount(<HomePage />)
   expect(await screen.findByText(title)).toBeTruthy()
-  expect(screen.queryByRole('button', { name: 'Nuevo' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Nuevo servicio' })).toBeNull()
 })
 
 const closed = [{ date: '2026-11-27', reason: 'Feriado' }, { date: '2026-11-18', reason: null }, { date: '2026-11-04', reason: null }]

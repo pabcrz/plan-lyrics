@@ -53,12 +53,12 @@ function Library({ church }: { church: Church }) {
   const edit = (song: { id: string }) => void navigate(`/canciones/${encodeURIComponent(song.id)}/editar`, { state: { song } })
 
   return (
-    <AppShell church={church} current="songs" wide focus={panel}>
+    <AppShell church={church} current="songs" wide focus={panel} action={canCreate ? { label: 'Nueva canción', onAction: add } : undefined}>
         <div className="flex flex-1 lg:h-dvh lg:min-h-0 lg:flex-none">
           <main className={cx('flex-1 content-start gap-3 p-4 lg:max-w-[400px] lg:flex-none lg:basis-[400px] lg:overflow-y-auto lg:border-r lg:border-line', panel ? 'hidden lg:grid' : 'grid')}>
             <div className="flex items-center gap-3">
               <h1 className="m-0 flex-1 font-display text-2xl font-bold tracking-tight">Canciones</h1>
-              {canCreate && <Button variant="primary" onClick={add}><Icon name="plus" />Nueva</Button>}
+              {canCreate && <Button variant="primary" onClick={add} className="max-lg:hidden"><Icon name="plus" />Nueva</Button>}
             </div>
             <div className="relative">
               <Icon name="search" className="pointer-events-none absolute top-3.5 left-3 text-text-3" />
