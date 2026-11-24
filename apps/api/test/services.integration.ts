@@ -230,3 +230,16 @@ test('correcting a service needs a session and an editor', async () => {
   expect((await patch('member')).status).toBe(403)
   expect((await patch('editor')).status).toBe(200)
 })
+
+test('deleting a service needs a session and an editor, and frees its date', async () => {
+  const { id } = await (await create('editor', friday)).json()
+  const remove = (subject: string | undefined) => api.request(`/api/services/${id}`, {
+    method: 'DELETE', headers: subject ? { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}` } : {},
+  })
+  expect((await remove(undefined)).status).toBe(401)
+  expect((await remove('member')).status).toBe(403)
+  expect((await remove('editor')).status).toBe(204)
+  expect((await remove('editor')).status).toBe(404)
+  expect(await db.service.count({ where: { id } })).toBe(0)
+  expect((await create('editor', friday)).status).toBe(201)
+})

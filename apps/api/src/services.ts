@@ -318,6 +318,13 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     return c.json(present(result))
   }))
 
+  // Deleting a service removes what hangs from it (setlist, assignments, preaching, its share links); people and songs stay.
+  routes.delete('/api/services/:serviceId', guarded('service_deletion_failed', async (c, db, church) => {
+    if (!church.canEdit) return c.json({ error: 'Forbidden' }, 403)
+    const removed = await db.service.deleteMany({ where: { id: c.req.param('serviceId')!, churchId: church.churchId } })
+    return removed.count > 0 ? c.body(null, 204) : c.json({ error: 'Not found' }, 404)
+  }))
+
   // Monthly batch: the reviewed assignment is validated again and created atomically (see batches.ts).
   routes.get('/api/service-batches/period', guarded('batch_period_failed', (c, db, church) => batchPeriod(c, db, church, now())))
   routes.post('/api/service-batches', guarded('batch_creation_failed', (c, db, church) => createBatch(c, db, church, now())))

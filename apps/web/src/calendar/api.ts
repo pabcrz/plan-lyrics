@@ -151,6 +151,18 @@ export function useUpdateService() {
   }, [api, client])
 }
 
+/** Elimina un servicio con su lista de canciones, participaciones y predicación; las personas y canciones se conservan. */
+export function useDeleteService() {
+  const api = useApiFetch()
+  const client = useQueryClient()
+  return useCallback(async (id: string) => {
+    await api<void>(`/api/services/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    // El servicio ya no existe: se descartan sus lecturas y se vuelve a leer lo que lo listaba.
+    client.removeQueries({ queryKey: ['setlist'] })
+    await Promise.all(['services', 'assignments', 'closed', 'preaching', 'preaching-turns', 'participations'].map((key) => client.invalidateQueries({ queryKey: [key] })))
+  }, [api, client])
+}
+
 /** Fechas «No hay culto» de uno o varios meses (`YYYY-MM`). */
 export function useClosedDates(months: string[]) {
   const api = useApiFetch()

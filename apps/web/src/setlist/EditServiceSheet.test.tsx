@@ -15,11 +15,12 @@ function open(reply: { status: number; body?: unknown } = { status: 200, body: {
     const method = init?.method ?? 'GET'
     calls.push({ method, url, body: init?.body ? JSON.parse(String(init.body)) : undefined })
     if (url === '/api/people?role=direct') return new Response(JSON.stringify(people), { status: 200 })
-    return new Response(JSON.stringify(reply.body ?? {}), { status: reply.status })
+    return new Response(reply.status === 204 ? null : JSON.stringify(reply.body ?? {}), { status: reply.status })
   }))
   const onSaved = vi.fn()
-  mount(<EditServiceSheet church={{ ...church, ...over }} service={current} directorId="p1" onClose={() => undefined} onSaved={onSaved} />)
-  return { calls, onSaved }
+  const onDeleted = vi.fn()
+  mount(<EditServiceSheet church={{ ...church, ...over }} service={current} directorId="p1" onClose={() => undefined} onSaved={onSaved} onDeleted={onDeleted} />)
+  return { calls, onSaved, onDeleted }
 }
 const patches = (calls: Array<{ method: string; url: string; body?: unknown }>) => calls.filter((call) => call.method === 'PATCH')
 
@@ -61,4 +62,21 @@ test('every refusal the server can give has its own message', () => {
   expect(text(409, 'Combination not allowed')).toContain('no puede dirigir')
   expect(text(403, 'Forbidden')).toContain('permiso')
   expect(text(404, 'Not found')).toContain('ya no existe')
+})
+
+test('deleting asks for confirmation first, then removes the service', async () => {
+  const { calls, onDeleted } = open({ status: 204 })
+  fireEvent.click(await screen.findByRole('button', { name: 'Eliminar servicio' }))
+  expect(calls.some((call) => call.method === 'DELETE')).toBe(false)
+  fireEvent.click(screen.getByRole('button', { name: 'Sí, eliminar servicio' }))
+  await waitFor(() => expect(onDeleted).toHaveBeenCalled())
+  expect(calls.filter((call) => call.method === 'DELETE')).toEqual([{ method: 'DELETE', url: '/api/services/s1', body: undefined }])
+})
+
+test('a refused deletion explains why and does not leave the page', async () => {
+  const { onDeleted } = open({ status: 403, body: { error: 'Forbidden' } })
+  fireEvent.click(await screen.findByRole('button', { name: 'Eliminar servicio' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Sí, eliminar servicio' }))
+  await waitFor(() => expect(screen.getAllByRole('alert').map((a) => a.textContent).join(' ')).toContain('No tienes permiso para eliminar'))
+  expect(onDeleted).not.toHaveBeenCalled()
 })

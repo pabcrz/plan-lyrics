@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { Avatar, Button, Icon, Notice, StatusChip, Toast, format12h, from24h, type ServiceStatus } from '../ui'
 import { AppShell } from '../calendar/AppShell'
 import { ChurchGate } from '../calendar/ChurchGate'
@@ -35,6 +35,7 @@ export function ServicePage() {
 /** Pantalla del servicio: datos, setlist, participaciones y predicación juntos; qué se puede cambiar lo decide el servidor. */
 function Screen({ church }: { church: Church }) {
   const { serviceId = '' } = useParams()
+  const navigate = useNavigate()
   const query = useSetlist(serviceId)
   const month = query.data ? monthOf(query.data.service.date) : ''
   // La dirección y lo demás del servicio vienen de la lista del mes (no hay lectura de un servicio suelto).
@@ -94,7 +95,7 @@ function Screen({ church }: { church: Church }) {
             </div>
             {editing && (
               <EditServiceSheet church={church} service={setlist.service} directorId={service?.director?.id} onClose={() => setEditing(false)}
-                onSaved={() => { setEditing(false); setSaved(true) }} />
+                onSaved={() => { setEditing(false); setSaved(true) }} onDeleted={() => void navigate('/', { replace: true })} />
             )}
           </>
         )}
