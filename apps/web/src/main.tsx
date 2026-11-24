@@ -5,10 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { ClerkApp } from './ClerkApp'
 import { PublicLinkPage } from './share/PublicLinkPage'
+import { watchInstall } from './install'
 import { initAppearance } from './ui'
 import './styles.css'
 
 initAppearance()
+watchInstall()
 
 const client = new QueryClient()
 // Página interna del sistema visual: solo existe en desarrollo.
