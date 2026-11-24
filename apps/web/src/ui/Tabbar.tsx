@@ -48,7 +48,7 @@ export function Tabbar({
       aria-label={label}
       className={cx(
         'grid border-t border-line bg-surface px-2 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]',
-        action ? 'grid-cols-[1fr_76px_1fr]' : 'auto-cols-fr grid-flow-col',
+        action ? (rest.length > 1 ? 'grid-cols-[1fr_76px_1fr_1fr]' : 'grid-cols-[1fr_76px_1fr]') : 'auto-cols-fr grid-flow-col',
       )}
     >
       {first && destination(first)}

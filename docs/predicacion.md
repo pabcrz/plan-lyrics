@@ -29,6 +29,8 @@ Errores: `400 {"error":"Date in the past"}` (los servicios de fechas pasadas son
 
 ## Interfaz web
 
+- **Pestaña «Predicaciones»** (`/predicaciones`, solo si la iglesia usa predicación): lista el mes con fecha, predicador y tema de cada servicio (`GET /api/preaching?month=YYYY-MM`, sin notas ni citas). Tocar una fecha abre la misma sección de predicación del detalle del servicio (un solo registro, dos entradas). «Nueva predicación» abre el formulario de servicio, donde la dirección y la predicación son opcionales (al menos una).
+
 Todo depende de `usesPreaching`: apagado, la interfaz no muestra la sección ni pide nada a la API.
 
 - **Detalle del servicio** (hoja del calendario, tras «Participaciones»): predicador, tema, citas como etiquetas de texto y, solo si la API entrega `notes`, «Notas internas» con viñetas, negritas y subrayado. Las notas se dibujan como texto (nunca como HTML: `<b>` se ve literal) y un marcador sin pareja se muestra tal cual.

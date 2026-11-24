@@ -23,7 +23,7 @@ export function TopBar({ name, settings, share }: { name?: string; settings?: bo
 }
 
 /** Navegación inferior principal: Calendario, Nuevo (solo quien edita) y Personas. */
-export function MainTabbar({ church, current }: { church: Pick<Church, 'canEdit'>; current: 'calendar' | 'people' }) {
+export function MainTabbar({ church, current }: { church: Pick<Church, 'canEdit' | 'usesPreaching'>; current: 'calendar' | 'preaching' | 'people' }) {
   const navigate = useNavigate()
   const [choosing, setChoosing] = useState(false)
   const option = (label: string, hint: string, path: string) => (
@@ -35,8 +35,8 @@ export function MainTabbar({ church, current }: { church: Pick<Church, 'canEdit'
   )
   return (
     <div className="sticky bottom-0">
-      <Tabbar label="Principal" current={current} onSelect={(id) => void navigate(id === 'people' ? '/personas' : '/')}
-        items={[{ id: 'calendar', label: 'Calendario', icon: 'calendar' }, { id: 'people', label: 'Personas', icon: 'users' }]}
+      <Tabbar label="Principal" current={current} onSelect={(id) => void navigate(id === 'people' ? '/personas' : id === 'preaching' ? '/predicaciones' : '/')}
+        items={[{ id: 'calendar', label: 'Calendario', icon: 'calendar' }, ...(church.usesPreaching ? [{ id: 'preaching', label: 'Predicaciones', icon: 'mic' as const }] : []), { id: 'people', label: 'Personas', icon: 'users' }]}
         action={church.canEdit ? { label: 'Nuevo', icon: 'plus', onAction: () => setChoosing(true) } : undefined} />
       <Sheet open={choosing} onClose={() => setChoosing(false)} title="Nuevo">
         <div className="overflow-hidden rounded-lg border border-line">

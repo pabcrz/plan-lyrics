@@ -128,6 +128,13 @@ export function stubApi(routes: {
       }
       return reply(200, preaching[serviceId] ?? { serviceId, preacher: null, topic: '', passages: [], canSeeNotes: true, notes: '' })
     }
+    if (url.startsWith('/api/preaching?month=')) {
+      const month = url.split('=')[1]
+      return reply(200, (routes.services ?? []).filter((item) => item.date.startsWith(month)).map((item) => ({
+        service: { id: item.id, title: item.title, date: item.date, slot: item.slot, time: item.time, status: item.status },
+        preaching: preaching[item.id] ? { preacher: preaching[item.id].preacher, topic: preaching[item.id].topic } : null,
+      })))
+    }
     if (url === '/api/preaching-turns') return reply(200, routes.preachingTurns ?? [])
     if (url === '/api/preaching/swap' && init?.method === 'POST') {
       const result = routes.preachingChange?.(url, init)

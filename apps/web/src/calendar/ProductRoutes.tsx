@@ -5,6 +5,7 @@ import { BatchPage } from './BatchPage'
 import { CalendarPage } from './CalendarPage'
 import { ParticipationsPage, RoleParticipationPage } from './ParticipationsPage'
 import { SettingsPage } from './SettingsPage'
+import { PreachingPlanPage } from './PreachingPlanPage'
 import { ServiceFormPage } from './ServiceFormPage'
 import { NewPersonPage } from '../people/NewPersonPage'
 import { PeoplePage } from '../people/PeoplePage'
@@ -24,6 +25,7 @@ export function ProductRoutes() {
       <Route path="/servicios/:serviceId/setlist" element={<SetlistPage />} />
       <Route path="/canciones/:songId/letra" element={<LyricsPage />} />
       <Route path="/canciones/:songId/letra/editar" element={<LyricsEditPage />} />
+      <Route path="/predicaciones" element={<PreachingPlanPage />} />
       <Route path="/personas" element={<PeoplePage />} />
       <Route path="/personas/nueva" element={<NewPersonPage />} />
       <Route path="/personas/:personId" element={<PersonPage />} />
