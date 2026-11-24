@@ -4,6 +4,7 @@ import { Avatar, Button, Icon, Notice, Toast, fold, inputClass } from '../ui'
 import { AppShell } from '../calendar/AppShell'
 import { ChurchGate } from '../calendar/ChurchGate'
 import { usePeople } from '../calendar/api'
+import { rolesText } from '../calendar/PersonRoles'
 import type { Church } from '../calendar/model'
 
 export function PeoplePage() {
@@ -54,7 +55,10 @@ function Directory({ church }: { church: Church }) {
                   <button type="button" onClick={() => void navigate(`/personas/${encodeURIComponent(person.id)}`)}
                     className="flex min-h-14 w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-3 text-left hover:bg-surface-2">
                     <Avatar name={person.name} />
-                    <b className="flex-1 text-[0.9375rem] font-semibold">{person.name}{person.isYou && <span className="ml-2 rounded-full border border-line-strong bg-surface-2 px-2 text-[0.8125rem] font-medium text-text-2">Tú</span>}</b>
+                    <span className="grid flex-1">
+                      <b className="text-[0.9375rem] font-semibold">{person.name}{person.isYou && <span className="ml-2 rounded-full border border-line-strong bg-surface-2 px-2 text-[0.8125rem] font-medium text-text-2">Tú</span>}</b>
+                      {rolesText(person, church.usesPreaching) && <small className="text-[0.8125rem] text-text-3">{rolesText(person, church.usesPreaching)}</small>}
+                    </span>
                     {person.hasAccount && <span className="rounded-full border border-pub-bd bg-pub-bg px-2.5 text-[0.8125rem] font-medium text-pub-fg">Con cuenta</span>}
                   </button>
                 </li>

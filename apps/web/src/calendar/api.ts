@@ -62,9 +62,10 @@ export function useSaveChurch() {
   }, [api, client])
 }
 
-export function usePeople(enabled: boolean) {
+/** Directorio de la iglesia; con `role` solo quienes pueden dirigir o predicar. */
+export function usePeople(enabled: boolean, role?: 'direct' | 'preach') {
   const api = useApiFetch()
-  return useQuery({ queryKey: ['people'], queryFn: () => api<Person[]>('/api/people'), enabled, retry: false })
+  return useQuery({ queryKey: role ? ['people', role] : ['people'], queryFn: () => api<Person[]>(`/api/people${role ? `?role=${role}` : ''}`), enabled, retry: false })
 }
 
 export function usePerson(id: string) {
@@ -77,12 +78,12 @@ export function usePersonActions() {
   const api = useApiFetch()
   const client = useQueryClient()
   const refresh = useCallback(() => Promise.all([client.invalidateQueries({ queryKey: ['people'] }), client.invalidateQueries({ queryKey: ['person'] })]), [client])
-  const create = useCallback(async (person: { name: string; phone?: string; email?: string }) => {
+  const create = useCallback(async (person: { name: string; phone?: string; email?: string; canDirect?: boolean; canPreach?: boolean }) => {
     const created = await api<Omit<PersonDetail, 'sharedWithOtherChurches' | 'upcomingServices'>>('/api/people', { method: 'POST', body: person })
     await refresh()
     return created
   }, [api, refresh])
-  const update = useCallback(async (id: string, patch: { name?: string; phone?: string | null; email?: string | null }) => {
+  const update = useCallback(async (id: string, patch: { name?: string; phone?: string | null; email?: string | null; canDirect?: boolean; canPreach?: boolean }) => {
     const saved = await api<Omit<PersonDetail, 'sharedWithOtherChurches' | 'upcomingServices'>>(`/api/people/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
     await refresh()
     return saved
@@ -116,8 +117,9 @@ export function useServices(months: string[]) {
   }
 }
 
+/** Al menos `directorId` o `preacher`; el servidor lo vuelve a exigir. */
 export type NewService = {
-  title: string; date: string; status: Extract<Status, 'DRAFT' | 'PUBLISHED'>; directorId: string
+  title: string; date: string; status: Extract<Status, 'DRAFT' | 'PUBLISHED'>; directorId?: string; preacher?: { personId: string; topic?: string }
   time?: string | null; slot?: Exclude<Slot, 'SINGLE'>
 }
 

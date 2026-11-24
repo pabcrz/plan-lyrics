@@ -10,8 +10,10 @@ export const newServiceBody = z.strictObject({
   slot: z.enum(['MORNING', 'AFTERNOON']).optional(),
   time: z.string().regex(hhmm).nullish(),
   status: z.enum(['DRAFT', 'PUBLISHED']),
-  directorId: z.string().trim().min(1).max(64),
-})
+  directorId: z.string().trim().min(1).max(64).optional(),
+  // The topic is cleaned and capped by the route (preaching-rules imports this file, so it cannot be imported here).
+  preacher: z.strictObject({ personId: z.string().trim().min(1).max(64), topic: z.string().max(2000).optional() }).optional(),
+}).refine(body => body.directorId !== undefined || body.preacher !== undefined)
 // Correcting a service: any subset of its own fields (the church never travels in the body). `time: null` clears the hour.
 export const servicePatch = z.strictObject({
   title: z.string().trim().min(1).max(120).optional(),

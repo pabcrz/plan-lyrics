@@ -149,7 +149,7 @@ function SetlistImage({ church }: { church: Church }) {
 
 function SetlistFor({ church, service, select, intro }: { church: Church; service: Service; select: ReactNode; intro: string }) {
   const setlist = useSetlist(service.id)
-  const doc = setlistDoc({ church: church.name, date: service.date, entries: setlist.data?.entries ?? [], director: service.director.name })
+  const doc = setlistDoc({ church: church.name, date: service.date, entries: setlist.data?.entries ?? [], director: service.director?.name })
   const name = fileName('setlist', service.date)
   const ready = doc.rows.length > 0
   return (

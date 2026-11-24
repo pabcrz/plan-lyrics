@@ -166,3 +166,12 @@ test('concurrent batches on the same dates cannot exceed capacity: one wins, the
   expect(results.map(r => r.status).sort()).toEqual([201, 409, 409])
   expect(await db.service.count()).toBe(2)
 })
+
+test('a batch only accepts directors who direct and preachers who preach', async () => {
+  const link = { churchId_personId: { churchId: 'church-a', personId: 'person-a' } }
+  await db.churchPerson.update({ where: link, data: { canDirect: false } })
+  try {
+    expect((await post('editor', batch([entry('2026-11-13')]))).status).toBe(400)
+    expect(await db.service.count()).toBe(0)
+  } finally { await db.churchPerson.update({ where: link, data: { canDirect: true } }) }
+})

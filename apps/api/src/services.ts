@@ -4,7 +4,8 @@ import { safeErrorCode } from './errors.js'
 import { batchPeriod, createBatch } from './batches.js'
 import { generateForServices } from './participation-generation.js'
 import { checkSettings } from './settings-rules.js'
-import { findSameName, newPersonBody, personPatch, personRolesBody } from './people-rules.js'
+import { findSameName, newPersonBody, peopleRoleQuery, personPatch, personRolesBody } from './people-rules.js'
+import { singleLine, TOPIC_MAX } from './preaching-rules.js'
 import { closedDateBody, dateCapacity, isoDate, monthQuery, newServiceBody, planEdit, planSlot, servicePatch, todayInZone } from './service-rules.js'
 import { DIRECTOR_KEY, combinationAllowed } from './role-rules.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
@@ -39,15 +40,18 @@ const serviceSelect = {
   // Songs only: the moments of the setlist («Ofrenda») are not counted.
   _count: { select: { setlist: { where: { songId: { not: null } } } } },
 } as const
-type Row = { id: string; title: string; date: Date; slot: string; time: string | null; status: string; director: { person: { id: string; name: string } }; _count: { setlist: number } }
+type Row = { id: string; title: string; date: Date; slot: string; time: string | null; status: string; director: { person: { id: string; name: string } } | null; _count: { setlist: number } }
 const present = (row: Row) => ({
   id: row.id, title: row.title, date: row.date.toISOString().slice(0, 10), slot: row.slot,
-  time: row.time, status: row.status, director: row.director.person, songCount: row._count.setlist,
+  time: row.time, status: row.status, director: row.director?.person ?? null, songCount: row._count.setlist,
 })
 
 const personSelect = { id: true, name: true, phone: true, email: true, userId: true } as const
-const presentPerson = (person: { id: string; name: string; phone: string | null; email: string | null; userId: string | null }, roleIds: string[]) =>
-  ({ id: person.id, name: person.name, phone: person.phone, email: person.email, hasAccount: person.userId !== null, roleIds })
+// `roleIds` are the musical roles the person may hold; `canDirect`/`canPreach` say who the director and preacher pickers offer.
+type Link = { roleIds: string[]; canDirect: boolean; canPreach: boolean }
+const linkSelect = { roleIds: true, canDirect: true, canPreach: true } as const
+const presentPerson = (person: { id: string; name: string; phone: string | null; email: string | null; userId: string | null }, link: Link) =>
+  ({ id: person.id, name: person.name, phone: person.phone, email: person.email, hasAccount: person.userId !== null, roleIds: link.roleIds, canDirect: link.canDirect, canPreach: link.canPreach })
 // A removed link stays for past services but is invisible everywhere else.
 const activeLink = (churchId: string) => ({ churchId, removedAt: null })
 
@@ -59,6 +63,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
   routes.use('/api/people', requireSession(config))
   routes.use('/api/people/*', requireSession(config))
   routes.use('/api/services', requireSession(config))
+  routes.use('/api/services/:serviceId', requireSession(config))
   routes.use('/api/service-batches', requireSession(config))
   routes.use('/api/service-batches/*', requireSession(config))
   routes.use('/api/closed-dates', requireSession(config))
@@ -109,25 +114,29 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
   }))
 
   routes.get('/api/people', guarded('people_failed', async (c, db, church) => {
+    const asked = c.req.query('role')
+    const role = asked === undefined ? undefined : peopleRoleQuery.safeParse(asked)
+    if (role && !role.success) return c.json({ error: 'Invalid request' }, 400)
+    const only = role?.data === 'direct' ? { canDirect: true } : role?.data === 'preach' ? { canPreach: true } : {}
     const [links, me] = await Promise.all([
-      db.churchPerson.findMany({ where: activeLink(church.churchId), select: { roleIds: true, person: { select: personSelect } } }),
+      db.churchPerson.findMany({ where: { ...activeLink(church.churchId), ...only }, select: { ...linkSelect, person: { select: personSelect } } }),
       db.user.findUnique({ where: { clerkSubject: c.get('clerkSubject') }, select: { id: true } }),
     ])
-    return c.json(links.map(link => ({ id: link.person.id, name: link.person.name, hasAccount: link.person.userId !== null, isYou: me !== null && link.person.userId === me.id, roleIds: link.roleIds }))
+    return c.json(links.map(link => ({ id: link.person.id, name: link.person.name, hasAccount: link.person.userId !== null, isYou: me !== null && link.person.userId === me.id, roleIds: link.roleIds, canDirect: link.canDirect, canPreach: link.canPreach }))
       .sort((a, b) => a.name.localeCompare(b.name, 'es')))
   }))
 
   // The person is always looked up through the active church's link: another church's people do not exist here.
   routes.get('/api/people/:personId', guarded('person_read_failed', async (c, db, church) => {
     const personId = c.req.param('personId')
-    const link = await db.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId }, select: { roleIds: true, person: { select: personSelect } } })
+    const link = await db.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId }, select: { ...linkSelect, person: { select: personSelect } } })
     if (!link) return c.json({ error: 'Not found' }, 404)
     const [me, elsewhere, upcoming] = await Promise.all([
       db.user.findUnique({ where: { clerkSubject: c.get('clerkSubject') }, select: { id: true } }),
       db.churchPerson.count({ where: { personId, removedAt: null, churchId: { not: church.churchId } } }),
       db.service.count({ where: { churchId: church.churchId, directorId: personId, status: { not: 'CANCELLED' }, date: { gte: new Date(`${todayInZone(now())}T00:00:00Z`) } } }),
     ])
-    return c.json({ ...presentPerson(link.person, link.roleIds), isYou: me !== null && link.person.userId === me.id, sharedWithOtherChurches: elsewhere > 0, upcomingServices: upcoming })
+    return c.json({ ...presentPerson(link.person, link), isYou: me !== null && link.person.userId === me.id, sharedWithOtherChurches: elsewhere > 0, upcomingServices: upcoming })
   }))
 
   // Same full name (ignoring case and accents) is never created twice: the caller must complete the name.
@@ -140,34 +149,40 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       const links = await tx.churchPerson.findMany({ where: activeLink(church.churchId), select: { person: { select: { id: true, name: true } } } })
       const same = findSameName(links.map(link => link.person), body.data.name)
       if (same) return { same }
-      return { person: await tx.person.create({
-        data: { name: body.data.name, phone: body.data.phone ?? null, email: body.data.email ?? null, churches: { create: { churchId: church.churchId } } }, select: personSelect,
+      const link = { roleIds: [] as string[], canDirect: body.data.canDirect ?? false, canPreach: body.data.canPreach ?? false }
+      return { link, person: await tx.person.create({
+        data: { name: body.data.name, phone: body.data.phone ?? null, email: body.data.email ?? null, churches: { create: { churchId: church.churchId, canDirect: link.canDirect, canPreach: link.canPreach } } }, select: personSelect,
       }) }
     })
     if ('same' in result) return c.json({ error: 'Name exists', existing: result.same }, 409)
-    return c.json(presentPerson(result.person, []), 201)
+    return c.json(presentPerson(result.person, result.link), 201)
   }))
 
   // Personal data is general, so it changes for every church of the person; nothing church-specific is touched.
   routes.patch('/api/people/:personId', guarded('person_update_failed', async (c, db, church) => {
     if (!church.canEdit) return c.json({ error: 'Forbidden' }, 403)
-    const personId = c.req.param('personId')
+    const personId = c.req.param('personId')!
     const body = personPatch.safeParse(await c.req.json().catch(() => undefined))
     if (!body.success) return c.json({ error: 'Invalid request' }, 400)
     const result = await db.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
-      const link = await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId }, select: { roleIds: true } })
-      if (!link) return 'missing' as const
+      if (!await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId }, select: { personId: true } })) return 'missing' as const
+      const { canDirect, canPreach, ...personal } = body.data
       if (body.data.name !== undefined) {
         const links = await tx.churchPerson.findMany({ where: activeLink(church.churchId), select: { person: { select: { id: true, name: true } } } })
         const same = findSameName(links.map(link => link.person), body.data.name, personId)
         if (same) return { same }
       }
-      return { person: await tx.person.update({ where: { id: personId }, data: body.data, select: personSelect }), roleIds: link.roleIds }
+      // Roles belong to this church's link; personal data is shared by every church of the person.
+      const link = await tx.churchPerson.update({ where: { churchId_personId: { churchId: church.churchId, personId } }, data: { canDirect, canPreach }, select: linkSelect })
+      const person = Object.keys(personal).length > 0
+        ? await tx.person.update({ where: { id: personId }, data: personal, select: personSelect })
+        : await tx.person.findUniqueOrThrow({ where: { id: personId }, select: personSelect })
+      return { person, link }
     })
     if (result === 'missing') return c.json({ error: 'Not found' }, 404)
     if ('same' in result) return c.json({ error: 'Name exists', existing: result.same }, 409)
-    return c.json(presentPerson(result.person, result.roleIds))
+    return c.json(presentPerson(result.person, result.link))
   }))
 
   // Which musical roles the person may hold in THIS church. Only an administrator sets them (a role is church data, never
@@ -210,8 +225,12 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     if (!church.canEdit) return c.json({ error: 'Forbidden' }, 403)
     const body = newServiceBody.safeParse(await c.req.json().catch(() => undefined))
     if (!body.success) return c.json({ error: 'Invalid request' }, 400)
-    const { directorId, date, ...fields } = body.data
+    const { directorId, preacher, date, ...fields } = body.data
     if (date < todayInZone(now())) return c.json({ error: 'Date in the past' }, 400)
+    const topic = singleLine(preacher?.topic ?? '')
+    if (topic.length > TOPIC_MAX) return c.json({ error: 'Invalid request' }, 400)
+    // Nothing of preaching can be stored while the church has it switched off.
+    if (preacher && !church.usesPreaching) return c.json({ error: 'Preaching disabled' }, 409)
     const plan = planSlot({ date, sundayDouble: church.sundayDouble, slot: fields.slot, time: fields.time })
     if ('error' in plan) return c.json({ error: plan.error }, 400)
     const dateValue = new Date(`${date}T00:00:00Z`)
@@ -220,19 +239,25 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       // Serialize creations per church so the capacity check cannot race another request.
       await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
       if (await tx.closedDate.findUnique({ where: { churchId_date: { churchId: church.churchId, date: dateValue } }, select: { date: true } })) return 'closed' as const
-      const director = await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: directorId }, select: { personId: true } })
-      if (!director) return 'director' as const
+      // The switch is read again under the lock: an administrator may have turned preaching off since the first check.
+      if (preacher && !(await tx.church.findUniqueOrThrow({ where: { id: church.churchId }, select: { usesPreaching: true } })).usesPreaching) return 'off' as const
+      // Each job only accepts people the church marked for it.
+      if (directorId && !await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: directorId, canDirect: true }, select: { personId: true } })) return 'person' as const
+      if (preacher && !await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: preacher.personId, canPreach: true }, select: { personId: true } })) return 'person' as const
       const taken = await tx.service.count({ where: { churchId: church.churchId, date: dateValue } })
       if (taken >= dateCapacity(date, church.sundayDouble)) return 'full' as const
       const created = await tx.service.create({
-        data: { churchId: church.churchId, directorId, date: dateValue, slot: plan.slot, title: fields.title, time: fields.time ?? null, status: fields.status },
+        data: { churchId: church.churchId, directorId: directorId ?? null, date: dateValue, slot: plan.slot, title: fields.title, time: fields.time ?? null, status: fields.status },
         select: { ...serviceSelect, id: true },
       })
-      // Habitual people and the rotation's next turns, under the same church lock as the creation.
-      await generateForServices(tx, church.churchId, [{ id: created.id, date, slot: plan.slot, directorId }])
+      if (preacher) await tx.servicePreaching.create({ data: { serviceId: created.id, churchId: church.churchId, preacherId: preacher.personId, topic } })
+      // Habitual people and the rotation's next turns, under the same church lock as the creation. Without a
+      // director the musical side is still to plan: nothing is generated until one is chosen.
+      if (directorId) await generateForServices(tx, church.churchId, [{ id: created.id, date, slot: plan.slot, directorId }])
       return created
     }).catch(error => { if (safeErrorCode(error) === 'P2002') return 'full' as const; throw error })
-    if (result === 'director') return c.json({ error: 'Invalid request' }, 400)
+    if (result === 'off') return c.json({ error: 'Preaching disabled' }, 409)
+    if (result === 'person') return c.json({ error: 'Invalid request' }, 400)
     if (result === 'full') return c.json({ error: 'Date full' }, 409)
     if (result === 'closed') return c.json({ error: 'Date closed' }, 409)
     return c.json(present(result), 201)
@@ -244,7 +269,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     if (!church.canEdit) return c.json({ error: 'Forbidden' }, 403)
     const body = servicePatch.safeParse(await c.req.json().catch(() => undefined))
     if (!body.success) return c.json({ error: 'Invalid request' }, 400)
-    const id = c.req.param('serviceId')
+    const id = c.req.param('serviceId')!
     const result = await db.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
       const current = await tx.service.findFirst({ where: { id, churchId: church.churchId }, select: { date: true, slot: true, time: true, directorId: true } })
@@ -264,7 +289,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       }
       const { directorId } = body.data
       if (directorId && directorId !== current.directorId) {
-        if (!await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: directorId }, select: { personId: true } })) return 'invalid' as const
+        if (!await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: directorId, canDirect: true }, select: { personId: true } })) return 'invalid' as const
         const [held, restrictions] = await Promise.all([
           tx.assignment.findMany({ where: { serviceId: id, personId: directorId }, select: { roleId: true } }),
           tx.roleRestriction.findMany({ where: { churchId: church.churchId }, select: { first: true, second: true } }),
@@ -276,6 +301,10 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
         data: { ...(body.data.title !== undefined ? { title: body.data.title } : {}), ...(body.data.status ? { status: body.data.status } : {}), ...(directorId ? { directorId } : {}), date: dateValue, slot: plan.slot, time: plan.time },
         select: serviceSelect,
       })
+      // A service that had no director has no musical assignments yet: they are generated now (manual ones, if any, stay).
+      if (directorId && !current.directorId && await tx.assignment.count({ where: { serviceId: id } }) === 0) {
+        await generateForServices(tx, church.churchId, [{ id, date: plan.date, slot: plan.slot, directorId }])
+      }
       // A link of this single service follows its date.
       if (plan.date !== currentDate) await tx.shareLink.updateMany({ where: { serviceId: id, churchId: church.churchId }, data: { fromDate: dateValue, toDate: dateValue } })
       return updated

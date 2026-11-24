@@ -29,7 +29,7 @@ export function updateFailure(error: unknown) {
 export function EditServiceSheet({ church, service, directorId, onClose, onSaved }: {
   church: Pick<Church, 'sundayDouble'>; service: Current; directorId: string | undefined; onClose: () => void; onSaved: () => void
 }) {
-  const people = usePeople(true)
+  const people = usePeople(true, 'direct')
   const update = useUpdateService()
   const [title, setTitle] = useState(service.title)
   const [date, setDate] = useState(service.date)

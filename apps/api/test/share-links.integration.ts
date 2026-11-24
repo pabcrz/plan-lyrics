@@ -18,7 +18,7 @@ const luis = 'p-share-luis'
 
 beforeAll(async () => {
   await seedFixtures(db)
-  await db.person.upsert({ where: { id: luis }, update: {}, create: { id: luis, name: 'Luis Ficticio', churches: { create: { churchId: 'church-a' } } } })
+  await db.person.upsert({ where: { id: luis }, update: {}, create: { id: luis, name: 'Luis Ficticio', churches: { create: { churchId: 'church-a', canDirect: true, canPreach: true } } } })
 })
 const reset = async () => {
   clock = new Date('2026-11-12T18:00:00Z')

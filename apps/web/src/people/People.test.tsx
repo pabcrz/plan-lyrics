@@ -69,7 +69,7 @@ test('adds a person with a full name and an optional phone, then opens the recor
   fireEvent.change(screen.getByLabelText('Nombre completo'), { target: { value: ' Juan Pérez Rodríguez ' } })
   fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '5550101234' } })
   fireEvent.click(save)
-  await waitFor(() => expect(sent(calls, 'POST')).toEqual([{ url: '/api/people', body: { name: 'Juan Pérez Rodríguez', phone: '+525550101234' } }]))
+  await waitFor(() => expect(sent(calls, 'POST')).toEqual([{ url: '/api/people', body: { name: 'Juan Pérez Rodríguez', phone: '+525550101234', canDirect: true, canPreach: false } }]))
 })
 
 test('an existing name is not created again: it asks to complete the name and links to the record', async () => {

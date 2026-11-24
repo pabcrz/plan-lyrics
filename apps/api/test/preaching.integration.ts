@@ -26,7 +26,7 @@ const reset = async () => {
 beforeAll(async () => {
   await seedFixtures(db)
   for (const [id, name, userId] of [[luis, 'Luis', null], [pedro, 'Pedro', null], [withAccount, 'Ana con cuenta', 'combined']] as const) {
-    await db.person.upsert({ where: { id }, update: {}, create: { id, name, userId, churches: { create: { churchId: 'church-a' } } } })
+    await db.person.upsert({ where: { id }, update: {}, create: { id, name, userId, churches: { create: { churchId: 'church-a', canDirect: true, canPreach: true } } } })
   }
   await reset()
 })
@@ -316,4 +316,25 @@ test('the printable document validates its range, other churches never appear, a
   expect(await json(await documentOf('editor'))).toEqual({ error: 'Preaching disabled' })
   await db.servicePreaching.deleteMany({ where: { churchId: 'church-b' } })
   await db.service.delete({ where: { id: other.id } })
+})
+
+test('the monthly plan lists every service with its preacher and topic, never notes, and follows the church switch', async () => {
+  await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: false } })
+  expect((await call('editor', 'GET', '/api/preaching?month=2026-11')).status).toBe(409)
+  await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: true } })
+  const planned = await db.service.create({ data: { churchId: 'church-a', title: 'Con predicación', date: new Date('2026-11-20T00:00:00Z'), status: 'DRAFT' } })
+  await db.service.create({ data: { churchId: 'church-a', title: 'Sin predicación', date: new Date('2026-11-27T00:00:00Z'), status: 'DRAFT' } })
+  await db.servicePreaching.create({ data: { serviceId: planned.id, churchId: 'church-a', preacherId: pedro, topic: 'La gracia', notes: 'privadas' } })
+  const response = await call('member', 'GET', '/api/preaching?month=2026-11')
+  expect(response.status).toBe(200)
+  const plan = await response.json()
+  expect(plan.map((item: { service: { title: string } }) => item.service.title)).toEqual(['Con predicación', 'Sin predicación'])
+  expect(plan[0].preaching).toEqual({ preacher: { id: pedro, name: 'Pedro' }, topic: 'La gracia' })
+  expect(plan[1].preaching).toBeNull()
+  expect(JSON.stringify(plan)).not.toContain('privadas')
+  expect((await call('member', 'GET', '/api/preaching?month=2026-13')).status).toBe(400)
+  expect((await call(undefined, 'GET', '/api/preaching?month=2026-11')).status).toBe(401)
+  // Another church's services never appear.
+  await db.church.update({ where: { id: 'church-b' }, data: { usesPreaching: true } })
+  try { expect(await (await call('b-editor', 'GET', '/api/preaching?month=2026-11')).json()).toEqual([]) } finally { await db.church.update({ where: { id: 'church-b' }, data: { usesPreaching: false } }) }
 })

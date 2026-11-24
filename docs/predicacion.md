@@ -12,6 +12,7 @@ Parte de la etapa 1, opcional por iglesia (ver [Predicación](producto.md#predic
 | --- | --- | --- |
 | `GET /api/services/:serviceId/preaching` | Cualquier miembro | `{serviceId, preacher:{id,name}\|null, topic, passages:[…], canSeeNotes, notes?}`. Un servicio sin sección responde la sección vacía. `notes` **solo aparece** si `canSeeNotes` es `true`. |
 | `PUT /api/services/:serviceId/preaching` | Administrador o editor | Reemplaza la sección entera: `{preacherId:string\|null, topic, passages:string[], notes}` (los cuatro campos). Responde como el `GET`. Es también el **cambio por fecha** del predicador. Una sección vacía (sin predicador, tema, citas ni notas) no se guarda. |
+| `POST /api/services` | Administrador o editor | Puede crear la sección junto con el servicio (`preacher: {personId, topic?}`), con o sin director. Ver [servicios y calendario](servicios-calendario.md). |
 | `POST /api/preaching/swap` | Administrador o editor | **Intercambio entre dos fechas**: `{first, second}` son dos servicios (ids) con predicador distinto. Solo se intercambian los predicadores: cada fecha conserva tema, citas y notas. `{swapped:[first, second]}`. |
 | `GET /api/preaching-turns?from=YYYY-MM-DD` | Administrador o editor | Próximas fechas con predicador (desde hoy por defecto, hasta 40) `[{serviceId, date, slot, title, person}]`, para elegir con quién intercambiar. Nunca incluye notas. |
 | `POST /api/service-batches` | Administrador o editor | Cada entrada admite `preacherId` opcional: el lote crea la sección de esa fecha en la misma transacción (todo o nada). Ver [lote mensual](servicios-calendario.md#reglas-aplicadas-en-servidor). |
@@ -27,6 +28,8 @@ Errores: `400 {"error":"Date in the past"}` (los servicios de fechas pasadas son
 - **Integridad:** `ServicePreaching` (una fila por servicio) apunta al servicio junto con su iglesia y al predicador junto con la iglesia, así que una fila no puede cruzar iglesias aunque el código falle. Se borra con el servicio.
 
 ## Interfaz web
+
+- **Pestaña «Predicaciones»** (`/predicaciones`, solo si la iglesia usa predicación): lista el mes con fecha, predicador y tema de cada servicio (`GET /api/preaching?month=YYYY-MM`, sin notas ni citas). Tocar una fecha abre la misma sección de predicación del detalle del servicio (un solo registro, dos entradas). «Nueva predicación» abre el formulario de servicio, donde la dirección y la predicación son opcionales (al menos una).
 
 Todo depende de `usesPreaching`: apagado, la interfaz no muestra la sección ni pide nada a la API.
 

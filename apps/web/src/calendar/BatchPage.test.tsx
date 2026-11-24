@@ -10,7 +10,7 @@ vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-
 
 // Jueves 12 de noviembre de 2026; la iglesia de prueba tiene viernes (19:30) y domingo (10:00) habituales.
 beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-12T18:00:00Z') }) })
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); localStorage.clear() })
 
 const page = () => mount(
   <Routes><Route path="/servicios/lote" element={<BatchPage />} /><Route path="/" element={<p>Calendario</p>} /></Routes>,
@@ -348,4 +348,57 @@ test('a date label that ends in a period is not followed by a second one', async
   fireEvent.click(await screen.findByRole('button', { name: /Quitar de este lote/ }))
   expect(screen.getByText(/vie 13 nov · 7:30 p\.m\. No se crea servicio ni participaciones para esta fecha/)).toBeTruthy()
   expect(document.body.textContent).not.toMatch(/p\.m\.\./)
+})
+
+const draftKey = `plan-lyrics:batch-draft:${church.id}`
+
+test('an unfinished batch is kept on the device and offered again after the tab is closed', async () => {
+  stubApi({ period: period(fridays('13', '20', '27')), directory: people })
+  page()
+  await toDirectors()
+  await addDirector('Ana')
+  await waitFor(() => expect(localStorage.getItem(draftKey)).toContain('p1'))
+  expect(JSON.parse(localStorage.getItem(draftKey)!)).toMatchObject({ step: 'directors', month: '2026-11', list: [{ id: 'p1' }] })
+  cleanup(); vi.unstubAllGlobals()
+  stubApi({ period: period(fridays('13', '20', '27')), directory: people })
+  page()
+  expect(await screen.findByText('Tienes un lote sin terminar')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Retomar borrador' }))
+  expect((await screen.findAllByText('Ana Ramírez')).length).toBeGreaterThan(0)
+  expect(screen.getByRole('button', { name: 'Revisar' })).toBeTruthy()
+  expect(screen.queryByText('Tienes un lote sin terminar')).toBeNull()
+})
+
+test('starting over discards the draft, and creating the batch removes it', async () => {
+  stubApi({ period: period(fridays('13', '20', '27')), directory: people, batch: echo })
+  page()
+  await toDirectors()
+  await addDirector('Ana')
+  await waitFor(() => expect(localStorage.getItem(draftKey)).toContain('p1'))
+  cleanup(); vi.unstubAllGlobals()
+  stubApi({ period: period(fridays('13', '20', '27')), directory: people, batch: echo })
+  page()
+  fireEvent.click(await screen.findByRole('button', { name: 'Empezar de nuevo' }))
+  expect(localStorage.getItem(draftKey)).toBeNull()
+  expect(screen.queryByText('Tienes un lote sin terminar')).toBeNull()
+  await toReview('Ana', 'Luis')
+  expect(localStorage.getItem(draftKey)).not.toBeNull()
+  fireEvent.click(await screen.findByRole('button', { name: 'Crear 3 servicios' }))
+  expect(await screen.findByText('3 servicios creados')).toBeTruthy()
+  expect(localStorage.getItem(draftKey)).toBeNull()
+})
+
+test('the batch pickers offer directors and preachers by role', async () => {
+  const directory = [detail({ id: 'p1', name: 'Ana Ramírez', canDirect: true, canPreach: false }), detail({ id: 'p2', name: 'Luis Herrera', canDirect: false, canPreach: true })]
+  const calls = stubApi({ period: period(fridays('13')), directory })
+  page()
+  await toDirectors()
+  fireEvent.click(await screen.findByRole('button', { name: 'Agregar director' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Agregar director' })
+  const search = within(dialog).getByRole('combobox', { name: /Buscar persona/ })
+  fireEvent.focus(search)
+  fireEvent.change(search, { target: { value: 'a' } })
+  expect(await within(dialog).findByRole('option', { name: /^Ana/ })).toBeTruthy()
+  expect(within(dialog).queryByRole('option', { name: /^Luis/ })).toBeNull()
+  expect(calls.some((call) => call.url === '/api/people?role=direct')).toBe(true)
 })

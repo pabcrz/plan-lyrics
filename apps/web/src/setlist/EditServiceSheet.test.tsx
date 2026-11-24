@@ -14,7 +14,7 @@ function open(reply: { status: number; body?: unknown } = { status: 200, body: {
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET'
     calls.push({ method, url, body: init?.body ? JSON.parse(String(init.body)) : undefined })
-    if (url === '/api/people') return new Response(JSON.stringify(people), { status: 200 })
+    if (url === '/api/people?role=direct') return new Response(JSON.stringify(people), { status: 200 })
     return new Response(JSON.stringify(reply.body ?? {}), { status: reply.status })
   }))
   const onSaved = vi.fn()

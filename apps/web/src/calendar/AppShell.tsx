@@ -5,12 +5,16 @@ import { cx } from '../ui/cx'
 import { TopBar } from './ChurchGate'
 import type { Church } from './model'
 
-export type Section = 'home' | 'songs' | 'people'
-export const SECTIONS: ReadonlyArray<{ id: Section; label: string; icon: IconName; path: string }> = [
+export type Section = 'home' | 'songs' | 'preaching' | 'people'
+type SectionItem = { id: Section; label: string; icon: IconName; path: string }
+const BASE: ReadonlyArray<SectionItem> = [
   { id: 'home', label: 'Inicio', icon: 'home', path: '/' },
   { id: 'songs', label: 'Canciones', icon: 'music', path: '/canciones' },
   { id: 'people', label: 'Personas', icon: 'users', path: '/personas' },
 ]
+/** Las secciones del menú; «Predicaciones» solo existe si la iglesia usa predicación. */
+export const sections = (church: Pick<Church, 'usesPreaching'>): ReadonlyArray<SectionItem> =>
+  church.usesPreaching ? [BASE[0]!, BASE[1]!, { id: 'preaching', label: 'Predicaciones', icon: 'mic', path: '/predicaciones' }, BASE[2]!] : BASE
 /** Secciones secundarias («Más»): el mismo menú para todos los roles; solo cambia lo que cada quien puede abrir. */
 export const extras = (church: Pick<Church, 'canEdit' | 'canConfigure'>) => [
   ...(church.canEdit ? [{ label: 'Compartir', path: '/compartir' }] : []),
@@ -21,7 +25,7 @@ export const extras = (church: Pick<Church, 'canEdit' | 'canConfigure'>) => [
 export function NewSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
   const option = (label: string, hint: string, path: string) => (
-    <button type="button" onClick={() => void navigate(path)}
+    <button type="button" onClick={() => { onClose(); void navigate(path) }}
       className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-line bg-transparent px-4 text-left last:border-b-0 hover:bg-surface-2">
       <span className="font-semibold">{label}<small className="block font-normal text-text-3">{hint}</small></span>
       <Icon name="right" />
@@ -64,8 +68,8 @@ export function AppShell({ church, current, wide = false, focus = false, childre
       <div className="lg:hidden">{!focus && <TopBar name={church.name} />}</div>
       {children}
       <div className={cx('sticky bottom-0 lg:hidden', focus && 'hidden')}>
-        <Tabbar label="Principal" current={current} items={[...SECTIONS, ...(extra.length > 0 ? [{ id: 'more', label: 'Más', icon: 'more' as const }] : [])]}
-          onSelect={(id) => (id === 'more' ? setMore(true) : void navigate(SECTIONS.find((section) => section.id === id)?.path ?? '/'))} />
+        <Tabbar label="Principal" current={current} items={[...sections(church), ...(extra.length > 0 ? [{ id: 'more', label: 'Más', icon: 'more' as const }] : [])]}
+          onSelect={(id) => (id === 'more' ? setMore(true) : void navigate(sections(church).find((section) => section.id === id)?.path ?? '/'))} />
         <Sheet open={more} onClose={() => setMore(false)} title="Más">
           <div className="overflow-hidden rounded-lg border border-line">
             {extra.map((item) => (

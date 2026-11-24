@@ -5,6 +5,7 @@ import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, usePerson, usePersonActions } from '../calendar/api'
 import { useRoles } from '../calendar/roles-api'
 import type { Church, PersonDetail } from '../calendar/model'
+import { PersonRoles, rolesText, type RoleFlags } from '../calendar/PersonRoles'
 import { PhoneField, phoneDigits, phoneError, phoneStored } from './phone'
 
 export function PersonPage() {
@@ -167,6 +168,8 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
           )}
         </section>
 
+        <JobsSection church={church} person={person} />
+
         <RolesSection church={church} person={person} />
 
         <section className="grid gap-2" aria-labelledby="account">
@@ -247,6 +250,33 @@ function RolesSection({ church, person }: { church: Church; person: PersonDetail
       ) : (
         <p className="m-0 text-[0.9375rem]">{catalog.filter((role) => saved.includes(role.id)).map((role) => role.name).join(', ') || 'Sin roles asignados.'}</p>
       ))}
+    </section>
+  )
+}
+
+/** Para qué trabajos aparece la persona en los selectores (dirección y predicación); quien edita los cambia al instante. */
+function JobsSection({ church, person }: { church: Church; person: PersonDetail }) {
+  const { update } = usePersonActions()
+  const [jobs, setJobs] = useState<RoleFlags>({ canDirect: person.canDirect, canPreach: person.canPreach })
+  const [failure, setFailure] = useState('')
+  /** Cada interruptor se guarda al cambiarlo; si el servidor lo rechaza, vuelve a como estaba. */
+  async function change(next: RoleFlags) {
+    const previous = jobs
+    setJobs(next)
+    setFailure('')
+    try {
+      await update(person.id, next)
+    } catch {
+      setJobs(previous)
+      setFailure('No se pudo cambiar el rol. Inténtalo de nuevo.')
+    }
+  }
+  return (
+    <section className="grid gap-2" aria-labelledby="jobs">
+      <h2 id="jobs" className="m-0 font-display text-lg font-bold">Dirección y predicación</h2>
+      {church.canEdit ? <PersonRoles value={jobs} onChange={(next) => void change(next)} showPreach={church.usesPreaching} />
+        : <p className="m-0 text-[0.9375rem]"><span className="text-text-3">Roles: </span><b>{rolesText(jobs, church.usesPreaching) || 'Ninguno'}</b></p>}
+      {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
     </section>
   )
 }

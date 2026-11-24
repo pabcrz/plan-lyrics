@@ -27,7 +27,7 @@ const initial = () => [
 ]
 
 type Lyr = { key: string | null; sections: Array<{ kind: string; label: string | null; text: string; chordPro: string | null; repeat: number }> }
-type Options = { lyrics?: Record<string, Lyr>; moved?: Record<string, Lyr & { semitones: number }>; canEdit?: boolean; canCreateSongs?: boolean; entries?: Entry[]; status?: number; staleOnce?: boolean; createSong?: { status: number; body?: unknown } }
+type Options = { services?: unknown[]; lyrics?: Record<string, Lyr>; moved?: Record<string, Lyr & { semitones: number }>; canEdit?: boolean; canCreateSongs?: boolean; entries?: Entry[]; status?: number; staleOnce?: boolean; createSong?: { status: number; body?: unknown } }
 
 /** Servidor ficticio en memoria con las mismas reglas que la API: versión, orden y respuestas completas. */
 function stubSetlist(options: Options = {}) {
@@ -50,7 +50,7 @@ function stubSetlist(options: Options = {}) {
       return moved ? reply(200, { version: 1, published: false, canEdit: true, ...moved }) : reply(400, { error: 'Invalid request' })
     }
     if (url === '/api/active-church') return reply(200, church)
-    if (url.startsWith('/api/services?month=')) return reply(200, [])
+    if (url.startsWith('/api/services?month=')) return reply(200, options.services ?? [])
     if (url.startsWith('/api/songs')) {
       if (method === 'POST') {
         if (options.createSong) return reply(options.createSong.status, options.createSong.body ?? { error: 'x' })
@@ -438,4 +438,18 @@ test('the lyrics link carries the key of the service, so the chords are shown in
   fireEvent.click(await screen.findByRole('button', { name: 'Ver Canción de ejemplo' }))
   fireEvent.click(within(await screen.findByRole('dialog')).getByRole('link', { name: 'Ver letra' }))
   expect(await screen.findByText('Letra de l1: Canción de ejemplo, desde /servicios/s1, tono G')).toBeTruthy()
+})
+
+const withoutDirector = [{ id: 's1', title: 'Servicio dominical', date: '2026-11-15', slot: 'SINGLE', time: '10:00', status: 'DRAFT', director: null, songCount: 0 }]
+
+test('a service created with only its preaching says «Sin director» and lets editors assign one; members only read it', async () => {
+  stubSetlist({ services: withoutDirector })
+  page()
+  expect(await screen.findByText('Sin director')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Asignar director' })).toBeTruthy()
+  cleanup(); vi.unstubAllGlobals()
+  stubSetlist({ services: withoutDirector, canEdit: false })
+  page()
+  expect(await screen.findByText('Sin director')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Asignar director' })).toBeNull()
 })

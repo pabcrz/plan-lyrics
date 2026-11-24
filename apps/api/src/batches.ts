@@ -38,7 +38,7 @@ export async function batchPeriod(c: Http, db: PrismaClient, church: Church, now
     month: month.data,
     entries: batchEntries({
       month: month.data, weekdays, today, sundayDouble: church.sundayDouble,
-      services: services.map(row => ({ date: day(row.date), slot: row.slot as SlotName, title: row.title, director: row.director.person.name })),
+      services: services.map(row => ({ date: day(row.date), slot: row.slot as SlotName, title: row.title, director: row.director?.person.name ?? null })),
       closed: closed.map(row => ({ date: day(row.date), reason: row.reason })),
     }),
     previous: state ? { directorIds: state.directorIds.filter(personId => stillActive.has(personId)), lastDirectorId: state.lastDirectorId } : null,
@@ -65,9 +65,9 @@ export async function createBatch(c: Http, db: PrismaClient, church: Church, now
     // Same per-church lock as individual creation: the checks below cannot race another request.
     await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
     const wanted = new Set([...body.data.directorIds, ...entries.map(entry => entry.directorId)])
-    const links = await tx.churchPerson.count({ where: { churchId: church.churchId, removedAt: null, personId: { in: [...wanted] } } })
+    const links = await tx.churchPerson.count({ where: { churchId: church.churchId, removedAt: null, canDirect: true, personId: { in: [...wanted] } } })
     if (links !== wanted.size) return { error: 'Invalid request' as const }
-    if (preachers.size > 0 && await tx.churchPerson.count({ where: { churchId: church.churchId, removedAt: null, personId: { in: [...preachers] } } }) !== preachers.size) return { error: 'Invalid request' as const }
+    if (preachers.size > 0 && await tx.churchPerson.count({ where: { churchId: church.churchId, removedAt: null, canPreach: true, personId: { in: [...preachers] } } }) !== preachers.size) return { error: 'Invalid request' as const }
     const dates = [...new Set(entries.map(entry => entry.date))].map(date => new Date(`${date}T00:00:00Z`))
     const [closed, existing] = await Promise.all([
       tx.closedDate.findMany({ where: { churchId: church.churchId, date: { in: dates } }, select: { date: true } }),
@@ -100,7 +100,7 @@ export async function createBatch(c: Http, db: PrismaClient, church: Church, now
   if ('error' in outcome) return c.json(outcome, outcome.error === 'Invalid request' ? 400 : 409)
   return c.json({
     services: outcome.created.map(row => ({
-      id: row.id, title: row.title, date: day(row.date), slot: row.slot, time: row.time, status: row.status, director: row.director.person,
+      id: row.id, title: row.title, date: day(row.date), slot: row.slot, time: row.time, status: row.status, director: row.director?.person ?? null,
     })),
   }, 201)
 }

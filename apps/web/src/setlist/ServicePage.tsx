@@ -70,11 +70,17 @@ function Screen({ church }: { church: Church }) {
                 <span>{capitalize(formatLongDay(setlist.service.date).replace(',', ''))}</span>
                 <span>{setlist.service.time ? format12h(from24h(setlist.service.time)) : 'Sin hora fija'}{slotText[setlist.service.slot]}</span>
               </p>
-              {service && (
+              {service?.director && (
                 <div className="flex items-center gap-3">
                   <Avatar name={service.director.name} />
                   <span><small className="block text-[0.8125rem] text-text-3">Dirige</small><b className="font-semibold">{service.director.name}</b></span>
                 </div>
+              )}
+              {service && !service.director && (
+                <p className="m-0 flex flex-wrap items-center gap-x-3 text-[0.9375rem] text-text-2">
+                  <span>Sin director</span>
+                  {setlist.canEdit && <Button variant="secondary" onClick={() => setEditing(true)}>Asignar director</Button>}
+                </p>
               )}
             </header>
             <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -87,7 +93,7 @@ function Screen({ church }: { church: Church }) {
               )}
             </div>
             {editing && (
-              <EditServiceSheet church={church} service={setlist.service} directorId={service?.director.id} onClose={() => setEditing(false)}
+              <EditServiceSheet church={church} service={setlist.service} directorId={service?.director?.id} onClose={() => setEditing(false)}
                 onSaved={() => { setEditing(false); setSaved(true) }} />
             )}
           </>

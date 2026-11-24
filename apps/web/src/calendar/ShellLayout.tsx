@@ -3,14 +3,15 @@ import { Link, Outlet, useLocation } from 'react-router'
 import { UserButton } from '@clerk/react'
 import { Button, Icon } from '../ui'
 import { cx } from '../ui/cx'
-import { NewSheet, SECTIONS, extras, type Section } from './AppShell'
+import { NewSheet, extras, sections, type Section } from './AppShell'
 import { useChurch } from './api'
 
 /** Sección del menú a la que pertenece una ruta; las pantallas de crear servicio cuelgan de Inicio y las de configuración, de «Más». */
 const sectionOf = (pathname: string): Section | null =>
   pathname === '/' || pathname.startsWith('/servicios') ? 'home'
     : pathname.startsWith('/canciones') ? 'songs'
-      : pathname.startsWith('/personas') ? 'people' : null
+      : pathname.startsWith('/predicaciones') ? 'preaching'
+        : pathname.startsWith('/personas') ? 'people' : null
 const SETTINGS = ['/ajustes', '/accesos', '/cuentas']
 
 /**
@@ -36,7 +37,7 @@ export function ShellLayout() {
           </div>
           {church.canEdit && <Button variant="primary" block onClick={() => setCreating(true)}><Icon name="plus" />Nuevo servicio</Button>}
           <nav aria-label="Secciones" className="grid gap-1 pt-3">
-            {SECTIONS.map((section) => (
+            {(church ? sections(church) : []).map((section) => (
               <Link key={section.id} to={section.path} aria-current={section.id === current ? 'page' : undefined} className={item(section.id === current)}>
                 <Icon name={section.icon} />{section.label}
               </Link>

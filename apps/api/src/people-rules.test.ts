@@ -41,6 +41,16 @@ describe('personPatch', () => {
   })
 })
 
+describe('roles', () => {
+  test('a new person and a patch accept the two role flags and nothing else new', () => {
+    expect(newPersonBody.parse({ name: 'Ana', canPreach: true })).toEqual({ name: 'Ana', canPreach: true })
+    expect(personPatch.parse({ canDirect: false })).toEqual({ canDirect: false })
+    expect(personPatch.safeParse({}).success).toBe(false)
+    expect(personPatch.safeParse({ canDirect: 'yes' }).success).toBe(false)
+    expect(personPatch.safeParse({ canDirect: true, admin: true }).success).toBe(false)
+  })
+})
+
 describe('person email', () => {
   test('is optional, lowercased, and empty means no email', () => {
     expect(newPersonBody.parse({ name: 'Ana Ramírez', email: ' Ana@Example.com ' }).email).toBe('ana@example.com')

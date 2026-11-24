@@ -30,7 +30,7 @@ type Handler =(url: string, init?: RequestInit) => { status?: number; body?: unk
 
 /** Doble de fetch por ruta; devuelve las peticiones hechas para poder inspeccionarlas. */
 export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
-  id: 'p1', name: 'Ana Ramírez', phone: null, email: null, hasAccount: false, isYou: false, roleIds: defaultRoles.map((role) => role.id), sharedWithOtherChurches: false, upcomingServices: 0, ...over,
+  id: 'p1', name: 'Ana Ramírez', phone: null, email: null, hasAccount: false, isYou: false, roleIds: defaultRoles.map((role) => role.id), canDirect: true, canPreach: true, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
 })
 
 export function stubApi(routes: {
@@ -120,6 +120,13 @@ export function stubApi(routes: {
       }
       return reply(200, preaching[serviceId] ?? { serviceId, preacher: null, topic: '', passages: [], canSeeNotes: true, notes: '' })
     }
+    if (url.startsWith('/api/preaching?month=')) {
+      const month = url.split('=')[1]
+      return reply(200, (routes.services ?? []).filter((item) => item.date.startsWith(month)).map((item) => ({
+        service: { id: item.id, title: item.title, date: item.date, slot: item.slot, time: item.time, status: item.status },
+        preaching: preaching[item.id] ? { preacher: preaching[item.id].preacher, topic: preaching[item.id].topic } : null,
+      })))
+    }
     if (url === '/api/preaching-turns') return reply(200, routes.preachingTurns ?? [])
     if (url === '/api/preaching/swap' && init?.method === 'POST') {
       const result = routes.preachingChange?.(url, init)
@@ -162,9 +169,10 @@ export function stubApi(routes: {
       const result = routes.createPerson?.(url, init)
       return reply(result?.status ?? 201, result?.body ?? detail({ id: 'new', ...JSON.parse(String(init.body)) }))
     }
-    if (url === '/api/people') {
-      const list = routes.directory ?? people.map((person) => detail(person))
-      return reply(200, list.map(({ id, name, hasAccount, isYou, roleIds }) => ({ id, name, hasAccount, isYou, roleIds })))
+    if (url === '/api/people' || url.startsWith('/api/people?')) {
+      const role = new URL(url, 'http://local').searchParams.get('role')
+      const list = (routes.directory ?? people.map((person) => detail(person))).filter((person) => (role === 'direct' ? person.canDirect : role === 'preach' ? person.canPreach : true))
+      return reply(200, list.map(({ id, name, hasAccount, isYou, roleIds, canDirect, canPreach }) => ({ id, name, hasAccount, isYou, roleIds, canDirect, canPreach })))
     }
     if (/^\/api\/people\/[^/]+\/roles$/.test(url) && init?.method === 'PUT') return reply(200, { roleIds: JSON.parse(String(init.body)).roleIds })
     if (url.startsWith('/api/people/')) {

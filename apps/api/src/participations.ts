@@ -128,7 +128,7 @@ export function participationRoutes(config: SessionConfig, db?: PrismaClient, no
     const service = await db.service.findFirst({ where: { id: param(c, 'serviceId'), churchId: church.churchId }, select: { id: true, title: true, date: true, slot: true, directorId: true } })
     if (!service) return c.json({ error: 'Not found' }, 404)
     const rows = await db.assignment.findMany({ where: { serviceId: service.id, churchId: church.churchId }, orderBy: [{ roleName: 'asc' }, { createdAt: 'asc' }], select: assignmentSelect })
-    const names = await nameMap(db, church.churchId, [service.directorId, ...rows.flatMap(row => [row.personId, row.proposedPersonId].filter((id): id is string => id !== null))])
+    const names = await nameMap(db, church.churchId, [...(service.directorId ? [service.directorId] : []), ...rows.flatMap(row => [row.personId, row.proposedPersonId].filter((id): id is string => id !== null))])
     return c.json({
       service: { id: service.id, title: service.title, date: day(service.date), slot: service.slot, director: person(names, service.directorId) },
       assignments: rows.map(row => presentAssignment(row, names)),
@@ -136,7 +136,7 @@ export function participationRoutes(config: SessionConfig, db?: PrismaClient, no
   }))
 
   /** Checks that `personId` may hold `roleId` in the service and returns why not; `ignore` is the assignment being replaced. */
-  const fit = async (tx: Tx, church: Active, service: { id: string; date: Date; directorId: string }, roleId: string, personId: string, ignore?: string) => {
+  const fit = async (tx: Tx, church: Active, service: { id: string; date: Date; directorId: string | null }, roleId: string, personId: string, ignore?: string) => {
     if (day(service.date) < today()) return 'Date in the past' as const
     const link = await tx.churchPerson.findFirst({ where: { churchId: church.churchId, personId, removedAt: null }, select: { roleIds: true } })
     if (!link) return 'Invalid request' as const

@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApiFetch } from './api'
+import type { Service } from './model'
 import type { Who } from './participations-api'
 
 /** Sección de predicación de un servicio; `notes` solo llega a quien puede leerlas (`canSeeNotes`). */
@@ -11,6 +12,18 @@ export type PreachingTurn = { serviceId: string; date: string; slot: string; tit
 export function usePreaching(serviceId: string, enabled: boolean) {
   const api = useApiFetch()
   return useQuery({ queryKey: ['preaching', serviceId], queryFn: () => api<Preaching>(`/api/services/${encodeURIComponent(serviceId)}/preaching`), enabled, retry: false })
+}
+
+/** Un servicio del mes con lo que se sabe de su predicación (`null`: aún no hay sección). */
+export type PreachingPlanItem = {
+  service: Pick<Service, 'id' | 'title' | 'date' | 'slot' | 'time' | 'status'>
+  preaching: { preacher: Who | null; topic: string } | null
+}
+
+/** Plan del mes: quién predica y el tema de cada servicio, sin notas ni citas. */
+export function usePreachingPlan(month: string, enabled: boolean) {
+  const api = useApiFetch()
+  return useQuery({ queryKey: ['preaching', 'plan', month], queryFn: () => api<PreachingPlanItem[]>(`/api/preaching?month=${month}`), enabled, retry: false })
 }
 
 /** Próximas fechas con predicador, para elegir con cuál intercambiar. */

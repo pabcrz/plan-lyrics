@@ -6,6 +6,7 @@ import { HomePage } from './HomePage'
 import { ShellLayout } from './ShellLayout'
 import { ParticipationsPage, RoleParticipationPage } from './ParticipationsPage'
 import { SettingsPage } from './SettingsPage'
+import { PreachingPlanPage } from './PreachingPlanPage'
 import { ServiceFormPage } from './ServiceFormPage'
 import { NewPersonPage } from '../people/NewPersonPage'
 import { PeoplePage } from '../people/PeoplePage'
@@ -40,6 +41,7 @@ export function ProductRoutes() {
       </Route>
       <Route path="/canciones/:songId/letra" element={<LyricsPage />} />
       <Route path="/canciones/:songId/letra/editar" element={<LyricsEditPage />} />
+      <Route path="/predicaciones" element={<PreachingPlanPage />} />
       <Route path="/canciones/:songId/letra/acordes" element={<ChordsEditPage />} />
       <Route path="/personas" element={<PeoplePage />} />
       <Route path="/personas/nueva" element={<NewPersonPage />} />

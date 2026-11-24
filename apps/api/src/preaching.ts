@@ -3,7 +3,7 @@ import { guarded } from './active-guard.js'
 import { lockChurch, type Tx } from './participation-generation.js'
 import { canSeeNotes, documentRange, isEmptyPreaching, preachingBody, swapPreachingBody } from './preaching-rules.js'
 import type { PrismaClient } from './generated/prisma/client.ts'
-import { isoDate, todayInZone } from './service-rules.js'
+import { isoDate, monthQuery, todayInZone } from './service-rules.js'
 import type { Active } from './services.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 
@@ -30,8 +30,8 @@ async function present(db: PrismaClient | Tx, church: Active, subject: string, s
   }
 }
 
-const activePerson = (tx: Tx, churchId: string, personId: string) =>
-  tx.churchPerson.findFirst({ where: { churchId, personId, removedAt: null }, select: { personId: true } })
+const activePerson = (tx: Tx, churchId: string, personId: string, role?: 'canPreach') =>
+  tx.churchPerson.findFirst({ where: { churchId, personId, removedAt: null, ...(role ? { [role]: true } : {}) }, select: { personId: true } })
 
 /**
  * Preaching of a service. Everything depends on the church's «Usa predicación» switch: while it is off every
@@ -40,11 +40,28 @@ const activePerson = (tx: Tx, churchId: string, personId: string) =>
  */
 export function preachingRoutes(config: SessionConfig, db?: PrismaClient, now: () => Date = () => new Date()) {
   const routes = new Hono<SessionEnvironment>()
-  for (const path of ['/api/services/:serviceId/preaching', '/api/preaching/*', '/api/preaching-turns', '/api/preaching-document']) {
+  for (const path of ['/api/services/:serviceId/preaching', '/api/preaching', '/api/preaching/*', '/api/preaching-turns', '/api/preaching-document']) {
     routes.use(path, requireSession(config))
     routes.use(path, async (c, next) => { await next(); c.header('Cache-Control', 'no-store') })
   }
   const off = (c: Http) => c.json({ error: 'Preaching disabled' }, 409)
+
+  // The plan of a month: every service with who preaches and the topic. Notes and passages stay in each section.
+  routes.get('/api/preaching', guarded(db, 'preaching_plan_failed', async (c, db, church) => {
+    if (!church.usesPreaching) return off(c)
+    const month = monthQuery.safeParse(c.req.query('month'))
+    if (!month.success) return c.json({ error: 'Invalid request' }, 400)
+    const [year, number] = month.data.split('-').map(Number) as [number, number]
+    const rows = await db.service.findMany({
+      where: { churchId: church.churchId, date: { gte: new Date(Date.UTC(year, number - 1, 1)), lt: new Date(Date.UTC(year, number, 1)) } },
+      orderBy: [{ date: 'asc' }, { slot: 'asc' }],
+      select: { id: true, title: true, date: true, slot: true, time: true, status: true, preaching: { select: { topic: true, preacher: { select: { person: { select: { id: true, name: true } } } } } } },
+    })
+    return c.json(rows.map(row => ({
+      service: { id: row.id, title: row.title, date: day(row.date), slot: row.slot, time: row.time, status: row.status },
+      preaching: row.preaching ? { preacher: row.preaching.preacher?.person ?? null, topic: row.preaching.topic } : null,
+    })))
+  }))
 
   routes.get('/api/services/:serviceId/preaching', guarded(db, 'preaching_read_failed', async (c, db, church) => {
     if (!church.usesPreaching) return off(c)
@@ -67,7 +84,7 @@ export function preachingRoutes(config: SessionConfig, db?: PrismaClient, now: (
       if (day(service.date) < todayInZone(now())) return 'Date in the past' as const
       const { preacherId } = body.data
       // Keeping a preacher who left the directory is allowed; choosing one is not.
-      if (preacherId && preacherId !== service.preaching?.preacherId && !await activePerson(tx, church.churchId, preacherId)) return 'Invalid request' as const
+      if (preacherId && preacherId !== service.preaching?.preacherId && !await activePerson(tx, church.churchId, preacherId, 'canPreach')) return 'Invalid request' as const
       if (isEmptyPreaching(body.data)) await tx.servicePreaching.deleteMany({ where: { serviceId: service.id } })
       else await tx.servicePreaching.upsert({
         where: { serviceId: service.id }, update: body.data, create: { ...body.data, serviceId: service.id, churchId: church.churchId },

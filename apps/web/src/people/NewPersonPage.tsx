@@ -4,6 +4,7 @@ import { Button, Notice, TextField } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, usePersonActions } from '../calendar/api'
 import type { Church } from '../calendar/model'
+import { PersonRoles, type RoleFlags } from '../calendar/PersonRoles'
 import { PhoneField, phoneError, phoneStored } from './phone'
 
 export function NewPersonPage() {
@@ -26,6 +27,7 @@ function Form({ church }: { church: Church }) {
   const [name, setName] = useState((useLocation().state as { name?: string } | null)?.name ?? '')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [jobs, setJobs] = useState<RoleFlags>({ canDirect: true, canPreach: false })
   const [phoneProblem, setPhoneError] = useState('')
   const [existing, setExisting] = useState<{ id: string; name: string } | null>(null)
   const [failure, setFailure] = useState('')
@@ -41,7 +43,7 @@ function Form({ church }: { church: Church }) {
     setExisting(null)
     setFailure('')
     try {
-      const person = await create({ name: name.trim(), ...(phone ? { phone: phoneStored(phone) as string } : {}), ...(email.trim() ? { email: email.trim() } : {}) })
+      const person = await create({ name: name.trim(), ...(phone ? { phone: phoneStored(phone) as string } : {}), ...(email.trim() ? { email: email.trim() } : {}), ...jobs })
       void navigate(`/personas/${encodeURIComponent(person.id)}`, { replace: true })
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409 && caught.existing) setExisting(caught.existing)
@@ -70,6 +72,7 @@ function Form({ church }: { church: Church }) {
         )}
         <PhoneField value={phone} error={phoneProblem || undefined} onChange={(digits) => { setPhone(digits); setPhoneError('') }} />
         <TextField label="Correo (opcional)" type="email" inputMode="email" autoComplete="off" value={email} maxLength={254} onChange={(event) => setEmail(event.target.value)} />
+        <PersonRoles value={jobs} onChange={setJobs} showPreach={church.usesPreaching} />
         <p className="m-0 text-[0.8125rem] text-text-3">El nombre, el teléfono y el correo son información general: se ven en todas las iglesias donde participe. Sus roles y turnos se configuran en cada iglesia.</p>
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
         <Button type="submit" variant="primary" block loading={sending} disabled={!name.trim()}>Agregar persona</Button>
