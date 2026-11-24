@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { CalendarPage } from './CalendarPage'
+import { ProductRoutes } from './ProductRoutes'
 import { church, mount, service, stubApi } from './test-utils'
 
 vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-ficticio' }), UserButton: () => <button>Cuenta</button> }))
@@ -168,4 +169,13 @@ test('offers the settings entry point only to the church administrator', async (
   mount(<CalendarPage />)
   await screen.findByText(/Cargando servicios|No hay servicios/)
   expect(screen.queryByRole('button', { name: 'Ajustes' })).toBeNull()
+})
+
+test.each(['Servicio individual', 'Lote mensual'])('elegir «%s» en «Nuevo» cierra la hoja', async (option) => {
+  stubApi({ services })
+  mount(<ProductRoutes />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Nuevo' }))
+  fireEvent.click(within(await screen.findByRole('dialog', { name: 'Nuevo' })).getByRole('button', { name: new RegExp(option) }))
+  await screen.findByRole('heading', { name: option === 'Lote mensual' ? /lote/i : 'Nuevo servicio' })
+  expect(screen.queryByRole('dialog', { name: 'Nuevo' })).toBeNull()
 })

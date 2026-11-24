@@ -27,7 +27,7 @@ export function MainTabbar({ church, current }: { church: Pick<Church, 'canEdit'
   const navigate = useNavigate()
   const [choosing, setChoosing] = useState(false)
   const option = (label: string, hint: string, path: string) => (
-    <button type="button" onClick={() => void navigate(path)}
+    <button type="button" onClick={() => { setChoosing(false); void navigate(path) }}
       className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-line bg-transparent px-4 text-left last:border-b-0 hover:bg-surface-2">
       <span className="font-semibold">{label}<small className="block font-normal text-text-3">{hint}</small></span>
       <Icon name="right" />
