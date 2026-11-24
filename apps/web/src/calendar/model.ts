@@ -5,6 +5,8 @@ export type Status = 'DRAFT' | 'PUBLISHED' | 'COMPLETED' | 'CANCELLED'
 export type HabitualDay = { weekday: number; slot: Slot; time: string; title: string }
 export type Church = {
   id: string; name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean
+  /** El superadministrador entró a una iglesia a la que no pertenece. */
+  support?: boolean
   timeZone: string; days: HabitualDay[]
 }
 export type ChurchSettings = Pick<Church, 'name' | 'sundayDouble' | 'usesPreaching' | 'usesRotation' | 'days'>

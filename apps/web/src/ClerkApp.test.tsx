@@ -13,6 +13,7 @@ const clerk = vi.hoisted(() => ({
 type Children = { children: ReactNode }
 vi.mock('@clerk/react', () => ({
   useAuth: () => ({ getToken: async () => 'token-ficticio' }),
+  useUser: () => ({ user: { id: 'user-ficticio' } }),
   ClerkProvider: ({ children, ...props }: Children) => {
     clerk.provider(props)
     return children
@@ -79,6 +80,19 @@ test('SDK failure is visible without granting access', () => {
   mount(publicKey)
   expect(screen.getByRole('alert').textContent).toBe('No se pudo cargar Clerk. Recargá la página para reintentar.')
   expect(screen.queryByRole('button', { name: /Iniciar sesión|Cuenta/ })).toBeNull()
+})
+
+test('without Clerk but with saved data the product opens read-only instead of the failure', async () => {
+  clerk.state = 'failed'
+  const { restoreCache, forgetCache } = await import('./offline-cache')
+  localStorage.setItem('plan-lyrics.cache', JSON.stringify({ v: 1, owner: 'user-ficticio', church: null, queries: [{ key: ['church'], data: { id: 'c1', name: 'Betel', canEdit: false, canConfigure: false, usesPreaching: false, days: [] } }] }))
+  const client = new QueryClient()
+  restoreCache(client)
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'x' }), { status: 503 })))
+  render(<QueryClientProvider client={client}><MemoryRouter><ClerkApp publishableKey={publicKey} /></MemoryRouter></QueryClientProvider>)
+  expect((await screen.findAllByText('Betel')).length).toBeGreaterThan(0)
+  expect(screen.queryByText('No se pudo cargar Clerk. Recargá la página para reintentar.')).toBeNull()
+  forgetCache()
 })
 
 test('signed-out view delegates modal sign-in to Clerk', () => {

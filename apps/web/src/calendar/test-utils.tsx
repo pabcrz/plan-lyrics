@@ -34,7 +34,7 @@ export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
 })
 
 export function stubApi(routes: {
-  church?: Church | number; services?: Service[]; closed?: ClosedDate[]; post?: Handler; save?: Handler; mark?: Handler; unmark?: Handler
+  church?: Church | number; owner?: boolean; agenda?: Array<Service & { churchId: string; churchName: string }>; myChurches?: Array<{ id: string; name: string; role: 'ADMIN' | 'EDITOR' | 'MEMBER' | null }>; services?: Service[]; closed?: ClosedDate[]; post?: Handler; save?: Handler; mark?: Handler; unmark?: Handler
   /** Directorio: lista, ficha por id y respuestas a alta, edición y baja. */
   directory?: PersonDetail[]; createPerson?: Handler; patchPerson?: Handler; removePerson?: Handler
   /** Roles y restricciones de la iglesia; las altas y bajas los cambian como lo haría el servidor. */
@@ -60,6 +60,10 @@ export function stubApi(routes: {
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, init })
     const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status })
+    if (url === '/api/access') return reply(200, { owner: routes.owner ?? false, accountManager: false })
+    if (url === '/api/churches' && init?.method === 'POST') return reply(201, { id: 'nueva', name: (JSON.parse(String(init.body)) as { name: string }).name })
+    if (url === '/api/me/agenda') return reply(200, routes.agenda ?? [])
+    if (url === '/api/me/churches') return reply(200, routes.myChurches ?? [])
     if (url === '/api/active-church' && init?.method !== 'PUT') return typeof routes.church === 'number' ? reply(routes.church, { error: 'x' }) : reply(200, routes.church ?? church)
     if (url === '/api/active-church' && init?.method === 'PUT') {
       const result = routes.save?.(url, init)

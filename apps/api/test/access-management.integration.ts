@@ -51,10 +51,10 @@ beforeAll(() => seedFixtures(db))
 beforeEach(seed)
 afterAll(async () => { await reset(); await db.$disconnect() })
 
-function call(subject: string | undefined, method: string, path: string, body?: unknown) {
+function call(subject: string | undefined, method: string, path: string, body?: unknown, church?: string) {
   return api.request(path, {
     method,
-    headers: { ...(subject ? { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}` } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+    headers: { ...(church ? { 'X-Church-Id': church } : {}), ...(subject ? { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}` } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 }
@@ -295,9 +295,17 @@ test('granting refuses people without an account, from other churches, members a
   await unchanged(() => call('acc-a1', 'POST', '/api/members', { personId: 'person-acc-b', role: 'MEMBER' }), 404, { error: 'Not found' })
   await unchanged(() => call('acc-a1', 'POST', '/api/members', { personId: 'person-acc-a2', role: 'ADMIN' }), 409, { error: 'Member exists' })
   await unchanged(() => call('acc-a1', 'POST', '/api/members', { personId: 'missing', role: 'MEMBER' }), 404, { error: 'Not found' })
-  // An account that already belongs to another church would lose its active church (no switcher yet).
+  // An account of another church can belong to this one too; it then picks the active church with X-Church-Id.
   await db.membership.create({ data: { userId: 'acc-free', churchId: 'church-b', role: 'MEMBER' } })
-  await unchanged(() => call('acc-a1', 'POST', '/api/members', { personId: 'person-acc-free', role: 'MEMBER' }), 409, { error: 'Account unavailable' })
+  expect((await call('acc-a1', 'POST', '/api/members', { personId: 'person-acc-free', role: 'MEMBER' })).status).toBe(201)
+  expect(await (await call('acc-free', 'GET', '/api/me/churches')).json()).toHaveLength(2)
+  expect((await call('acc-free', 'GET', '/api/active-church')).status).toBe(409)
+  const inA = await call('acc-free', 'GET', '/api/active-church', undefined, 'church-a')
+  expect(inA.status).toBe(200)
+  expect(await inA.json()).toMatchObject({ id: 'church-a' })
+  expect(await (await call('acc-free', 'GET', '/api/active-church', undefined, 'church-b')).json()).toMatchObject({ id: 'church-b' })
+  // A church the caller does not belong to does not exist for them, header or not.
+  expect((await call('acc-a1', 'GET', '/api/active-church', undefined, 'church-b')).status).toBe(404)
   // A person removed from this church's directory is not offered either.
   await db.churchPerson.update({ where: { churchId_personId: { churchId: 'church-a', personId: 'person-acc-free' } }, data: { removedAt: new Date() } })
   await db.membership.deleteMany({ where: { userId: 'acc-free' } })
@@ -367,5 +375,53 @@ test('invalid member bodies are rejected without side effects', async () => {
   }
   for (const body of [{ personId: 'person-acc-free' }, { personId: 'person-acc-free', role: 'OWNER' }, { role: 'MEMBER' }]) {
     await unchanged(() => call('acc-a1', 'POST', '/api/members', body), 400, { error: 'Invalid request' })
+  }
+})
+
+test('the owner founds several churches, sees them all and enters one they do not belong to in support mode', async () => {
+  expect((await call('acc-a1', 'POST', '/api/churches', { name: 'Intrusa' })).status).toBe(404)
+  const before = await db.membership.count({ where: { user: { clerkSubject: 'fixture-owner' } } })
+  const apart = await call('owner', 'POST', '/api/churches', { name: 'Iglesia Sur', addMe: false })
+  expect(apart.status).toBe(201)
+  const south = (await apart.json()) as { id: string }
+  expect(await db.membership.count({ where: { user: { clerkSubject: 'fixture-owner' } } })).toBe(before)
+  const own = await call('owner', 'POST', '/api/churches', { name: 'Iglesia Este' })
+  expect(own.status).toBe(201)
+  expect(await db.membership.count({ where: { user: { clerkSubject: 'fixture-owner' } } })).toBe(before + 1)
+  const listed = (await (await call('owner', 'GET', '/api/me/churches')).json()) as Array<{ id: string; name: string; role: string | null }>
+  expect(listed.find(item => item.id === south.id)).toMatchObject({ name: 'Iglesia Sur', role: null })
+  expect(listed.find(item => item.name === 'Iglesia Este')).toMatchObject({ role: 'ADMIN' })
+  // Only the owner sees churches they do not belong to; support mode grants the administrator's powers there.
+  expect((await (await call('acc-a1', 'GET', '/api/me/churches')).json() as unknown[]).length).toBe(1)
+  const support = await call('owner', 'GET', '/api/active-church', undefined, south.id)
+  expect(support.status).toBe(200)
+  expect(await support.json()).toMatchObject({ id: south.id, support: true, canEdit: true, canConfigure: true })
+  expect((await call('acc-a1', 'GET', '/api/active-church', undefined, south.id)).status).toBe(404)
+  expect((await call('owner', 'GET', '/api/members', undefined, south.id)).status).toBe(200)
+  await db.church.deleteMany({ where: { name: { in: ['Iglesia Sur', 'Iglesia Este'] } } })
+})
+
+test('the agenda lists the upcoming services of every church of the caller and nothing else', async () => {
+  await db.membership.create({ data: { userId: 'acc-free', churchId: 'church-a', role: 'MEMBER' } })
+  await db.membership.create({ data: { userId: 'acc-free', churchId: 'church-b', role: 'MEMBER' } })
+  const future = new Date(Date.now() + 40 * 86_400_000)
+  future.setUTCHours(0, 0, 0, 0)
+  const past = new Date(Date.now() - 40 * 86_400_000)
+  past.setUTCHours(0, 0, 0, 0)
+  await db.service.createMany({ data: [
+    { id: 'agenda-a', churchId: 'church-a', title: 'Servicio A', date: future, slot: 'SINGLE', status: 'PUBLISHED' },
+    { id: 'agenda-b', churchId: 'church-b', title: 'Servicio B', date: future, slot: 'SINGLE', status: 'PUBLISHED' },
+    { id: 'agenda-old', churchId: 'church-a', title: 'Ya pasó', date: past, slot: 'SINGLE', status: 'COMPLETED' },
+  ] })
+  try {
+    const both = (await (await call('acc-free', 'GET', '/api/me/agenda')).json()) as Array<{ id: string; churchId: string; churchName: string }>
+    expect(both.map(item => item.id).sort()).toEqual(['agenda-a', 'agenda-b'])
+    expect(both.find(item => item.id === 'agenda-b')).toMatchObject({ churchId: 'church-b', churchName: expect.any(String) })
+    // A caller of one church never sees the other church's services, and the owner without memberships gets an empty list.
+    expect((await (await call('acc-a1', 'GET', '/api/me/agenda')).json() as Array<{ id: string }>).map(item => item.id)).toEqual(['agenda-a'])
+    expect(await (await call('owner', 'GET', '/api/me/agenda')).json()).toEqual([])
+    expect((await call(undefined, 'GET', '/api/me/agenda')).status).toBe(401)
+  } finally {
+    await db.service.deleteMany({ where: { id: { in: ['agenda-a', 'agenda-b', 'agenda-old'] } } })
   }
 })

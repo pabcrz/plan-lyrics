@@ -12,18 +12,19 @@ import { requireSession, type SessionConfig, type SessionEnvironment } from './s
 
 export const timeZone = 'America/Mexico_City'
 
-export type Active = { churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean }
+export type Active = { support?: boolean; churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean }
 
 /**
- * The active church is derived from the caller's memberships, never from the request.
- * Minimal rule (product has not defined a switcher): exactly one membership is active.
+ * The active church is one of the caller's memberships. With several, the client picks it with `X-Church-Id`; the
+ * header only narrows, so a church the caller does not belong to simply does not exist (`none`). Without the header,
+ * exactly one membership is active and several are `ambiguous`.
  */
-export async function activeChurch(db: PrismaClient, subject: string): Promise<Active | 'none' | 'ambiguous'> {
+export async function activeChurch(db: PrismaClient, subject: string, requestedId?: string): Promise<Active | 'none' | 'ambiguous'> {
   const memberships = await db.membership.findMany({
-    where: { user: { clerkSubject: subject } },
+    where: { user: { clerkSubject: subject }, ...(requestedId ? { churchId: requestedId } : {}) },
     select: { role: true, church: { select: { id: true, name: true, sundayDouble: true, usesPreaching: true, usesRotation: true, congregationShowsPreacher: true } } },
   })
-  if (memberships.length === 0) return 'none'
+  if (memberships.length === 0) return requestedId ? supportChurch(db, subject, requestedId) : 'none'
   if (memberships.length > 1) return 'ambiguous'
   const { role, church } = memberships[0]
   // Church settings: the church administrator or the platform owner (who still needs an active church).
@@ -32,6 +33,14 @@ export async function activeChurch(db: PrismaClient, subject: string): Promise<A
     churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, congregationShowsPreacher: church.congregationShowsPreacher,
     canEdit: role === 'ADMIN' || role === 'EDITOR', canConfigure: role === 'ADMIN' || Boolean(owner),
   }
+}
+
+/** Support mode: the platform owner enters a church they do not belong to, with the powers of its administrator. */
+async function supportChurch(db: PrismaClient, subject: string, id: string): Promise<Active | 'none'> {
+  const owner = await db.platformOwner.findFirst({ where: { user: { clerkSubject: subject } }, select: { id: true } })
+  const church = owner ? await db.church.findUnique({ where: { id }, select: { id: true, name: true, sundayDouble: true, usesPreaching: true, usesRotation: true, congregationShowsPreacher: true } }) : null
+  if (!church) return 'none'
+  return { support: true, churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, congregationShowsPreacher: church.congregationShowsPreacher, canEdit: true, canConfigure: true }
 }
 
 const serviceSelect = {
@@ -75,7 +84,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     async (c: import('hono').Context<SessionEnvironment>) => {
       if (!db) return c.json({ error: 'Access unavailable' }, 503)
       try {
-        const church = await activeChurch(db, c.get('clerkSubject'))
+        const church = await activeChurch(db, c.get('clerkSubject'), c.req.header('X-Church-Id'))
         if (church === 'none') return c.json({ error: 'Not found' }, 404)
         if (church === 'ambiguous') return c.json({ error: 'Active church required' }, 409)
         return await handler(c, db, church)
@@ -92,7 +101,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     })
     return {
       id: church.churchId, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, congregationShowsPreacher: church.congregationShowsPreacher,
-      canEdit: church.canEdit, canConfigure: church.canConfigure, timeZone, days,
+      canEdit: church.canEdit, canConfigure: church.canConfigure, ...(church.support ? { support: true } : {}), timeZone, days,
     }
   }
 
@@ -110,7 +119,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       await tx.serviceDay.deleteMany({ where: { churchId: church.churchId } })
       await tx.serviceDay.createMany({ data: days.map(day => ({ ...day, churchId: church.churchId })) })
     })
-    return c.json(await presentChurch(db, await activeChurch(db, c.get('clerkSubject')) as Active))
+    return c.json(await presentChurch(db, await activeChurch(db, c.get('clerkSubject'), c.req.header('X-Church-Id')) as Active))
   }))
 
   routes.get('/api/people', guarded('people_failed', async (c, db, church) => {
@@ -209,6 +218,24 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     const removed = await db.churchPerson.updateMany({ where: { ...activeLink(church.churchId), personId: c.req.param('personId') }, data: { removedAt: new Date() } })
     return removed.count > 0 ? c.body(null, 204) : c.json({ error: 'Not found' }, 404)
   }))
+
+  // The next services of every church the caller belongs to (never support-mode churches): the home of people with several churches.
+  routes.use('/api/me/agenda', requireSession(config))
+  routes.get('/api/me/agenda', async (c) => {
+    if (!db) return c.json({ error: 'Access unavailable' }, 503)
+    try {
+      const memberships = await db.membership.findMany({ where: { user: { clerkSubject: c.get('clerkSubject') } }, select: { church: { select: { id: true, name: true } } } })
+      const names = new Map(memberships.map(row => [row.church.id, row.church.name]))
+      const rows = await db.service.findMany({
+        where: { churchId: { in: [...names.keys()] }, date: { gte: new Date(`${todayInZone(now())}T00:00:00Z`) } },
+        orderBy: [{ date: 'asc' }, { slot: 'asc' }], take: 60, select: { ...serviceSelect, churchId: true },
+      })
+      return c.json(rows.map(row => ({ ...present(row), churchId: row.churchId, churchName: names.get(row.churchId) })))
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'agenda_failed', code: safeErrorCode(error) }))
+      return c.json({ error: 'Access unavailable' }, 503)
+    }
+  })
 
   routes.get('/api/services', guarded('services_list_failed', async (c, db, church) => {
     const month = monthQuery.safeParse(c.req.query('month'))

@@ -103,13 +103,24 @@ test('the mobile bar has the same sections for every role, and «Más» only whe
 
 test.each([
   [404, 'Sin iglesia asignada'],
-  [409, 'Varias iglesias'],
+  [409, 'Elige una iglesia'],
   [503, 'No se pudo cargar tu iglesia'],
 ])('explains church context failure %i', async (status, title) => {
   stubApi({ church: status })
   mount(<HomePage />)
   expect(await screen.findByText(title)).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Nuevo' })).toBeNull()
+})
+
+test('with several churches the person picks one and every request carries it', async () => {
+  stubApi({ church: 409, myChurches: [{ id: 'c1', name: 'Iglesia Central', role: 'ADMIN' }, { id: 'c2', name: 'Iglesia Norte', role: 'EDITOR' }] })
+  mount(<HomePage />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Iglesia Norte' }))
+  await vi.waitFor(() => {
+    const calls = vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/active-church')
+    expect((calls.at(-1)?.[1]?.headers as Record<string, string>)['X-Church-Id']).toBe('c2')
+  })
+  localStorage.clear()
 })
 
 const closed = [{ date: '2026-11-27', reason: 'Feriado' }, { date: '2026-11-18', reason: null }, { date: '2026-11-04', reason: null }]
@@ -225,4 +236,19 @@ test('there is no «Ver anteriores» when nothing passed this month or when look
   mount(<HomePage />)
   await screen.findByRole('link', { name: /Servicio de viernes/ })
   expect(screen.queryByRole('button', { name: /Ver anteriores/ })).toBeNull()
+})
+
+test('with several churches the upcoming list gathers all of them and opening one makes it the active church', async () => {
+  const calls = stubApi({
+    services: [], myChurches: [{ id: 'c1', name: 'Iglesia Central', role: 'ADMIN' }, { id: 'c2', name: 'Iglesia Norte', role: 'EDITOR' }],
+    agenda: [{ ...service({ id: 'n1', date: '2026-11-15', title: 'Culto norte' }), churchId: 'c2', churchName: 'Iglesia Norte' }, { ...service({ id: 'n2', date: '2026-11-22', title: 'Culto central' }), churchId: 'c1', churchName: 'Iglesia Central' }],
+  })
+  mount(<HomePage />)
+  const card = await screen.findByRole('link', { name: /Culto norte/ })
+  expect(within(card).getByText('Iglesia Norte')).toBeTruthy()
+  expect(screen.getByRole('link', { name: /Culto central/ })).toBeTruthy()
+  fireEvent.click(card)
+  expect(localStorage.getItem('plan-lyrics.activeChurch')).toBe('c2')
+  expect(calls.some((call) => call.url === '/api/me/agenda')).toBe(true)
+  localStorage.clear()
 })

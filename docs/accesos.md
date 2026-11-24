@@ -41,7 +41,8 @@ Reglas: la iglesia sale de la sesión (el cuerpo con `churchId` da `400`; los id
 ## Decisiones con criterio restrictivo
 
 - **Editor de biblioteca: solo lo otorga el superadministrador.** El producto deja abierta la decisión; se eligió la lectura más restrictiva. El administrador de iglesia no lo otorga ni lo ve en su pantalla. Cambiarlo es ampliar `PUT /api/accounts/:userId/library-editor` y su prueba.
-- **Una cuenta, una iglesia.** Hoy la iglesia activa se deduce de la única membresía (`409 Active church required` con varias). Por eso `POST /api/members` rechaza una cuenta que ya pertenece a otra iglesia (`409 Account unavailable`): de lo contrario dejaría de poder entrar a ambas. Se levanta cuando exista el selector de iglesia activa.
+- **Varias iglesias por cuenta.** La iglesia activa es una de las membresías de la sesión: sin cabecera, con una sola membresía es esa y con varias responde `409 Active church required`; la web manda `X-Church-Id` con la iglesia elegida en el dispositivo y la API solo la acepta si la cuenta pertenece a ella (si no, `404`). `GET /api/me/churches` lista las iglesias de la cuenta con su rol. `POST /api/members` ya acepta cuentas de otra iglesia.
+- **Superadministrador y varias iglesias.** `POST /api/churches` (solo superadministrador, sin límite) acepta `{name, addMe?}`: por defecto el superadministrador queda como administrador; con `addMe: false` la iglesia queda aparte. `GET /api/me/churches` le devuelve además las demás con `role: null`. Con `X-Church-Id` de una iglesia a la que no pertenece entra en **modo soporte**: la API lo trata como administrador de esa iglesia (`support: true` en `GET /api/active-church`) y la web lo avisa con una franja fija «Modo soporte» con «Salir». Un no superadministrador con esa cabecera recibe `404`.
 - **El administrador solo elige entre personas con cuenta ya vinculada.** No puede crear, invitar ni vincular.
 - **El gestor ve personas sin cuenta solo por nombre**, necesarias para vincular; no ve iglesias, teléfonos ni membresías.
 - **Desvincular no revoca accesos**: quien desvincula no decide por la iglesia. Un administrador ve la membresía como «Cuenta sin persona vinculada».
@@ -51,6 +52,6 @@ Reglas: la iglesia sale de la sesión (el cuerpo con `churchId` da `400`; los id
 ## Pendientes y no verificado
 
 - **Clerk real no se ha probado.** Los tests de integración usan un doble del puerto y las pruebas unitarias del adaptador usan un doble del cliente. No se ha comprobado con la Backend API real: que `createUser` sin contraseña más `createInvitation` con `ignoreExisting` envíe el correo en modo Invite-only, ni que la persona invitada pueda completar el alta cuando su usuario ya existe. Si ese flujo no funciona, el siguiente paso es invitar sin crear el usuario y crear el usuario local al aceptar (webhook `user.created`).
-- Sin selector de iglesia activa (ver arriba), sin límite de ritmo en las invitaciones y sin registro de auditoría de cambios de acceso.
+- Sin límite de ritmo en las invitaciones y sin registro de auditoría de cambios de acceso.
 - Decisión de producto abierta: quién otorga el editor de biblioteca y qué capacidades faltan por especificar.
 - La interfaz se probó con pruebas de componentes y un doble de `fetch`; no se revisó visualmente a 390 px ni contra la API real.

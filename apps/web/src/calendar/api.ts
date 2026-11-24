@@ -1,3 +1,4 @@
+import { clearActiveChurch, getActiveChurch, setActiveChurch } from './active-church'
 import { useCallback } from 'react'
 import { useAuth } from '@clerk/react'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -25,7 +26,7 @@ export function useApiFetch() {
     if (!token) throw new ApiError(401)
     const response = await fetch(apiUrl(path), {
       method: init.method ?? 'GET',
-      headers: { Authorization: `Bearer ${token}`, ...(init.body ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { Authorization: `Bearer ${token}`, ...(getActiveChurch() ? { 'X-Church-Id': getActiveChurch() as string } : {}), ...(init.body ? { 'Content-Type': 'application/json' } : {}) },
       body: init.body ? JSON.stringify(init.body) : undefined,
       cache: 'no-store',
       credentials: 'omit',
@@ -48,7 +49,42 @@ export function useApiFetch() {
 
 export function useChurch() {
   const api = useApiFetch()
-  return useQuery({ queryKey: ['church'], queryFn: () => api<Church>('/api/active-church'), retry: false })
+  return useQuery({
+    queryKey: ['church'], retry: false,
+    queryFn: async () => {
+      try { return await api<Church>('/api/active-church') } catch (caught) {
+        // La iglesia guardada ya no es suya (le quitaron el acceso): se descarta y se vuelve a resolver sin ella.
+        if (caught instanceof ApiError && caught.status === 404 && getActiveChurch()) { clearActiveChurch(); return api<Church>('/api/active-church') }
+        throw caught
+      }
+    },
+  })
+}
+
+/** `role: null` solo para el superadministrador: iglesias a las que no pertenece (se abren en modo soporte). */
+export type AgendaService = Service & { churchId: string; churchName: string }
+
+/** Próximos servicios de todas las iglesias de la cuenta; solo se pide con dos o más. */
+export function useAgenda(enabled: boolean) {
+  const api = useApiFetch()
+  return useQuery({ queryKey: ['agenda'], queryFn: () => api<AgendaService[]>('/api/me/agenda'), retry: false, enabled })
+}
+
+export type MyChurch = { id: string; name: string; role: 'ADMIN' | 'EDITOR' | 'MEMBER' | null }
+
+/** Iglesias a las que pertenece la cuenta, para elegir la activa. */
+export function useMyChurches() {
+  const api = useApiFetch()
+  return useQuery({ queryKey: ['my-churches'], queryFn: () => api<MyChurch[]>('/api/me/churches'), retry: false, staleTime: 60_000 })
+}
+
+/** Cambia la iglesia activa de este dispositivo y vuelve a pedir todo lo demás con ella. */
+export function useSwitchChurch() {
+  const client = useQueryClient()
+  return useCallback((id: string) => {
+    setActiveChurch(id)
+    void client.resetQueries({ predicate: (query) => query.queryKey[0] !== 'my-churches' })
+  }, [client])
 }
 
 /** Guarda los ajustes; la respuesta del servidor reemplaza la iglesia en caché para calendario y formulario. */

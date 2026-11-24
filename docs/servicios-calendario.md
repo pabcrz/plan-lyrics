@@ -4,7 +4,7 @@ Primera rebanada de la Etapa 1. Todas las rutas requieren Bearer de sesión (ver
 
 ## Iglesia activa
 
-La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la sesión. Regla mínima provisional (producto aún no define un selector): una sola membresía = iglesia activa. Sin membresía (incluido el superadministrador y los gestores de cuentas sin membresía): `404`. Varias membresías: `409 {"error":"Active church required"}`.
+La iglesia activa **siempre es una membresía de la sesión**: con una sola, esa; con varias, la que el cliente indica en `X-Church-Id`, validada contra las membresías (una iglesia ajena es `404`; sin cabecera, `409`). Sin membresía (incluido el superadministrador y los gestores de cuentas sin membresía): `404`. Varias membresías: `409 {"error":"Active church required"}`.
 
 ## Rutas
 
@@ -12,6 +12,7 @@ La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la 
 | --- | --- | --- |
 | `GET /api/active-church` | Cualquier miembro | `{id, name, sundayDouble, usesPreaching, usesRotation, congregationShowsPreacher, canEdit, canConfigure, timeZone:"America/Mexico_City", days:[{weekday (0=domingo), slot, time, title}]}`. Los días solo precargan el formulario. |
 | `PUT /api/active-church` | Administrador de la iglesia o superadministrador | Reemplaza los ajustes: `{name, sundayDouble, usesPreaching, days:[{weekday, slot, time, title}]}` (y, opcionales, `usesRotation` y `congregationShowsPreacher`: si se omite no cambia; ver [compartir](compartir.md#vista-de-congregantes)) y responde como el `GET`. Guardar no modifica servicios ya creados. |
+| `GET /api/me/agenda` | Sesión | Próximos servicios (desde hoy, hasta 60) de **todas** las iglesias de la cuenta, con `churchId` y `churchName`; excluye iglesias en modo soporte. Es el inicio de quien tiene varias iglesias. |
 | `GET /api/people` | Cualquier miembro | Personas de la iglesia activa `[{id, name, hasAccount, isYou, roleIds, canDirect, canPreach}]` (`roleIds`: roles musicales; `canDirect`/`canPreach`: a quién ofrecen los selectores de dirección y predicación). Con `?role=direct` o `?role=preach` solo las que tienen ese rol (`400` con otro valor); así se eligen director y predicador. |
 | `GET /api/services?month=YYYY-MM` | Cualquier miembro | Servicios del mes `[{id, title, date, slot, time, status, director, songCount}]` (`songCount`: canciones del setlist, sin contar los momentos). |
 | `POST /api/services` | Administrador o editor | `201` con el servicio. Cuerpo: `title`, `date` (`YYYY-MM-DD`), `status` (`DRAFT`/`PUBLISHED`), `directorId` y/o `preacher: {personId, topic?}` (**al menos uno**; `400` si faltan los dos o si la persona no tiene el rol: `canDirect`/`canPreach`), `time` (`HH:mm`, opcional), `slot` (`MORNING`/`AFTERNOON`, solo domingo doble). Con `preacher` se crea también la sección de predicación en la misma transacción; `409 Preaching disabled` (sin crear nada) si la iglesia no usa predicación. Sin director, el servicio responde `director: null` y no se generan participaciones hasta que se asigne uno. |
@@ -45,7 +46,7 @@ La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la 
 
 ## Pendiente de decisión de producto
 
-Selector de iglesia activa con varias membresías; acceso del superadministrador a una iglesia concreta; creación con estado completado/cancelado (aquí solo borrador o publicado, según el diseño); edición y cancelación de servicios; acceso del superadministrador sin membresía a los ajustes de una iglesia (hoy necesita tenerla como iglesia activa). Al apagar `sundayDouble` con un domingo que ya tiene dos servicios, esa fecha pasa a verse «Completa» (capacidad 1) y los servicios existentes se conservan.
+Acceso del superadministrador a una iglesia concreta; creación con estado completado/cancelado (aquí solo borrador o publicado, según el diseño); edición y cancelación de servicios; acceso del superadministrador sin membresía a los ajustes de una iglesia (hoy necesita tenerla como iglesia activa). Al apagar `sundayDouble` con un domingo que ya tiene dos servicios, esa fecha pasa a verse «Completa» (capacidad 1) y los servicios existentes se conservan.
 
 ## Interfaz web (apps/web)
 

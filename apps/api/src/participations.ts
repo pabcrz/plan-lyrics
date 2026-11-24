@@ -70,7 +70,7 @@ export function participationRoutes(config: SessionConfig, db?: PrismaClient, no
   const guarded = (event: string, handler: (c: Http, db: PrismaClient, church: Active) => Promise<Response>) => async (c: Http) => {
     if (!db) return c.json({ error: 'Access unavailable' }, 503)
     try {
-      const church = await activeChurch(db, c.get('clerkSubject'))
+      const church = await activeChurch(db, c.get('clerkSubject'), c.req.header('X-Church-Id'))
       if (church === 'none') return c.json({ error: 'Not found' }, 404)
       if (church === 'ambiguous') return c.json({ error: 'Active church required' }, 409)
       return await handler(c, db, church)

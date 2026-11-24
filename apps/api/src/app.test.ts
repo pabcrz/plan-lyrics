@@ -50,10 +50,8 @@ test('POST /api/churches is owner-only, validates the name and founds the church
   const created: unknown[] = []
   const database = {
     $queryRaw: () => Promise.resolve([{ owner: true, accountManager: false }]),
-    $transaction: (run: (tx: unknown) => unknown) => run({
-      user: { findUnique: () => Promise.resolve({ id: 'u1', memberships: [] }) },
-      church: { create: (args: unknown) => { created.push(args); return Promise.resolve({ id: 'c1', name: 'Mi iglesia' }) } },
-    }),
+    user: { findUnique: () => Promise.resolve({ id: 'u1' }) },
+    church: { create: (args: unknown) => { created.push(args); return Promise.resolve({ id: 'c1', name: 'Mi iglesia' }) } },
   } as never
   const post = (body: unknown) => createApp(fixture.config, database).request('/api/churches', {
     method: 'POST', body: JSON.stringify(body),
