@@ -6,6 +6,7 @@ import { cx } from '../ui/cx'
 import { NewSheet, extras, sections, type Section } from './AppShell'
 import { useChurch } from './api'
 import { InstallBar } from '../InstallBar'
+import { StatusBars } from '../StatusBars'
 
 /** Sección del menú a la que pertenece una ruta; las pantallas de crear servicio cuelgan de Inicio y las de configuración, de «Más». */
 const sectionOf = (pathname: string): Section | null =>
@@ -30,6 +31,7 @@ export function ShellLayout() {
   const item = (active: boolean) => cx(link, active ? 'bg-accent-soft text-accent-soft-text' : 'text-text-2')
   return (
     <>
+    <StatusBars />
     <InstallBar />
     <div className={cx('group/app', church && 'lg:grid lg:grid-cols-[248px_minmax(0,1fr)]')} data-frame={church ? '' : undefined}>
       {church && (

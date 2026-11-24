@@ -6,13 +6,18 @@ import { BrowserRouter, Route, Routes } from 'react-router'
 import { ClerkApp } from './ClerkApp'
 import { PublicLinkPage } from './share/PublicLinkPage'
 import { watchInstall } from './install'
+import { persistCache, restoreCache } from './offline-cache'
+import { registerServiceWorker } from './pwa'
 import { initAppearance } from './ui'
 import './styles.css'
 
 initAppearance()
 watchInstall()
+registerServiceWorker()
 
 const client = new QueryClient()
+restoreCache(client)
+persistCache(client)
 // Página interna del sistema visual: solo existe en desarrollo.
 const Reference = import.meta.env.DEV ? lazy(() => import('./ui/Reference')) : null
 

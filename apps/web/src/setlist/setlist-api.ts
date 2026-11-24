@@ -37,7 +37,7 @@ export function referenceOrigin(value: string): 'YouTube' | 'Spotify' | null {
   }
 }
 
-const key = (serviceId: string) => ['setlist', serviceId]
+export const key = (serviceId: string) => ['setlist', serviceId]
 
 export function useSetlist(serviceId: string) {
   const api = useApiFetch()

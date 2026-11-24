@@ -3,8 +3,8 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useApiFetch } from '../calendar/api'
 import type { Lyrics, Section } from './lyrics-model'
 
-const key = (songId: string) => ['lyrics', songId]
-const path = (songId: string) => `/api/songs/${encodeURIComponent(songId)}/lyrics`
+export const key = (songId: string) => ['lyrics', songId]
+export const path = (songId: string) => `/api/songs/${encodeURIComponent(songId)}/lyrics`
 
 /**
  * La letra de una canción. Al editar (`stable`) no se vuelve a pedir sola al volver a la ventana: lo que alguien
