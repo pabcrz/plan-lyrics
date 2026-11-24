@@ -1,5 +1,6 @@
 /* Service worker de Plan & Lyrics: abrir la aplicación sin red tras una primera visita.
- * Guarda solo archivos de la propia aplicación y las tipografías. Nunca toca /api ni /m (datos y enlaces privados). */
+ * Guarda solo archivos de la propia aplicación y las tipografías. Nunca toca /api (datos). Las páginas públicas (/m, /cancionero)
+ * se abren sin red con el mismo index.html; su contenido lo guarda la propia página en el dispositivo. */
 const SHELL = 'pl-shell-v1'
 const ASSETS = 'pl-assets-v1'
 const FONTS = 'pl-fonts-v1'
@@ -26,7 +27,7 @@ self.addEventListener('fetch', (event) => {
     if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') event.respondWith(staleWhileRevalidate(FONTS, request))
     return
   }
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/m/') || url.pathname === '/sw.js') return
+  if (url.pathname.startsWith('/api/') || url.pathname === '/sw.js') return
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).then((response) => {
       if (response.ok) caches.open(SHELL).then((cache) => cache.put('/', response.clone()))

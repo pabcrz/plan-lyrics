@@ -31,7 +31,7 @@ Antes de esta propuesta no había manifiesto, íconos propios, service worker ni
 
 ## Cómo quedó lo sin conexión
 
-- **Service worker** (`public/sw.js`): guarda `/assets/*` (con hash), tipografías e `index.html`; nunca `/api/*` ni `/m/*`. No se activa solo: la página muestra «Hay una versión nueva · Actualizar».
+- **Service worker** (`public/sw.js`): guarda `/assets/*` (con hash), tipografías e `index.html`; nunca `/api/*`. Las páginas públicas (`/m/…`, `/cancionero`) abren sin red con ese mismo `index.html` y leen su copia local. No se activa solo: la página muestra «Hay una versión nueva · Actualizar».
 - **Datos** (`src/offline-cache.ts`): la caché de consultas se guarda en `localStorage` (límite ~2.5 MB; si no cabe se conserva lo anterior) con su iglesia activa y su cuenta. Solo se restaura si es de la misma iglesia; iniciar sesión con otra cuenta la descarta y cerrar sesión la borra.
 - **Precarga**: con conexión, el Inicio deja guardados el setlist y las letras de los próximos servicios (hasta 6) de la iglesia activa.
 - **Sin Clerk** (camino elegido): si Clerk no carga (por ejemplo, sin red) y hay datos guardados, se abre la aplicación en solo lectura con lo último visto; sin datos, se muestra el error de siempre.
