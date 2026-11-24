@@ -103,13 +103,24 @@ test('the mobile bar has the same sections for every role, and «Más» only whe
 
 test.each([
   [404, 'Sin iglesia asignada'],
-  [409, 'Varias iglesias'],
+  [409, 'Elige una iglesia'],
   [503, 'No se pudo cargar tu iglesia'],
 ])('explains church context failure %i', async (status, title) => {
   stubApi({ church: status })
   mount(<HomePage />)
   expect(await screen.findByText(title)).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Nuevo' })).toBeNull()
+})
+
+test('with several churches the person picks one and every request carries it', async () => {
+  stubApi({ church: 409, myChurches: [{ id: 'c1', name: 'Iglesia Central', role: 'ADMIN' }, { id: 'c2', name: 'Iglesia Norte', role: 'EDITOR' }] })
+  mount(<HomePage />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Iglesia Norte' }))
+  await vi.waitFor(() => {
+    const calls = vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/active-church')
+    expect((calls.at(-1)?.[1]?.headers as Record<string, string>)['X-Church-Id']).toBe('c2')
+  })
+  localStorage.clear()
 })
 
 const closed = [{ date: '2026-11-27', reason: 'Feriado' }, { date: '2026-11-18', reason: null }, { date: '2026-11-04', reason: null }]

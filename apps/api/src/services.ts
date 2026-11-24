@@ -15,12 +15,13 @@ export const timeZone = 'America/Mexico_City'
 export type Active = { churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean }
 
 /**
- * The active church is derived from the caller's memberships, never from the request.
- * Minimal rule (product has not defined a switcher): exactly one membership is active.
+ * The active church is one of the caller's memberships. With several, the client picks it with `X-Church-Id`; the
+ * header only narrows, so a church the caller does not belong to simply does not exist (`none`). Without the header,
+ * exactly one membership is active and several are `ambiguous`.
  */
-export async function activeChurch(db: PrismaClient, subject: string): Promise<Active | 'none' | 'ambiguous'> {
+export async function activeChurch(db: PrismaClient, subject: string, requestedId?: string): Promise<Active | 'none' | 'ambiguous'> {
   const memberships = await db.membership.findMany({
-    where: { user: { clerkSubject: subject } },
+    where: { user: { clerkSubject: subject }, ...(requestedId ? { churchId: requestedId } : {}) },
     select: { role: true, church: { select: { id: true, name: true, sundayDouble: true, usesPreaching: true, usesRotation: true, congregationShowsPreacher: true } } },
   })
   if (memberships.length === 0) return 'none'
@@ -75,7 +76,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     async (c: import('hono').Context<SessionEnvironment>) => {
       if (!db) return c.json({ error: 'Access unavailable' }, 503)
       try {
-        const church = await activeChurch(db, c.get('clerkSubject'))
+        const church = await activeChurch(db, c.get('clerkSubject'), c.req.header('X-Church-Id'))
         if (church === 'none') return c.json({ error: 'Not found' }, 404)
         if (church === 'ambiguous') return c.json({ error: 'Active church required' }, 409)
         return await handler(c, db, church)
@@ -110,7 +111,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       await tx.serviceDay.deleteMany({ where: { churchId: church.churchId } })
       await tx.serviceDay.createMany({ data: days.map(day => ({ ...day, churchId: church.churchId })) })
     })
-    return c.json(await presentChurch(db, await activeChurch(db, c.get('clerkSubject')) as Active))
+    return c.json(await presentChurch(db, await activeChurch(db, c.get('clerkSubject'), c.req.header('X-Church-Id')) as Active))
   }))
 
   routes.get('/api/people', guarded('people_failed', async (c, db, church) => {
