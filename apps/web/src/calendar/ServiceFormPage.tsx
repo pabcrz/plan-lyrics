@@ -11,6 +11,9 @@ import { freeSlots, habitualFor, upcomingDates, type Church, type Slot } from '.
 
 const timeText = (time: string | null) => (time ? format12h(from24h(time)) : 'Sin hora fija')
 const slotName = { SINGLE: '', MORNING: 'Mañana', AFTERNOON: 'Tarde' } as const
+type Role = 'direct' | 'preach'
+const roleFlag = { direct: { canDirect: true }, preach: { canPreach: true } } as const
+const roleName = { direct: 'director', preach: 'predicador' } as const
 
 export function ServiceFormPage() {
   return <ChurchGate>{(church) => (church.canEdit ? <Form church={church} /> : <ReadOnly />)}</ChurchGate>
@@ -42,6 +45,9 @@ function Form({ church }: { church: Church }) {
   const [status, setStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT')
   const [query, setQuery] = useState('')
   const [director, setDirector] = useState<Person | null>(null)
+  const [preacherQuery, setPreacherQuery] = useState('')
+  const [preacher, setPreacher] = useState<Person | null>(null)
+  const [topic, setTopic] = useState('')
   const [attempted, setAttempted] = useState(false)
   const [sending, setSending] = useState(false)
   const [failure, setFailure] = useState('')
@@ -56,9 +62,12 @@ function Form({ church }: { church: Church }) {
   const loading = monthServices.loading || monthClosed.loading
   const error = monthServices.error ?? monthClosed.error
   const isClosed = (target: string) => monthClosed.closed.some((item) => item.date === target)
-  const people = usePeople(true)
-  const { create: createPerson } = usePersonActions()
-  const [duplicate, setDuplicate] = useState<Person | null>(null)
+  const usesPreaching = church.usesPreaching
+  const people = usePeople(true, 'direct')
+  const preachers = usePeople(usesPreaching, 'preach')
+  const { create: createPerson, update: updatePerson } = usePersonActions()
+  // Una persona que ya existe sin el rol pedido: se ofrece asociárselo en lugar de crear otra.
+  const [duplicate, setDuplicate] = useState<{ person: Person; role: Role } | null>(null)
   const [personFailure, setPersonFailure] = useState('')
   const slots = date ? freeSlots(church, date, services) : []
   const past = Boolean(date) && date < today
@@ -66,6 +75,7 @@ function Form({ church }: { church: Church }) {
   const full = Boolean(date) && !loading && !closed && slots.length === 0
   const doubleDay = church.sundayDouble && Boolean(date) && weekdayOf(date) === 0
   const matches = (people.data ?? []).filter((person) => fold(person.name).includes(fold(query)))
+  const preacherMatches = (preachers.data ?? []).filter((person) => fold(person.name).includes(fold(preacherQuery)))
 
   /** Elegir fecha o franja precarga título y hora habituales; un día no habitual queda sin precarga. */
   function prefill(target: string, chosen: Slot | '') {
@@ -90,17 +100,30 @@ function Form({ church }: { church: Church }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- se aplica una sola vez, al terminar de cargar el mes
   }, [loading])
 
-  /** Alta desde el selector: el servidor aplica la regla del nombre completo; la persona queda en el directorio. */
-  async function addPerson(name: string) {
+  /** Alta desde el selector con el rol de ese selector; el servidor aplica la regla del nombre completo. */
+  async function addPerson(name: string, role: Role) {
     setDuplicate(null)
     setPersonFailure('')
     try {
-      const person = await createPerson({ name })
-      setDirector(person)
-      setQuery(person.name)
+      const person = await createPerson({ name, ...roleFlag[role] })
+      choose(person, role)
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 409 && caught.existing) setDuplicate(caught.existing)
+      if (caught instanceof ApiError && caught.status === 409 && caught.existing) setDuplicate({ person: caught.existing, role })
       else setPersonFailure(caught instanceof ApiError && caught.status === 403 ? 'No tienes permiso para agregar personas.' : 'No se pudo agregar a la persona. Inténtalo de nuevo.')
+    }
+  }
+  function choose(person: Person, role: Role) {
+    if (role === 'direct') { setDirector(person); setQuery(person.name) } else { setPreacher(person); setPreacherQuery(person.name) }
+  }
+  /** La persona ya existe: se le añade este rol (su otro rol se conserva) y queda elegida. */
+  async function associate(person: Person, role: Role) {
+    setPersonFailure('')
+    try {
+      await updatePerson(person.id, roleFlag[role])
+      choose(person, role)
+      setDuplicate(null)
+    } catch {
+      setPersonFailure('No se pudo asociar el rol. Inténtalo de nuevo.')
     }
   }
 
@@ -108,11 +131,13 @@ function Form({ church }: { church: Church }) {
     event.preventDefault()
     setAttempted(true)
     setFailure('')
-    if (!date || past || closed || full || !slot || !title.trim() || !director) return
+    if (!date || past || closed || full || !slot || !title.trim() || !(director || preacher)) return
     setSending(true)
     try {
       await create({
-        title: title.trim(), date, status, directorId: director.id, time,
+        title: title.trim(), date, status, time,
+        ...(director ? { directorId: director.id } : {}),
+        ...(preacher ? { preacher: { personId: preacher.id, ...(topic.trim() ? { topic: topic.trim() } : {}) } } : {}),
         ...(slot === 'SINGLE' ? {} : { slot }),
       })
       void navigate({ pathname: '/', search: monthOf(date) === monthOf(today) ? '' : `?mes=${monthOf(date)}` }, { state: { created: true } })
@@ -186,13 +211,22 @@ function Form({ church }: { church: Church }) {
           options={[{ value: 'DRAFT', label: 'Borrador' }, { value: 'PUBLISHED', label: 'Publicado' }]} />
 
         <PersonPicker label="Dirección" query={query} onQueryChange={(next) => { setQuery(next); setDirector(null); setDuplicate(null); setPersonFailure('') }} people={matches}
-          onSelect={(person) => { setDirector(person); setQuery(person.name); setDuplicate(null) }} onAddNew={(name) => void addPerson(name)}
-          help={people.isError ? undefined : 'Obligatoria: elige a quien dirige, o agrega a alguien con su nombre completo (se guarda en el directorio).'}
-          error={people.isError ? 'No se pudo cargar el directorio.' : attempted && !director ? 'Elige quién dirige el servicio.' : undefined} />
+          onSelect={(person) => { choose(person, 'direct'); setDuplicate(null) }} onAddNew={(name) => void addPerson(name, 'direct')}
+          help={people.isError ? undefined : usesPreaching ? 'Opcional si ya tienes al predicador: elige a quien dirige la alabanza, o agrega a alguien con su nombre completo.' : 'Obligatoria: elige a quien dirige, o agrega a alguien con su nombre completo (se guarda en el directorio).'}
+          error={people.isError ? 'No se pudo cargar el directorio.' : attempted && !director && !preacher ? (usesPreaching ? 'Elige quién dirige o quién predica.' : 'Elige quién dirige el servicio.') : undefined} />
+        {usesPreaching && (
+          <>
+            <PersonPicker label="Predicador" query={preacherQuery} onQueryChange={(next) => { setPreacherQuery(next); setPreacher(null); setDuplicate(null); setPersonFailure('') }} people={preacherMatches}
+              onSelect={(person) => { choose(person, 'preach'); setDuplicate(null) }} onAddNew={(name) => void addPerson(name, 'preach')}
+              help={preachers.isError ? undefined : 'Opcional si ya tienes al director: elige a quien predica. Las citas y las notas se completan después.'}
+              error={preachers.isError ? 'No se pudo cargar a los predicadores.' : undefined} />
+            <TextField label="Tema" value={topic} onChange={(event) => setTopic(event.target.value)} maxLength={160} />
+          </>
+        )}
         {duplicate && (
-          <Notice tone="warn" icon="alert" role="alert" title={`Ya existe «${duplicate.name}»`}>
+          <Notice tone="warn" icon="alert" role="alert" title={`Ya existe «${duplicate.person.name}»`}>
             No se crea otra persona con el mismo nombre. Completa el nombre completo para distinguirla, o{' '}
-            <button type="button" className="cursor-pointer border-0 bg-transparent p-0 font-semibold text-accent underline" onClick={() => { setDirector(duplicate); setQuery(duplicate.name); setDuplicate(null) }}>usa a {duplicate.name}</button>.
+            <button type="button" className="cursor-pointer border-0 bg-transparent p-0 font-semibold text-accent underline" onClick={() => void associate(duplicate.person, duplicate.role)}>añadir a {duplicate.person.name} también como {roleName[duplicate.role]}</button>.
           </Notice>
         )}
         {personFailure && <Notice tone="warn" icon="alert" role="alert">{personFailure}</Notice>}

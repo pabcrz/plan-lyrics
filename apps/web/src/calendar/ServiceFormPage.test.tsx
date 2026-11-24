@@ -176,7 +176,7 @@ test('a new person is added from the picker with the full name, saved in the dir
   type('Juan Pérez Rodríguez')
   fireEvent.click(await screen.findByRole('option', { name: /Agregar «Juan Pérez Rodríguez» como persona nueva/ }))
   await waitFor(() => expect(calls.filter((call) => call.url === '/api/people' && call.init?.method === 'POST')).toHaveLength(1))
-  expect(JSON.parse(String(calls.find((call) => call.init?.method === 'POST')!.init!.body))).toEqual({ name: 'Juan Pérez Rodríguez' })
+  expect(JSON.parse(String(calls.find((call) => call.init?.method === 'POST')!.init!.body))).toEqual({ name: 'Juan Pérez Rodríguez', canDirect: true })
   await waitFor(() => expect((screen.getByRole('combobox', { name: /Dirección/ }) as HTMLInputElement).value).toBe('Juan Pérez Rodríguez'))
   fireEvent.click(screen.getByRole('button', { name: 'Crear servicio' }))
   expect(await screen.findByText('Calendario')).toBeTruthy()
@@ -190,8 +190,11 @@ test('an existing name is not created again: the form asks for the full name or 
   type('Ana')
   fireEvent.click(await screen.findByRole('option', { name: /Agregar «Ana» como persona nueva/ }))
   expect(await screen.findByText('Ya existe «Ana Ramírez»')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'usa a Ana Ramírez' }))
-  expect((screen.getByRole('combobox', { name: /Dirección/ }) as HTMLInputElement).value).toBe('Ana Ramírez')
+  fireEvent.click(screen.getByRole('button', { name: /añadir a Ana Ramírez también como director/ }))
+  await waitFor(() => expect((screen.getByRole('combobox', { name: /Dirección/ }) as HTMLInputElement).value).toBe('Ana Ramírez'))
+  const patch = calls.find((call) => call.init?.method === 'PATCH')!
+  expect(patch.url).toBe('/api/people/p1')
+  expect(JSON.parse(String(patch.init!.body))).toEqual({ canDirect: true })
   fireEvent.click(screen.getByRole('button', { name: 'Crear servicio' }))
   expect(await screen.findByText('Calendario')).toBeTruthy()
   expect(JSON.parse(String(posted(calls).find((call) => call.url === '/api/services')!.init!.body)).directorId).toBe('p1')
@@ -208,4 +211,59 @@ test('a date outside the habitual ones arrives in «Otra fecha»', async () => {
   stubApi({})
   mount(<Routes><Route path="/servicios/nuevo" element={<ServiceFormPage />} /></Routes>, '/servicios/nuevo?fecha=2026-11-17')
   expect(((await screen.findByLabelText('Día del servicio')) as HTMLInputElement).value).toBe('2026-11-17')
+})
+
+const preachingChurch = { ...church, usesPreaching: true }
+const typeIn = (name: RegExp, text: string) => {
+  const field = screen.getByRole('combobox', { name })
+  fireEvent.focus(field)
+  fireEvent.change(field, { target: { value: text } })
+}
+
+test('without preaching the form has no preacher section and a director stays required', async () => {
+  stubApi({})
+  form()
+  await date(/vie 13 nov/)
+  expect(screen.queryByRole('combobox', { name: /Predicador/ })).toBeNull()
+  expect(screen.queryByLabelText('Tema')).toBeNull()
+})
+
+test('with preaching, a service can be created with only the preacher and a topic, and the pickers list their own role', async () => {
+  const directory = [detail({ id: 'p1', name: 'Ana Ramírez', canDirect: true, canPreach: false }), detail({ id: 'p2', name: 'Luis Herrera', canDirect: false, canPreach: true })]
+  const calls = stubApi({ church: preachingChurch, directory })
+  form()
+  fireEvent.click(await date(/vie 13 nov/))
+  typeIn(/Predicador/, 'Luis')
+  expect(await screen.findByRole('option', { name: /Luis Herrera/ })).toBeTruthy()
+  typeIn(/Predicador/, 'Ana')
+  expect(screen.queryByRole('option', { name: /^Ana Ramírez/ })).toBeNull()
+  typeIn(/Predicador/, 'Luis')
+  fireEvent.click(await screen.findByRole('option', { name: /Luis Herrera/ }))
+  fireEvent.change(screen.getByLabelText('Tema'), { target: { value: 'La gracia' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Crear servicio' }))
+  expect(await screen.findByText('Calendario')).toBeTruthy()
+  const body = JSON.parse(String(posted(calls).find((call) => call.url === '/api/services')!.init!.body))
+  expect(body).toMatchObject({ preacher: { personId: 'p2', topic: 'La gracia' } })
+  expect(body).not.toHaveProperty('directorId')
+})
+
+test('with preaching, creating with neither a director nor a preacher is refused beside the field', async () => {
+  const calls = stubApi({ church: preachingChurch })
+  form()
+  fireEvent.click(await date(/vie 13 nov/))
+  fireEvent.click(screen.getByRole('button', { name: 'Crear servicio' }))
+  expect(await screen.findByText('Elige quién dirige o quién predica.')).toBeTruthy()
+  expect(posted(calls).filter((call) => call.url === '/api/services')).toHaveLength(0)
+})
+
+test('a name that already exists without the preacher role is offered the role instead of being duplicated', async () => {
+  const calls = stubApi({ church: preachingChurch, createPerson: () => ({ status: 409, body: { error: 'Name exists', existing: { id: 'p1', name: 'Ana Ramírez' } } }) })
+  form()
+  fireEvent.click(await date(/vie 13 nov/))
+  typeIn(/Predicador/, 'Ana')
+  fireEvent.click(await screen.findByRole('option', { name: /Agregar «Ana» como persona nueva/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /añadir a Ana Ramírez también como predicador/ }))
+  await waitFor(() => expect((screen.getByRole('combobox', { name: /Predicador/ }) as HTMLInputElement).value).toBe('Ana Ramírez'))
+  expect(JSON.parse(String(calls.find((call) => call.init?.method === 'PATCH')!.init!.body))).toEqual({ canPreach: true })
+  expect(JSON.parse(String(calls.find((call) => call.init?.method === 'POST')!.init!.body))).toEqual({ name: 'Ana', canPreach: true })
 })
