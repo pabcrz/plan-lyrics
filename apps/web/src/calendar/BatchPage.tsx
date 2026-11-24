@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { Avatar, Button, Field, Icon, Notice, PersonPicker, Sheet, Switch, TextField, TimeWheel, fold, format12h, from24h, inputClass, to24h, type Person, type Time12 } from '../ui'
 import { ChurchGate, TopBar } from './ChurchGate'
@@ -8,6 +8,7 @@ import {
   type Assignment, type DayConfig, type PeriodEntry,
 } from './batch'
 import { useBatchPeriod, useCreateBatch } from './batch-api'
+import { clearBatchDraft, loadBatchDraft, saveBatchDraft, type BatchDraft } from './batch-draft'
 import { formatDay, formatLongDay, monthOf, monthTitle, shiftMonth, todayIn, weekdayOf } from './dates'
 import type { Church, Service } from './model'
 
@@ -77,22 +78,29 @@ function Batch({ church }: { church: Church }) {
   const [sending, setSending] = useState(false)
   const [failure, setFailure] = useState('')
   const [created, setCreated] = useState<Service[]>([])
+  // Borrador local: si se cierra la pestaña o se pierde la conexión, lo armado se puede retomar.
+  const [offered, setOffered] = useState<BatchDraft | null>(() => {
+    const draft = loadBatchDraft(church.id)
+    return draft && draft.step !== 'period' && [monthOf(todayIn()), shiftMonth(monthOf(todayIn()), 1), shiftMonth(monthOf(todayIn()), 2)].includes(draft.month) ? draft : null
+  })
 
   const periodQuery = useBatchPeriod(month, weekdays, true)
   const period = periodQuery.data
   const entries = period?.entries ?? []
   const free = entries.filter((entry) => !entry.lock)
-  const people = usePeople(true)
+  const usesPreaching = church.usesPreaching
+  // Cada lista ofrece solo a quienes tienen ese rol: el servidor rechaza a quien no lo tiene.
+  const people = usePeople(true, 'direct')
+  const preacherPeople = usePeople(usesPreaching, 'preach')
   const { create: createPerson } = usePersonActions()
 
-  const everyone = useMemo(() => new Map([...(people.data ?? []), ...added].map((person) => [person.id, person])), [people.data, added])
+  const everyone = useMemo(() => new Map([...(people.data ?? []), ...(preacherPeople.data ?? []), ...added].map((person) => [person.id, person])), [people.data, preacherPeople.data, added])
   const previous = period?.previous ?? null
   const directors: Person[] = list ?? (previous?.directorIds ?? []).flatMap((id) => (everyone.get(id) ? [everyone.get(id)!] : []))
   const nameOf = (id: string) => everyone.get(id)?.name ?? 'Persona'
   const previousLast = continues && previous?.lastDirectorId ? previous.lastDirectorId : null
   const hasPrevious = Boolean(previous && previous.directorIds.length > 0)
   const plan = assignmentFor(entries, directors.map((person) => person.id), { repeat, previousLast })
-  const usesPreaching = church.usesPreaching
   // Misma regla de reparto que la dirección, sin continuidad desde el lote anterior (producto no la define para predicación).
   const preacherPlan = assignmentFor(entries, preachers.map((person) => person.id), { repeat: repeatPreachers, previousLast: null })
 
@@ -130,7 +138,24 @@ function Batch({ church }: { church: Church }) {
     setFailure('')
     setStep('review')
   }
+  useEffect(() => {
+    if (offered || step === 'done') return
+    if (step === 'period' && list === null && preachers.length === 0 && Object.keys(configs).length === 0) return // nada armado todavía
+    saveBatchDraft(church.id, {
+      version: 1, savedAt: new Date().toISOString(), step, month, weekdays, configs, list, repeat, continues, review, preachers, repeatPreachers,
+    })
+  }, [church.id, offered, step, month, weekdays, configs, list, repeat, continues, review, preachers, repeatPreachers])
+  function resume(draft: BatchDraft) {
+    setMonth(draft.month); setWeekdays(draft.weekdays); setConfigs(draft.configs); setList(draft.list); setRepeat(draft.repeat)
+    setContinues(draft.continues); setReview(draft.review); setPreachers(draft.preachers); setRepeatPreachers(draft.repeatPreachers)
+    setStep(draft.step); setOffered(null)
+  }
+  function discardDraft() {
+    clearBatchDraft(church.id)
+    setOffered(null)
+  }
   function restart() {
+    clearBatchDraft(church.id)
     setStep('period')
     setList(null)
     setReview({ assignment: {}, removed: [], preachers: {} })
@@ -144,12 +169,12 @@ function Batch({ church }: { church: Church }) {
   async function addPerson(name: string) {
     setPersonFailure('')
     try {
-      const person = await createPerson({ name })
+      const person = await createPerson({ name, ...(panel?.kind === 'picker' && panel.role === 'preacher' ? { canPreach: true } : { canDirect: true }) })
       setAdded((current) => [...current, person])
       choose(person)
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409 && caught.existing) {
-        setPersonFailure(`Ya existe «${caught.existing.name}». Elígela de la lista o completa el nombre.`)
+        setPersonFailure(`Ya existe «${caught.existing.name}». Elígela de la lista o completa el nombre; si no aparece, no tiene este rol: añádeselo en su ficha de Personas.`)
       } else setPersonFailure(caught instanceof ApiError && caught.status === 403 ? 'No tienes permiso para agregar personas.' : 'No se pudo agregar a la persona. Inténtalo de nuevo.')
     }
   }
@@ -193,6 +218,7 @@ function Batch({ church }: { church: Church }) {
         })),
       })
       setCreated(result.services)
+      clearBatchDraft(church.id)
       setStep('done')
     } catch (caught) {
       const code = caught instanceof ApiError ? caught.code : ''
@@ -219,6 +245,15 @@ function Batch({ church }: { church: Church }) {
       <TopBar name={church.name} settings={church.canConfigure} />
       <Header title="Lote mensual" label={back ? (step === 'directors' ? 'Volver al período' : step === 'preachers' ? 'Volver a directores' : usesPreaching ? 'Volver a predicadores' : 'Volver a directores') : 'Volver al calendario'} step={stepNumber} onBack={back} />
       <div className="grid flex-1 content-start gap-5 p-4">
+        {step === 'period' && offered && (
+          <Notice tone="warn" icon="alert" role="status" title="Tienes un lote sin terminar">
+            Lo dejaste en {monthTitle(offered.month).toLowerCase()}. Nada se creó todavía.
+            <span className="mt-2 grid gap-2">
+              <Button variant="primary" block onClick={() => resume(offered)}>Retomar borrador</Button>
+              <Button variant="quiet" block onClick={discardDraft}>Empezar de nuevo</Button>
+            </span>
+          </Notice>
+        )}
         {step === 'period' && (
           <>
             <p className="m-0 text-[0.9375rem] text-text-2">Elige el mes y hasta 3 días de la semana. Después armas la lista de directores.</p>
@@ -402,7 +437,7 @@ function Batch({ church }: { church: Church }) {
           <div className="grid gap-3">
             <p className="m-0 text-sm text-text-2">{panel.target === 'add' ? 'Se suma al final de la lista.' : 'Solo cambia esta fecha; las demás no cambian.'}{panel.role === 'preacher' && panel.target === 'add' ? ' Puedes elegir a quien ya está: cada turno cuenta.' : ''}</p>
             <PersonPicker label="Buscar persona" query={query} onQueryChange={(next) => { setQuery(next); setPersonFailure('') }}
-              people={(people.data ?? []).filter((person) => (panel.role === 'preacher' || panel.target !== 'add' || !directors.some((item) => item.id === person.id)) && fold(person.name).includes(fold(query)))}
+              people={((panel.role === 'preacher' ? preacherPeople.data : people.data) ?? []).filter((person) => (panel.role === 'preacher' || panel.target !== 'add' || !directors.some((item) => item.id === person.id)) && fold(person.name).includes(fold(query)))}
               onSelect={choose} onAddNew={(name) => void addPerson(name)}
               help="Elige a alguien del directorio o agrega a una persona nueva con su nombre completo (se guarda en el directorio)." />
             {personFailure && <Notice tone="warn" icon="alert" role="alert">{personFailure}</Notice>}

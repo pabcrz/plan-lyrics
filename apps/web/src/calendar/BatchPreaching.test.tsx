@@ -9,7 +9,7 @@ vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-
 
 // Jueves 12 de noviembre de 2026; la iglesia de prueba tiene viernes (19:30) y domingo (10:00) habituales.
 beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-12T18:00:00Z') }) })
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); localStorage.clear() })
 
 const page = () => mount(<Routes><Route path="/servicios/lote" element={<BatchPage />} /></Routes>, '/servicios/lote')
 const fridays = (...days: string[]): PeriodEntry[] => days.map((day) => ({ date: `2026-11-${day}`, slot: 'SINGLE', lock: null }))
