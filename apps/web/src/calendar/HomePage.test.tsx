@@ -237,3 +237,18 @@ test('there is no «Ver anteriores» when nothing passed this month or when look
   await screen.findByRole('link', { name: /Servicio de viernes/ })
   expect(screen.queryByRole('button', { name: /Ver anteriores/ })).toBeNull()
 })
+
+test('with several churches the upcoming list gathers all of them and opening one makes it the active church', async () => {
+  const calls = stubApi({
+    services: [], myChurches: [{ id: 'c1', name: 'Iglesia Central', role: 'ADMIN' }, { id: 'c2', name: 'Iglesia Norte', role: 'EDITOR' }],
+    agenda: [{ ...service({ id: 'n1', date: '2026-11-15', title: 'Culto norte' }), churchId: 'c2', churchName: 'Iglesia Norte' }, { ...service({ id: 'n2', date: '2026-11-22', title: 'Culto central' }), churchId: 'c1', churchName: 'Iglesia Central' }],
+  })
+  mount(<HomePage />)
+  const card = await screen.findByRole('link', { name: /Culto norte/ })
+  expect(within(card).getByText('Iglesia Norte')).toBeTruthy()
+  expect(screen.getByRole('link', { name: /Culto central/ })).toBeTruthy()
+  fireEvent.click(card)
+  expect(localStorage.getItem('plan-lyrics.activeChurch')).toBe('c2')
+  expect(calls.some((call) => call.url === '/api/me/agenda')).toBe(true)
+  localStorage.clear()
+})

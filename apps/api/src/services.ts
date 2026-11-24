@@ -219,6 +219,24 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     return removed.count > 0 ? c.body(null, 204) : c.json({ error: 'Not found' }, 404)
   }))
 
+  // The next services of every church the caller belongs to (never support-mode churches): the home of people with several churches.
+  routes.use('/api/me/agenda', requireSession(config))
+  routes.get('/api/me/agenda', async (c) => {
+    if (!db) return c.json({ error: 'Access unavailable' }, 503)
+    try {
+      const memberships = await db.membership.findMany({ where: { user: { clerkSubject: c.get('clerkSubject') } }, select: { church: { select: { id: true, name: true } } } })
+      const names = new Map(memberships.map(row => [row.church.id, row.church.name]))
+      const rows = await db.service.findMany({
+        where: { churchId: { in: [...names.keys()] }, date: { gte: new Date(`${todayInZone(now())}T00:00:00Z`) } },
+        orderBy: [{ date: 'asc' }, { slot: 'asc' }], take: 60, select: { ...serviceSelect, churchId: true },
+      })
+      return c.json(rows.map(row => ({ ...present(row), churchId: row.churchId, churchName: names.get(row.churchId) })))
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'agenda_failed', code: safeErrorCode(error) }))
+      return c.json({ error: 'Access unavailable' }, 503)
+    }
+  })
+
   routes.get('/api/services', guarded('services_list_failed', async (c, db, church) => {
     const month = monthQuery.safeParse(c.req.query('month'))
     if (!month.success) return c.json({ error: 'Invalid request' }, 400)
