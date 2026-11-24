@@ -388,7 +388,7 @@ function Batch({ church }: { church: Church }) {
               <p className="m-0 text-[0.9375rem] text-text-2">Quedaron como borrador. Las participaciones habituales y el setlist se agregan después.</p>
             </div>
             <ul className="m-0 grid list-none overflow-hidden rounded-lg border border-line bg-surface p-0">
-              {created.map((service) => <Row key={`${service.date}/${service.slot}`} date={`${formatDay(service.date)}${service.slot === 'SINGLE' ? '' : ` · ${slotName[service.slot]}`}${service.time ? ` · ${timeText(service.time)}` : ''}`} value={service.director.name} />)}
+              {created.map((service) => <Row key={`${service.date}/${service.slot}`} date={`${formatDay(service.date)}${service.slot === 'SINGLE' ? '' : ` · ${slotName[service.slot]}`}${service.time ? ` · ${timeText(service.time)}` : ''}`} value={service.director?.name ?? 'Sin director'} />)}
             </ul>
             {pending.length > 0 && <Notice icon="info" title="Sin programar">{pending.map((entry) => formatDay(entry.date) + (entry.slot === 'SINGLE' ? '' : ` · ${slotName[entry.slot]}`)).join(', ')}. Quedan para resolver después.</Notice>}
             <Button variant="primary" block onClick={() => void navigate({ pathname: '/', search: month === monthOf(today) ? '' : `?mes=${month}` }, { state: { created: true } })}>Ver en el calendario</Button>

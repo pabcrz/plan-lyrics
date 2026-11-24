@@ -10,11 +10,12 @@ export type Church = {
 export type ChurchSettings = Pick<Church, 'name' | 'sundayDouble' | 'usesPreaching' | 'days'>
 export type Service = {
   id: string; title: string; date: string; slot: Slot; time: string | null; status: Status
-  director: { id: string; name: string }
+  /** Un servicio puede tener solo predicación: la dirección se asigna después. */
+  director: { id: string; name: string } | null
 }
 
 /** Persona del directorio de la iglesia activa (lista). */
-export type Person = { id: string; name: string; hasAccount: boolean }
+export type Person = { id: string; name: string; hasAccount: boolean; canDirect: boolean; canPreach: boolean }
 /** Ficha: datos personales generales y lo que el servidor sabe de ella en esta iglesia. */
 export type PersonDetail = Person & { phone: string | null; sharedWithOtherChurches: boolean; upcomingServices: number }
 

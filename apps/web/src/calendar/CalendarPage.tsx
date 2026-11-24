@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { Avatar, Button, Icon, Notice, Sheet, StatusChip, TextField, Toast, format12h, from24h, type IconName, type ServiceStatus } from '../ui'
 import { ChurchGate, MainTabbar, TopBar } from './ChurchGate'
-import { ApiError, useClosedDateActions, useClosedDates, useServices } from './api'
+import { ApiError, useClosedDateActions, useClosedDates, usePeople, useServices, useSetDirector } from './api'
 import { formatDay, formatLongDay, monthCells, monthOf, monthTitle, shiftMonth, todayIn } from './dates'
+import { PeopleSheet } from './PeopleSheet'
 import { PreachingSection } from './PreachingSection'
 import { ServiceParticipations } from './ServiceParticipations'
 import type { Church, ClosedDate, Service, Status } from './model'
@@ -154,7 +155,7 @@ function AgendaRow({ service, onOpen }: { service: Service; onOpen: () => void }
         <span className="text-sm font-semibold">{formatDay(service.date)}</span>
         <span className="grid gap-1">
           <span className={status(service.status) === 'cancelled' ? 'font-semibold line-through' : 'font-semibold'}>{service.title}</span>
-          <span className="text-[0.8125rem] text-text-2">{timeText(service.time)}{slotText[service.slot]} · {service.director.name}</span>
+          <span className="text-[0.8125rem] text-text-2">{timeText(service.time)}{slotText[service.slot]} · {service.director?.name ?? 'Sin director'}</span>
           <StatusChip status={status(service.status)} className="w-fit" />
         </span>
       </button>
@@ -239,6 +240,24 @@ function ClosedChipOrDate({ date, item }: { date: string; item: ClosedDate | und
   )
 }
 
+/** Servicio creado con solo su predicación: quien edita puede asignarle la dirección cuando se defina. */
+function NoDirector({ service, canEdit }: { service: Service; canEdit: boolean }) {
+  const [choosing, setChoosing] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const people = usePeople(choosing, 'direct')
+  const assign = useSetDirector()
+  if (!canEdit) return <p className="m-0 text-text-2">Sin director asignado.</p>
+  return (
+    <>
+      <p className="m-0 text-text-2">Sin director asignado.</p>
+      {failed && <Notice tone="warn" icon="alert" role="alert">No se pudo asignar la dirección. Inténtalo de nuevo.</Notice>}
+      <Button variant="secondary" onClick={() => { setFailed(false); setChoosing(true) }}>Asignar director</Button>
+      <PeopleSheet open={choosing} title="Asignar director" subtitle="Solo aparecen quienes dirigen la alabanza." people={people.data ?? []} onClose={() => setChoosing(false)}
+        onPick={(person) => { setChoosing(false); void assign(service.id, person.id).catch(() => setFailed(true)) }} />
+    </>
+  )
+}
+
 function Detail({ service, canEdit, usesPreaching }: { service: Service; canEdit: boolean; usesPreaching: boolean }) {
   const navigate = useNavigate()
   return (
@@ -247,10 +266,12 @@ function Detail({ service, canEdit, usesPreaching }: { service: Service; canEdit
       <p className="m-0 text-text-2">{formatLongDay(service.date)} · {timeText(service.time)}{slotText[service.slot]}</p>
       <section aria-labelledby="direction" className="grid gap-2">
         <h3 id="direction" className="m-0 text-sm font-semibold text-text-2">Dirección</h3>
-        <div className="flex items-center gap-3">
-          <Avatar name={service.director.name} />
-          <span className="font-semibold">{service.director.name}</span>
-        </div>
+        {service.director ? (
+          <div className="flex items-center gap-3">
+            <Avatar name={service.director.name} />
+            <span className="font-semibold">{service.director.name}</span>
+          </div>
+        ) : <NoDirector service={service} canEdit={canEdit} />}
       </section>
       <ServiceParticipations service={service} canEdit={canEdit} />
       {usesPreaching && <PreachingSection service={service} canEdit={canEdit} />}

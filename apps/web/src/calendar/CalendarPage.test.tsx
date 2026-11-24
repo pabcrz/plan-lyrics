@@ -179,3 +179,27 @@ test.each(['Servicio individual', 'Lote mensual'])('elegir «%s» en «Nuevo» c
   await screen.findByRole('heading', { name: option === 'Lote mensual' ? /lote/i : 'Nuevo servicio' })
   expect(screen.queryByRole('dialog', { name: 'Nuevo' })).toBeNull()
 })
+
+const preachingOnly = service({ id: 'z', date: '2026-11-13', title: 'Solo predicación', director: null })
+
+test('a service without a director says so in the agenda and lets editors assign one', async () => {
+  const calls = stubApi({ services: [preachingOnly] })
+  mount(<CalendarPage />)
+  expect((await screen.findAllByText(/Sin director/)).length).toBeGreaterThan(0)
+  fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Solo predicación/ }))
+  const sheet = await screen.findByRole('dialog')
+  fireEvent.click(within(sheet).getByRole('button', { name: 'Asignar director' }))
+  const picker = await screen.findByRole('dialog', { name: 'Asignar director' })
+  fireEvent.click(await within(picker).findByText('Luis Herrera'))
+  await vi.waitFor(() => expect(calls.some((call) => call.url === '/api/services/z/director' && call.init?.method === 'PUT' && call.init.body === JSON.stringify({ directorId: 'p2' }))).toBe(true))
+  expect(calls.some((call) => call.url === '/api/people?role=direct')).toBe(true)
+})
+
+test('members read «Sin director asignado» and cannot assign', async () => {
+  stubApi({ services: [preachingOnly], church: { ...church, canEdit: false } })
+  mount(<CalendarPage />)
+  fireEvent.click(await screen.findByRole('button', { name: /13 de noviembre: Solo predicación/ }))
+  const sheet = await screen.findByRole('dialog')
+  expect(within(sheet).getByText('Sin director asignado.')).toBeTruthy()
+  expect(within(sheet).queryByRole('button', { name: 'Asignar director' })).toBeNull()
+})

@@ -54,9 +54,10 @@ export function useSaveChurch() {
   }, [api, client])
 }
 
-export function usePeople(enabled: boolean) {
+/** Directorio de la iglesia; con `role` solo quienes pueden dirigir o predicar. */
+export function usePeople(enabled: boolean, role?: 'direct' | 'preach') {
   const api = useApiFetch()
-  return useQuery({ queryKey: ['people'], queryFn: () => api<Person[]>('/api/people'), enabled, retry: false })
+  return useQuery({ queryKey: role ? ['people', role] : ['people'], queryFn: () => api<Person[]>(`/api/people${role ? `?role=${role}` : ''}`), enabled, retry: false })
 }
 
 export function usePerson(id: string) {
@@ -103,8 +104,9 @@ export function useServices(months: string[]) {
   }
 }
 
+/** Al menos `directorId` o `preacher`; el servidor lo vuelve a exigir. */
 export type NewService = {
-  title: string; date: string; status: Extract<Status, 'DRAFT' | 'PUBLISHED'>; directorId: string
+  title: string; date: string; status: Extract<Status, 'DRAFT' | 'PUBLISHED'>; directorId?: string; preacher?: { personId: string; topic?: string }
   time?: string | null; slot?: Exclude<Slot, 'SINGLE'>
 }
 
@@ -117,6 +119,19 @@ export function useCreateService() {
     } finally {
       // Éxito o rechazo (p. ej. fecha completa): la lista visible debe reflejar el servidor.
       await Promise.all([client.invalidateQueries({ queryKey: ['services'] }), client.invalidateQueries({ queryKey: ['closed'] })])
+    }
+  }, [api, client])
+}
+
+/** Asigna la dirección a un servicio que no la tiene; refresca el calendario aunque el servidor lo rechace. */
+export function useSetDirector() {
+  const api = useApiFetch()
+  const client = useQueryClient()
+  return useCallback(async (serviceId: string, directorId: string) => {
+    try {
+      return await api<Service>(`/api/services/${encodeURIComponent(serviceId)}/director`, { method: 'PUT', body: { directorId } })
+    } finally {
+      await client.invalidateQueries({ queryKey: ['services'] })
     }
   }, [api, client])
 }

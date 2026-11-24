@@ -31,7 +31,7 @@ export function rotaDoc({ from, to, services, closed, message }: {
   const inRange = (date: string) => date >= from && date <= to
   const lines = [
     ...services.filter((service) => service.status !== 'CANCELLED' && inRange(service.date))
-      .map((service) => ({ date: service.date, order: SLOT_ORDER[service.slot], row: { lead: `${formatDay(service.date)}${SLOT_TEXT[service.slot]}`, text: service.director.name } as PaperRow })),
+      .map((service) => ({ date: service.date, order: SLOT_ORDER[service.slot], row: { lead: `${formatDay(service.date)}${SLOT_TEXT[service.slot]}`, text: service.director?.name ?? 'Sin director', ...(service.director ? {} : { muted: true }) } as PaperRow })),
     ...closed.filter((item) => inRange(item.date))
       .map((item) => ({ date: item.date, order: 0, row: { lead: formatDay(item.date), text: item.reason ? `No hay culto · ${item.reason}` : 'No hay culto', muted: true } as PaperRow })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order)

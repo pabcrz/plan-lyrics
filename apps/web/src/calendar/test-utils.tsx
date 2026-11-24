@@ -30,7 +30,7 @@ type Handler =(url: string, init?: RequestInit) => { status?: number; body?: unk
 
 /** Doble de fetch por ruta; devuelve las peticiones hechas para poder inspeccionarlas. */
 export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
-  id: 'p1', name: 'Ana Ramírez', phone: null, hasAccount: false, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
+  id: 'p1', name: 'Ana Ramírez', phone: null, hasAccount: false, canDirect: true, canPreach: true, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
 })
 
 export function stubApi(routes: {
@@ -41,6 +41,8 @@ export function stubApi(routes: {
   roles?: MusicalRole[]; restrictions?: RoleRestriction[]; createRole?: Handler; addRestriction?: Handler
   /** Lote mensual: período (por URL) y creación. */
   period?: Handler; batch?: Handler
+  /** Asignar la dirección a un servicio que no la tiene. */
+  director?: Handler
   /** Participaciones por rol, asignaciones por servicio, turnos para intercambiar y servicios futuros por rol (avisa al quitarlo). */
   participations?: RoleParticipation[]; assignments?: Record<string, Assignment[]>; turns?: Turn[]; futureServices?: Record<string, number>
   /** Respuestas a guardar un rol, y a reemplazar, agregar, quitar e intercambiar asignaciones. */
@@ -109,6 +111,12 @@ export function stubApi(routes: {
       }
       return reply(200, participations[index])
     }
+    if (url.startsWith('/api/services/') && url.endsWith('/director') && init?.method === 'PUT') {
+      const result = routes.director?.(url, init)
+      if (result?.status && result.status >= 400) return reply(result.status, result.body ?? { error: 'x' })
+      const body = JSON.parse(String(init.body)) as { directorId: string }
+      return reply(200, result?.body ?? service({ id: decodeURIComponent(url.split('/')[3] ?? ''), director: directoryPeople().find((person) => person.id === body.directorId) ?? null }))
+    }
     if (url.startsWith('/api/services/') && url.endsWith('/preaching')) {
       const serviceId = decodeURIComponent(url.split('/')[3] ?? '')
       if (init?.method === 'PUT') {
@@ -156,9 +164,10 @@ export function stubApi(routes: {
       const result = routes.createPerson?.(url, init)
       return reply(result?.status ?? 201, result?.body ?? detail({ id: 'new', ...JSON.parse(String(init.body)) }))
     }
-    if (url === '/api/people') {
-      const list = routes.directory ?? people.map((person) => detail(person))
-      return reply(200, list.map(({ id, name, hasAccount }) => ({ id, name, hasAccount })))
+    if (url === '/api/people' || url.startsWith('/api/people?')) {
+      const role = new URL(url, 'http://local').searchParams.get('role')
+      const list = (routes.directory ?? people.map((person) => detail(person))).filter((person) => (role === 'direct' ? person.canDirect : role === 'preach' ? person.canPreach : true))
+      return reply(200, list.map(({ id, name, hasAccount, canDirect, canPreach }) => ({ id, name, hasAccount, canDirect, canPreach })))
     }
     if (url.startsWith('/api/people/')) {
       const id = decodeURIComponent(url.split('/').pop() ?? '')

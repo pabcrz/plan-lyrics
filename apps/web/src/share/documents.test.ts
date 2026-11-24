@@ -45,6 +45,11 @@ test('a double Sunday shows both services and a blank message leaves no footer',
   expect(doc).not.toHaveProperty('foot')
 })
 
+test('a date without a director reads «Sin director» so the monthly list shows the gaps', () => {
+  const doc = rotaDoc({ from: '2026-11-01', to: '2026-11-30', message: '', closed: [], services: [service('2026-11-22', { director: null })] })
+  expect(doc.rows).toEqual([{ lead: 'dom 22 nov', text: 'Sin director', muted: true }])
+})
+
 test('the period reads as the month, or as the two dates when it crosses months', () => {
   expect(periodLabel('2026-12-01', '2026-12-31')).toBe('Diciembre 2026')
   expect(periodLabel('2026-12-10', '2026-12-20')).toBe('Diciembre 2026')
