@@ -1,3 +1,4 @@
+import { esMX } from '@clerk/localizations'
 import {
   ClerkFailed, ClerkLoaded, ClerkLoading, ClerkProvider,
   Show, SignInButton,
@@ -20,7 +21,7 @@ export function ClerkApp({ publishableKey }: { publishableKey?: string }) {
   if (!/^pk_(test|live)_[A-Za-z0-9+/=_-]+$/.test(key)) return <Unconfigured reason="Configuración de Clerk inválida: usa únicamente una clave publicable." />
 
   return (
-    <ClerkProvider publishableKey={key} afterSignOutUrl="/">
+    <ClerkProvider publishableKey={key} afterSignOutUrl="/" localization={esMX}>
       <Show when="signed-in"><ProductRoutes /></Show>
       <ClerkLoading><App authentication={<p role="status">Cargando autenticación…</p>} /></ClerkLoading>
       <ClerkFailed><App authentication={<p role="alert">No se pudo cargar Clerk. Recargá la página para reintentar.</p>} /></ClerkFailed>
