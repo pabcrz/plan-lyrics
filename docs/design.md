@@ -29,7 +29,7 @@ El recorrido de wireframes previo vive en [`design/programacion-mensual`](../des
 ## Principios
 
 - **Móvil primero.** Se diseña a 390 px; escritorio se deriva después.
-- **Limpio, con personalidad propia.** Base serena (salvia/verde azulado) con un acento musical; el motivo recurrente es el pentagrama.
+- **Limpio, con personalidad propia.** Base serena (azul) con un acento musical; el motivo recurrente es el pentagrama.
 - **Navegación inferior** con barra de pestañas en móvil.
 - **El estado nunca depende solo del color.** Cada estado combina forma, texto o ícono.
 
@@ -41,7 +41,8 @@ Un único par `--h` (tono) y `--c` (intensidad) gobierna el acento y el tinte de
 
 | Tema | `--h` | `--c` | Situación |
 | --- | --- | --- | --- |
-| Salvia | 178 | 0.085 | Predeterminado. |
+| Azul | 235 | 0.11 | Predeterminado. |
+| Salvia | 178 | 0.085 | Opcional (fue el predeterminado). |
 | Índigo | 272 | 0.15 | Opcional. |
 | Ocre | 62 | 0.105 | Opcional. |
 

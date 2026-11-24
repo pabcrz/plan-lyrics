@@ -4,8 +4,8 @@
  * números (data-accent). Modo claro u oscuro por data-mode en <html>.
  */
 :root {
-  --h: 178;
-  --c: 0.085; /* Salvia, predeterminado */
+  --h: 235;
+  --c: 0.11; /* Azul, predeterminado */
 
   --t-fast: 140ms;
   --t-base: 240ms;
@@ -20,7 +20,7 @@
 }
 :root[data-accent='indigo'] { --h: 272; --c: 0.15; }
 :root[data-accent='ocre'] { --h: 62; --c: 0.105; }
-:root[data-accent='azul'] { --h: 235; --c: 0.11; }
+:root[data-accent='salvia'] { --h: 178; --c: 0.085; }
 :root[data-accent='granate'] { --h: 15; --c: 0.13; }
 
 /* Semánticos — modo claro (predeterminado) */

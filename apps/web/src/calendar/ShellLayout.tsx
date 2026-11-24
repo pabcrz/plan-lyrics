@@ -6,6 +6,8 @@ import { Button, Icon } from '../ui'
 import { cx } from '../ui/cx'
 import { NewSheet, extras, sections, type Section } from './AppShell'
 import { useChurch } from './api'
+import { InstallBar } from '../InstallBar'
+import { StatusBars } from '../StatusBars'
 import { ChurchName } from './ChurchGate'
 import { clearActiveChurch } from './active-church'
 
@@ -39,6 +41,8 @@ export function ShellLayout() {
   const item = (active: boolean) => cx(link, active ? 'bg-accent-soft text-accent-soft-text' : 'text-text-2')
   return (
     <>
+    <StatusBars />
+    <InstallBar />
     {church?.support && (
       <div role="status" className="flex min-h-11 items-center gap-3 bg-accent-soft px-4 text-sm text-accent-soft-text">
         <span className="min-w-0 flex-1 truncate font-semibold">Modo soporte · {church.name}</span>

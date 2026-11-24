@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { saveUpcoming } from '../offline-cache'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { Button, Icon, Notice, Sheet, StatusChip, Toast } from '../ui'
 import { cx } from '../ui/cx'
@@ -6,7 +8,7 @@ import { AppShell, NewSheet } from './AppShell'
 import { ChurchGate } from './ChurchGate'
 import { DaySheet } from './DaySheet'
 import { MonthGrid, closedOn } from './MonthGrid'
-import { useAgenda, useClosedDates, useMyChurches, useServices, useSwitchChurch, type AgendaService } from './api'
+import { useAgenda, useApiFetch, useClosedDates, useMyChurches, useServices, useSwitchChurch, type AgendaService } from './api'
 import { formatDay, formatLongDay, monthOf, monthTitle, shiftMonth, todayIn } from './dates'
 import { slotText, status, timeText } from './service-ui'
 import type { Church, ClosedDate, Service } from './model'
@@ -53,6 +55,11 @@ function Home({ church }: { church: Church }) {
   ].sort((a, b) => a.date.localeCompare(b.date))
   // Mes en curso: lo que viene (y, a petición, lo que ya pasó de este mes). Otro mes: el mes completo.
   const upcoming = all.filter((item) => (current ? item.date >= today : inMonth(item.date))).slice(0, current ? SHOWN : undefined)
+  // Con conexión, deja leíbles sin red el setlist y las letras de lo que viene.
+  const api = useApiFetch()
+  const queryClient = useQueryClient()
+  const offlineIds = upcoming.flatMap((item) => (item.kind === 'service' && item.service.status !== 'CANCELLED' ? [item.service.id] : [])).join(',')
+  useEffect(() => { if (offlineIds && navigator.onLine) void saveUpcoming(queryClient, api, offlineIds.split(',')) }, [offlineIds, api, queryClient])
   const past = current ? all.filter((item) => inMonth(item.date) && item.date < today) : []
   const items = showPast ? [...past, ...upcoming] : upcoming
   const count = gridServices.length
