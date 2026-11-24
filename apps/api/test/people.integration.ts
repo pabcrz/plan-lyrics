@@ -13,6 +13,7 @@ const api = createApp(fixture.config, db, () => new Date('2026-11-12T18:00:00Z')
 const fixturePeople = { 'person-a': 'Director person-a', 'person-b': 'Director person-b', 'person-no-account': 'Fixture Participant' }
 const reset = async () => {
   await db.service.deleteMany()
+  await db.churchPerson.updateMany({ data: { canDirect: true, canPreach: true } })
   // Fixture people first (a test may rename them), then everything the tests created.
   for (const [id, name] of Object.entries(fixturePeople)) await db.person.update({ where: { id }, data: { name, phone: null, userId: null } })
   await db.person.deleteMany({ where: { id: { notIn: Object.keys(fixturePeople) }, name: { startsWith: 'Prueba ' } } })
@@ -36,8 +37,8 @@ test('lists only the active church people, alphabetically, with the account stat
   try {
     const listed = await (await call('member', 'GET', '/api/people')).json()
     expect(listed).toEqual([
-      { id: 'person-a', name: 'Director person-a', hasAccount: true },
-      { id: 'person-no-account', name: 'Fixture Participant', hasAccount: false },
+      { id: 'person-a', name: 'Director person-a', hasAccount: true, canDirect: true, canPreach: true },
+      { id: 'person-no-account', name: 'Fixture Participant', hasAccount: false, canDirect: true, canPreach: true },
     ])
     expect((await call('b-editor', 'GET', '/api/people').then(r => r.json())).map((p: { id: string }) => p.id)).toEqual(['person-b', 'person-no-account'])
   } finally { await db.person.update({ where: { id: 'person-a' }, data: { userId: null } }) }
@@ -86,7 +87,7 @@ test('reads one person with account state, upcoming services and sharing, hiding
   await db.service.create({ data: { churchId: 'church-a', directorId: 'person-no-account', title: 'Culto', date: new Date('2026-11-20T00:00:00Z') } })
   await db.service.create({ data: { churchId: 'church-a', directorId: 'person-no-account', title: 'Pasado', date: new Date('2026-11-06T00:00:00Z') } })
   const shared = await (await call('member', 'GET', '/api/people/person-no-account')).json()
-  expect(shared).toEqual({ id: 'person-no-account', name: 'Fixture Participant', phone: null, hasAccount: false, sharedWithOtherChurches: true, upcomingServices: 1 })
+  expect(shared).toEqual({ id: 'person-no-account', name: 'Fixture Participant', phone: null, hasAccount: false, canDirect: true, canPreach: true, sharedWithOtherChurches: true, upcomingServices: 1 })
   const own = await (await call('member', 'GET', '/api/people/person-a')).json()
   expect(own).toMatchObject({ sharedWithOtherChurches: false, upcomingServices: 0 })
   expect((await call('member', 'GET', '/api/people/person-b')).status).toBe(404)
@@ -148,4 +149,37 @@ test('a person with upcoming services can be removed; the count tells the admini
   expect((await call('admin', 'GET', '/api/people/person-a').then(r => r.json())).upcomingServices).toBe(1)
   expect((await call('admin', 'DELETE', '/api/people/person-a')).status).toBe(204)
   expect(await db.service.count({ where: { directorId: 'person-a' } })).toBe(1)
+})
+
+test('the roles of a person select who the pickers offer, and are set by editors on this church only', async () => {
+  const created = await (await call('editor', 'POST', '/api/people', { name: 'Prueba Roles', canPreach: true })).json()
+  expect(created).toMatchObject({ canDirect: false, canPreach: true })
+  const ids = async (query: string) => (await (await call('member', 'GET', `/api/people${query}`)).json()).map((p: { id: string }) => p.id)
+  expect(await ids('?role=preach')).toContain(created.id)
+  expect(await ids('?role=direct')).not.toContain(created.id)
+  expect(await ids('')).toContain(created.id)
+  expect((await call('member', 'GET', '/api/people?role=bass')).status).toBe(400)
+  expect((await call('member', 'PATCH', `/api/people/${created.id}`, { canDirect: true })).status).toBe(403)
+  const patched = await call('editor', 'PATCH', `/api/people/${created.id}`, { canDirect: true, canPreach: false })
+  expect(await patched.json()).toMatchObject({ name: 'Prueba Roles', canDirect: true, canPreach: false })
+  expect(await ids('?role=preach')).not.toContain(created.id)
+  expect(await ids('?role=direct')).toContain(created.id)
+  expect((await call('editor', 'PATCH', `/api/people/${created.id}`, {})).status).toBe(400)
+  expect((await call('editor', 'PATCH', `/api/people/${created.id}`, { canDirect: 'yes' })).status).toBe(400)
+  // A person of another church is not reachable through this one.
+  expect((await call('editor', 'PATCH', '/api/people/person-b', { canPreach: false })).status).toBe(404)
+})
+
+test('a preacher is chosen only among people who preach, but one already saved may stay', async () => {
+  await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: true } })
+  try {
+    const service = await db.service.create({ data: { churchId: 'church-a', title: 'Predicación', date: new Date('2026-11-20T00:00:00Z'), status: 'DRAFT' } })
+    const save = (preacherId: string) => call('editor', 'PUT', `/api/services/${service.id}/preaching`, { preacherId, topic: 'Tema', passages: [], notes: '' })
+    await db.churchPerson.update({ where: { churchId_personId: { churchId: 'church-a', personId: 'person-a' } }, data: { canPreach: false } })
+    expect((await save('person-a')).status).toBe(400)
+    await db.churchPerson.update({ where: { churchId_personId: { churchId: 'church-a', personId: 'person-a' } }, data: { canPreach: true } })
+    expect((await save('person-a')).status).toBe(200)
+    await db.churchPerson.update({ where: { churchId_personId: { churchId: 'church-a', personId: 'person-a' } }, data: { canPreach: false } })
+    expect((await save('person-a')).status).toBe(200)
+  } finally { await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: false } }) }
 })

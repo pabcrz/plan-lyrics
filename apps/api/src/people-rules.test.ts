@@ -40,3 +40,13 @@ describe('personPatch', () => {
     expect(personPatch.safeParse({ name: 'Ana Ramírez', roles: ['x'] }).success).toBe(false)
   })
 })
+
+describe('roles', () => {
+  test('a new person and a patch accept the two role flags and nothing else new', () => {
+    expect(newPersonBody.parse({ name: 'Ana', canPreach: true })).toEqual({ name: 'Ana', canPreach: true })
+    expect(personPatch.parse({ canDirect: false })).toEqual({ canDirect: false })
+    expect(personPatch.safeParse({}).success).toBe(false)
+    expect(personPatch.safeParse({ canDirect: 'yes' }).success).toBe(false)
+    expect(personPatch.safeParse({ canDirect: true, admin: true }).success).toBe(false)
+  })
+})

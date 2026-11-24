@@ -30,8 +30,8 @@ async function present(db: PrismaClient | Tx, church: Active, subject: string, s
   }
 }
 
-const activePerson = (tx: Tx, churchId: string, personId: string) =>
-  tx.churchPerson.findFirst({ where: { churchId, personId, removedAt: null }, select: { personId: true } })
+const activePerson = (tx: Tx, churchId: string, personId: string, role?: 'canPreach') =>
+  tx.churchPerson.findFirst({ where: { churchId, personId, removedAt: null, ...(role ? { [role]: true } : {}) }, select: { personId: true } })
 
 /**
  * Preaching of a service. Everything depends on the church's «Usa predicación» switch: while it is off every
@@ -67,7 +67,7 @@ export function preachingRoutes(config: SessionConfig, db?: PrismaClient, now: (
       if (day(service.date) < todayInZone(now())) return 'Date in the past' as const
       const { preacherId } = body.data
       // Keeping a preacher who left the directory is allowed; choosing one is not.
-      if (preacherId && preacherId !== service.preaching?.preacherId && !await activePerson(tx, church.churchId, preacherId)) return 'Invalid request' as const
+      if (preacherId && preacherId !== service.preaching?.preacherId && !await activePerson(tx, church.churchId, preacherId, 'canPreach')) return 'Invalid request' as const
       if (isEmptyPreaching(body.data)) await tx.servicePreaching.deleteMany({ where: { serviceId: service.id } })
       else await tx.servicePreaching.upsert({
         where: { serviceId: service.id }, update: body.data, create: { ...body.data, serviceId: service.id, churchId: church.churchId },

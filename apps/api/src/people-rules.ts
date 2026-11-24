@@ -16,7 +16,10 @@ const name = z.string().transform(value => value.trim().replace(/\s+/g, ' ')).pi
 const phone = z.string().trim().transform(value => value || null).pipe(z.string().regex(/^[\d+()\-.\s]{3,30}$/).nullable())
 
 // La iglesia nunca forma parte del cuerpo: siempre es la iglesia activa de quien llama.
-export const newPersonBody = z.strictObject({ name, phone: phone.optional() })
-// Solo información personal general; roles, turnos y cuentas no se editan por aquí.
-export const personPatch = z.strictObject({ name: name.optional(), phone: phone.nullable().optional() })
-  .refine(body => body.name !== undefined || body.phone !== undefined)
+// `canDirect` and `canPreach` say which jobs the pickers offer this person for; both are off unless asked for.
+const roles = { canDirect: z.boolean().optional(), canPreach: z.boolean().optional() }
+export const newPersonBody = z.strictObject({ name, phone: phone.optional(), ...roles })
+// Datos personales generales y los dos roles de esta iglesia; turnos y cuentas no se editan por aquí.
+export const personPatch = z.strictObject({ name: name.optional(), phone: phone.nullable().optional(), ...roles })
+  .refine(body => Object.values(body).some(value => value !== undefined))
+export const peopleRoleQuery = z.enum(['direct', 'preach'])
