@@ -400,3 +400,28 @@ test('the owner founds several churches, sees them all and enters one they do no
   expect((await call('owner', 'GET', '/api/members', undefined, south.id)).status).toBe(200)
   await db.church.deleteMany({ where: { name: { in: ['Iglesia Sur', 'Iglesia Este'] } } })
 })
+
+test('the agenda lists the upcoming services of every church of the caller and nothing else', async () => {
+  await db.membership.create({ data: { userId: 'acc-free', churchId: 'church-a', role: 'MEMBER' } })
+  await db.membership.create({ data: { userId: 'acc-free', churchId: 'church-b', role: 'MEMBER' } })
+  const future = new Date(Date.now() + 40 * 86_400_000)
+  future.setUTCHours(0, 0, 0, 0)
+  const past = new Date(Date.now() - 40 * 86_400_000)
+  past.setUTCHours(0, 0, 0, 0)
+  await db.service.createMany({ data: [
+    { id: 'agenda-a', churchId: 'church-a', title: 'Servicio A', date: future, slot: 'SINGLE', status: 'PUBLISHED' },
+    { id: 'agenda-b', churchId: 'church-b', title: 'Servicio B', date: future, slot: 'SINGLE', status: 'PUBLISHED' },
+    { id: 'agenda-old', churchId: 'church-a', title: 'Ya pasó', date: past, slot: 'SINGLE', status: 'COMPLETED' },
+  ] })
+  try {
+    const both = (await (await call('acc-free', 'GET', '/api/me/agenda')).json()) as Array<{ id: string; churchId: string; churchName: string }>
+    expect(both.map(item => item.id).sort()).toEqual(['agenda-a', 'agenda-b'])
+    expect(both.find(item => item.id === 'agenda-b')).toMatchObject({ churchId: 'church-b', churchName: expect.any(String) })
+    // A caller of one church never sees the other church's services, and the owner without memberships gets an empty list.
+    expect((await (await call('acc-a1', 'GET', '/api/me/agenda')).json() as Array<{ id: string }>).map(item => item.id)).toEqual(['agenda-a'])
+    expect(await (await call('owner', 'GET', '/api/me/agenda')).json()).toEqual([])
+    expect((await call(undefined, 'GET', '/api/me/agenda')).status).toBe(401)
+  } finally {
+    await db.service.deleteMany({ where: { id: { in: ['agenda-a', 'agenda-b', 'agenda-old'] } } })
+  }
+})

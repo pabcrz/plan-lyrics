@@ -62,6 +62,14 @@ export function useChurch() {
 }
 
 /** `role: null` solo para el superadministrador: iglesias a las que no pertenece (se abren en modo soporte). */
+export type AgendaService = Service & { churchId: string; churchName: string }
+
+/** Próximos servicios de todas las iglesias de la cuenta; solo se pide con dos o más. */
+export function useAgenda(enabled: boolean) {
+  const api = useApiFetch()
+  return useQuery({ queryKey: ['agenda'], queryFn: () => api<AgendaService[]>('/api/me/agenda'), retry: false, enabled })
+}
+
 export type MyChurch = { id: string; name: string; role: 'ADMIN' | 'EDITOR' | 'MEMBER' | null }
 
 /** Iglesias a las que pertenece la cuenta, para elegir la activa. */
