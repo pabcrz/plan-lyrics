@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#187363"/>
+  <rect width="512" height="512" fill="#006c98"/>
   <g transform="translate(76.8 76.8) scale(0.7)">
-  <g stroke="#d7eee8" stroke-width="14" stroke-linecap="round">
+  <g stroke="#d4ecfb" stroke-width="14" stroke-linecap="round">
     <line x1="96" y1="176" x2="416" y2="176"/>
     <line x1="96" y1="216" x2="416" y2="216"/>
     <line x1="96" y1="256" x2="416" y2="256"/>
     <line x1="96" y1="296" x2="416" y2="296"/>
     <line x1="96" y1="336" x2="416" y2="336"/>
   </g>
-  <ellipse cx="228" cy="296" rx="46" ry="34" fill="#f1f9f7" transform="rotate(-18 228 296)"/>
-  <rect x="262" y="148" width="14" height="150" rx="7" fill="#f1f9f7"/>
-  <path d="M276 148 C 330 160, 350 200, 336 244 C 340 204, 316 188, 276 184 Z" fill="#f1f9f7"/>
+  <ellipse cx="228" cy="296" rx="46" ry="34" fill="#f2f8fb" transform="rotate(-18 228 296)"/>
+  <rect x="262" y="148" width="14" height="150" rx="7" fill="#f2f8fb"/>
+  <path d="M276 148 C 330 160, 350 200, 336 244 C 340 204, 316 188, 276 184 Z" fill="#f2f8fb"/>
 </g>
 </svg>

@@ -1,9 +1,9 @@
 /** Apariencia por persona y por dispositivo: acento y modo, guardados en el navegador y aplicados en <html>. */
 export const accents = [
+  { value: 'azul', label: 'Azul' },
   { value: 'salvia', label: 'Salvia' },
   { value: 'indigo', label: 'Índigo' },
   { value: 'ocre', label: 'Ocre' },
-  { value: 'azul', label: 'Azul' },
   { value: 'granate', label: 'Granate' },
 ] as const
 export const modes = [
@@ -17,7 +17,7 @@ export type Mode = (typeof modes)[number]['value']
 export type Appearance = { accent: Accent; mode: Mode }
 
 const KEY = 'plan-lyrics.appearance'
-const fallback: Appearance = { accent: 'salvia', mode: 'system' }
+const fallback: Appearance = { accent: 'azul', mode: 'system' }
 const valid = <T extends string>(options: ReadonlyArray<{ value: T }>, value: unknown): value is T => options.some((option) => option.value === value)
 
 /** El almacenamiento puede faltar o fallar (modo privado): sin él se usa la apariencia predeterminada. */

@@ -14,14 +14,14 @@ Antes de esta propuesta no había manifiesto, íconos propios, service worker ni
 
 | Fase | Qué incluye | Riesgo |
 | --- | --- | --- |
-| 1. Instalable | `manifest.webmanifest` (`es-MX`, `standalone`, colores del tema salvia), íconos temporales, `theme-color`, `apple-touch-icon` y metaetiquetas de iOS. | Bajo |
+| 1. Instalable | `manifest.webmanifest` (`es-MX`, `standalone`, colores del tema azul), íconos temporales, `theme-color`, `apple-touch-icon` y metaetiquetas de iOS. | Bajo |
 | 2. Aviso de instalación | Franja «Instala Plan & Lyrics» con «Instalar» y «Ahora no» (se pospone 14 días); en iOS explica «Compartir → Añadir a pantalla de inicio». No aparece si ya está instalada ni en las vistas públicas. | Bajo |
 | 3. Service worker | Abrir la app sin red tras una primera visita: caché de los archivos con hash (`/assets/*`), tipografías y `index.html` como respaldo de navegación. **Nunca** `/api/*` ni `/m/*`. Aviso «Hay una versión nueva · Actualizar». | Medio: una caché mal hecha deja versiones viejas |
 | 4. Datos sin conexión | Caché de consultas guardada en IndexedDB por cuenta e iglesia (se borra al cerrar sesión), solo lectura, con aviso «Sin conexión». | Medio: datos en el dispositivo |
 
 ## Íconos (temporales)
 
-`apps/web/public/icons/`: `icon.svg` (fuente), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` (dibujo dentro del 80 % central) y `apple-touch-icon.png`. Motivo: el pentagrama del diseño con una corchea, sobre el acento salvia (`#187363`). Para cambiarlos por el logo definitivo basta reemplazar los archivos (mismos nombres y tamaños); los PNG se generaron desde el SVG con `qlmanage` + `sips`.
+`apps/web/public/icons/`: `icon.svg` (fuente), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` (dibujo dentro del 80 % central) y `apple-touch-icon.png`. Motivo: el pentagrama del diseño con una corchea, sobre el azul primario (`#006c98`). Para cambiarlos por el logo definitivo basta reemplazar los archivos (mismos nombres y tamaños); los PNG se generaron desde el SVG con `qlmanage` + `sips`.
 
 ## Decisiones tomadas
 
