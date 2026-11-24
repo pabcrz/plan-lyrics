@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
-import { Avatar, Button, Icon, Notice, Segmented, Switch, TextField } from '../ui'
+import { Avatar, Button, Icon, Notice, Segmented, Sheet, Switch, TextField } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from './ChurchGate'
-import { ApiError, usePeople } from './api'
+import { ApiError, usePeople, usePersonActions } from './api'
 import { formatDay, todayIn } from './dates'
 import type { Church } from './model'
-import { PeopleSheet } from './PeopleSheet'
+import { PeopleSheet, PersonList } from './PeopleSheet'
+import type { Person } from './model'
 import { toBody, useParticipations, useSaveParticipation, type Mode, type RoleParticipation, type Sequence, type Who } from './participations-api'
 import { NewRoleSheet, RemoveRoleSheet } from './RoleSheets'
 import { useRoleActions } from './roles-api'
@@ -103,6 +104,7 @@ function RoleDetail({ church, roleId }: { church: Church; roleId: string }) {
   const [params] = useSearchParams()
   const [picking, setPicking] = useState<Target | null>(null)
   const [removing, setRemoving] = useState(false)
+  const [teamOpen, setTeamOpen] = useState(false)
   const [failure, setFailure] = useState('')
   const [busy, setBusy] = useState(false)
   const role = roles.data?.find((item) => item.roleId === roleId)
@@ -142,6 +144,7 @@ function RoleDetail({ church, roleId }: { church: Church; roleId: string }) {
     return copy
   }))
 
+  const team = (people.data ?? []).filter((person) => person.roleIds.includes(role.roleId))
   // Quien ya está en la otra lista del mismo rol no se ofrece: habitual y rotación son excluyentes.
   const candidates = (people.data ?? []).filter((person) => {
     if (!picking || !person.roleIds.includes(role.roleId)) return false
@@ -184,6 +187,15 @@ function RoleDetail({ church, roleId }: { church: Church; roleId: string }) {
       <p className="m-0 text-sm text-text-2">Participaciones de {role.name.toLowerCase()} en {church.name}.</p>
       {!editable && <Notice title="Solo lectura">Cambiar las participaciones requiere ser editor o administrador de tu iglesia.</Notice>}
       {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
+
+      <section aria-labelledby="team" className="grid gap-2">
+        <h2 id="team" className="m-0 text-sm font-semibold">Equipo</h2>
+        <div className={`${card} flex items-center gap-3 p-3`}>
+          <span className="flex-1 text-[0.9375rem]">{team.length === 0 ? 'Aún no hay nadie en el equipo.' : `${count(team.length)} en el equipo de ${role.name.toLowerCase()}.`}</span>
+          {church.canConfigure && <Button variant="secondary" onClick={() => setTeamOpen(true)}>Administrar equipo</Button>}
+        </div>
+        <p className="m-0 text-[0.8125rem] text-text-3">Solo el equipo aparece al elegir quién ocupa este rol; dirigir es aparte.</p>
+      </section>
 
       <section aria-labelledby="habitual" className="grid gap-2">
         <h2 id="habitual" className="m-0 text-sm font-semibold">Habitual</h2>
@@ -256,6 +268,8 @@ function RoleDetail({ church, roleId }: { church: Church; roleId: string }) {
 
       {church.canConfigure && <Button variant="danger" block onClick={() => setRemoving(true)}>Eliminar rol</Button>}
 
+      <TeamSheet open={teamOpen} onClose={() => setTeamOpen(false)} roleId={role.roleId} roleName={role.name} everyone={people.data ?? []}
+        locked={(id) => role.habitual.some((item) => item.id === id) || inRotation(id)} />
       <PeopleSheet open={picking !== null} title={sheetTitle} subtitle={sheetHelp} people={candidates} onPick={pick} onClose={() => setPicking(null)} />
       <RemoveRoleSheet role={removing ? { id: role.roleId, name: role.name } : null} onClose={() => setRemoving(false)}
         onRemove={async (id, confirmed) => { await removeRole(id, confirmed); void navigate('/participaciones') }} />
@@ -288,5 +302,57 @@ function PersonRow({ person, number, editable, busy, onUp, onDown, onRemove }: {
       )}
       {editable && <Button variant="quiet" icon aria-label={`Quitar a ${person.name}`} disabled={busy} onClick={onRemove}><Icon name="x" /></Button>}
     </div>
+  )
+}
+
+/** Quién forma el equipo de un rol: alta y baja desde aquí en lugar de entrar a la ficha de cada persona. Solo lo abre quien administra. */
+function TeamSheet({ open, onClose, roleId, roleName, everyone, locked }: {
+  open: boolean; onClose: () => void; roleId: string; roleName: string; everyone: ReadonlyArray<Person>; locked: (personId: string) => boolean
+}) {
+  const { setRoles } = usePersonActions()
+  const [adding, setAdding] = useState(false)
+  const [failure, setFailure] = useState('')
+  const [busy, setBusy] = useState(false)
+  const team = everyone.filter((person) => person.roleIds.includes(roleId)).sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  async function change(person: Person, roleIds: string[], problem: string) {
+    setBusy(true)
+    setFailure('')
+    try { await setRoles(person.id, roleIds); setAdding(false) } catch { setFailure(problem) }
+    setBusy(false)
+  }
+  const close = () => { setAdding(false); setFailure(''); onClose() }
+  return (
+    <Sheet open={open} onClose={close} title={`Equipo de ${roleName.toLowerCase()}`}>
+      <div className="grid gap-3">
+        {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
+        {adding ? (
+          <>
+            <PersonList people={everyone.filter((person) => !person.roleIds.includes(roleId))} empty="Todas las personas del directorio ya están en el equipo. Las nuevas se dan de alta en Personas."
+              onSelect={(person) => void change(person, [...person.roleIds, roleId], 'No se pudo agregar al equipo. Inténtalo de nuevo.')} />
+            <Button variant="quiet" block onClick={() => setAdding(false)}>Volver al equipo</Button>
+          </>
+        ) : (
+          <>
+            {team.length === 0 && <p className="m-0 text-sm text-text-2">Aún no hay nadie. Agrega a quienes ocupan este rol.</p>}
+            {team.length > 0 && (
+              <ul aria-label="Equipo" className="m-0 list-none overflow-hidden rounded-md border border-line bg-surface p-0">
+                {team.map((person) => (
+                  <li key={person.id} className="flex min-h-14 items-center gap-3 border-b border-line px-3 last:border-b-0">
+                    <Avatar name={person.name} />
+                    <b className="flex-1 text-[0.9375rem] font-semibold">{person.name}</b>
+                    <Button variant="quiet" icon aria-label={`Quitar a ${person.name} del equipo`} disabled={busy}
+                      onClick={() => locked(person.id)
+                        ? setFailure(`${person.name} es habitual o rota en este rol: quítala primero de ahí.`)
+                        : void change(person, person.roleIds.filter((id) => id !== roleId), 'No se pudo quitar del equipo. Inténtalo de nuevo.')}><Icon name="x" /></Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Button variant="primary" block onClick={() => setAdding(true)}><Icon name="plus" />Agregar al equipo</Button>
+            <Button variant="quiet" block onClick={close}>Listo</Button>
+          </>
+        )}
+      </div>
+    </Sheet>
   )
 }
