@@ -8,10 +8,19 @@ describe('newServiceBody', () => {
     expect(newServiceBody.safeParse(base).success).toBe(true)
     expect(newServiceBody.safeParse({ ...base, time: '19:30', slot: 'MORNING' }).success).toBe(true)
   })
+  test('a service needs a director, a preacher or both', () => {
+    const { directorId: _director, ...none } = base
+    expect(newServiceBody.safeParse({ ...none, preacher: { personId: 'p2' } }).success).toBe(true)
+    expect(newServiceBody.safeParse({ ...none, preacher: { personId: 'p2', topic: 'La gracia' } }).success).toBe(true)
+    expect(newServiceBody.safeParse({ ...base, preacher: { personId: 'p2' } }).success).toBe(true)
+    expect(newServiceBody.safeParse(none).success).toBe(false)
+  })
   test.each([
-    ['director missing', { ...base, directorId: undefined }],
+    ['neither director nor preacher', { ...base, directorId: undefined }],
     ['empty director', { ...base, directorId: ' ' }],
     ['client church', { ...base, churchId: 'church-b' }],
+    ['preacher without person', { ...base, preacher: {} }],
+    ['preacher with an extra field', { ...base, preacher: { personId: 'p2', churchId: 'church-b' } }],
     ['empty title', { ...base, title: '  ' }],
     ['impossible date', { ...base, date: '2026-02-30' }],
     ['bad date shape', { ...base, date: '15/11/2026' }],

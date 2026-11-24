@@ -10,8 +10,12 @@ export const newServiceBody = z.strictObject({
   slot: z.enum(['MORNING', 'AFTERNOON']).optional(),
   time: z.string().regex(hhmm).nullish(),
   status: z.enum(['DRAFT', 'PUBLISHED']),
-  directorId: z.string().trim().min(1).max(64),
-})
+  directorId: z.string().trim().min(1).max(64).optional(),
+  // The topic is cleaned and capped by the route (preaching-rules imports this file, so it cannot be imported here).
+  preacher: z.strictObject({ personId: z.string().trim().min(1).max(64), topic: z.string().max(2000).optional() }).optional(),
+}).refine(body => body.directorId !== undefined || body.preacher !== undefined)
+// The director of a service that has none yet; the service comes from the path.
+export const setDirectorBody = z.strictObject({ directorId: z.string().trim().min(1).max(64) })
 // The church is never part of the body either; the date comes from the path.
 export const closedDateBody = z.strictObject({ reason: z.string().trim().min(1).max(120).optional() })
 export const monthQuery = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)

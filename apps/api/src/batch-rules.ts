@@ -29,8 +29,8 @@ export function parseWeekdays(text: string): number[] | null {
   return new Set(days).size === days.length ? days.sort((a, b) => a - b) : null
 }
 
-export type Occupant = { date: string; slot: SlotName; title: string; director: string }
-export type Lock = { kind: 'closed'; reason: string | null } | { kind: 'service'; title: string; director: string }
+export type Occupant = { date: string; slot: SlotName; title: string; director: string | null }
+export type Lock = { kind: 'closed'; reason: string | null } | { kind: 'service'; title: string; director: string | null }
 export type PeriodEntry = { date: string; slot: SlotName; lock: Lock | null }
 
 const slotRank: Record<SlotName, number> = { SINGLE: 0, MORNING: 0, AFTERNOON: 1 }

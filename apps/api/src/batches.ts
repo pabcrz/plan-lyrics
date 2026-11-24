@@ -38,7 +38,7 @@ export async function batchPeriod(c: Http, db: PrismaClient, church: Church, now
     month: month.data,
     entries: batchEntries({
       month: month.data, weekdays, today, sundayDouble: church.sundayDouble,
-      services: services.map(row => ({ date: day(row.date), slot: row.slot as SlotName, title: row.title, director: row.director.person.name })),
+      services: services.map(row => ({ date: day(row.date), slot: row.slot as SlotName, title: row.title, director: row.director?.person.name ?? null })),
       closed: closed.map(row => ({ date: day(row.date), reason: row.reason })),
     }),
     previous: state ? { directorIds: state.directorIds.filter(personId => stillActive.has(personId)), lastDirectorId: state.lastDirectorId } : null,
@@ -100,7 +100,7 @@ export async function createBatch(c: Http, db: PrismaClient, church: Church, now
   if ('error' in outcome) return c.json(outcome, outcome.error === 'Invalid request' ? 400 : 409)
   return c.json({
     services: outcome.created.map(row => ({
-      id: row.id, title: row.title, date: day(row.date), slot: row.slot, time: row.time, status: row.status, director: row.director.person,
+      id: row.id, title: row.title, date: day(row.date), slot: row.slot, time: row.time, status: row.status, director: row.director?.person ?? null,
     })),
   }, 201)
 }

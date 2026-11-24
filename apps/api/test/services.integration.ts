@@ -139,3 +139,71 @@ test('today is valid all day and past dates are rejected, with the boundary at M
   expect((await create('editor', { ...friday, date: '2026-11-14', title: 'Hoy' })).status).toBe(201)
   expect(await db.service.count()).toBe(2)
 })
+
+// A service may be created with its director, its preacher or both; the other side is planned later.
+const withPreaching = async (on: boolean) => { await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: on } }) }
+const put = (subject: string, path: string, body: unknown) => api.request(path, {
+  method: 'PUT', headers: { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+})
+const { directorId: _omitted, ...noDirector } = friday
+
+test('a service can be created with only its preacher, with both, and never with neither', async () => {
+  await withPreaching(true)
+  try {
+    const only = await create('editor', { ...noDirector, preacher: { personId: 'person-a', topic: '  La   gracia ' } })
+    expect(only.status).toBe(201)
+    const created = await only.json()
+    expect(created).toMatchObject({ director: null })
+    expect(await db.servicePreaching.findUniqueOrThrow({ where: { serviceId: created.id } })).toMatchObject({ preacherId: 'person-a', topic: 'La gracia' })
+    expect(await db.assignment.count({ where: { serviceId: created.id } })).toBe(0)
+    const both = await create('editor', { ...friday, date: '2026-11-20', preacher: { personId: 'person-no-account' } })
+    expect(both.status).toBe(201)
+    expect(await both.json()).toMatchObject({ director: { id: 'person-a' } })
+    expect((await create('editor', { ...noDirector, date: '2026-11-27' })).status).toBe(400)
+    expect(await db.service.count()).toBe(2)
+  } finally { await withPreaching(false) }
+})
+
+test('a preacher is refused, and nothing is created, while the church does not use preaching or for people who cannot preach', async () => {
+  expect((await create('editor', { ...friday, preacher: { personId: 'person-a' } })).status).toBe(409)
+  expect(await db.service.count()).toBe(0)
+  await withPreaching(true)
+  try {
+    expect((await create('editor', { ...noDirector, preacher: { personId: 'person-b' } })).status).toBe(400)
+    await db.churchPerson.update({ where: { churchId_personId: { churchId: 'church-a', personId: 'person-a' } }, data: { canPreach: false, canDirect: false } })
+    expect((await create('editor', { ...noDirector, preacher: { personId: 'person-a' } })).status).toBe(400)
+    expect((await create('editor', friday)).status).toBe(400)
+    expect(await db.service.count()).toBe(0)
+  } finally {
+    await db.churchPerson.update({ where: { churchId_personId: { churchId: 'church-a', personId: 'person-a' } }, data: { canPreach: true, canDirect: true } })
+    await withPreaching(false)
+  }
+})
+
+test('the director of a service created without one is set once, only by editors and only for people who can direct', async () => {
+  await withPreaching(true)
+  try {
+    const { id } = await (await create('editor', { ...noDirector, preacher: { personId: 'person-no-account' } })).json()
+    const path = `/api/services/${id}/director`
+    expect((await put('member', path, { directorId: 'person-a' })).status).toBe(403)
+    expect((await put('editor', path, { directorId: 'person-b' })).status).toBe(400)
+    const set = await put('editor', path, { directorId: 'person-a' })
+    expect(set.status).toBe(200)
+    expect(await set.json()).toMatchObject({ id, director: { id: 'person-a' } })
+    expect((await put('editor', path, { directorId: 'person-no-account' })).status).toBe(409)
+    expect((await put('editor', '/api/services/missing/director', { directorId: 'person-a' })).status).toBe(404)
+    clock = new Date('2026-11-14T18:00:00Z')
+    const past = await db.service.create({ data: { churchId: 'church-a', title: 'Pasado', date: new Date('2026-11-06T00:00:00Z'), status: 'DRAFT' } })
+    expect((await put('editor', `/api/services/${past.id}/director`, { directorId: 'person-a' })).status).toBe(400)
+  } finally { await withPreaching(false) }
+})
+
+test('a service without a director has an empty musical side that still lists and accepts assignments', async () => {
+  await withPreaching(true)
+  try {
+    const { id } = await (await create('editor', { ...noDirector, preacher: { personId: 'person-a' } })).json()
+    const listed = await (await call('editor', `/api/services/${id}/assignments`)).json()
+    expect(listed).toMatchObject({ service: { id, director: null }, assignments: [] })
+    expect((await call('member', '/api/services?month=2026-11').then(r => r.json()))[0]).toMatchObject({ id, director: null })
+  } finally { await withPreaching(false) }
+})

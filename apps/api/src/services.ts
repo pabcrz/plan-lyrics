@@ -5,7 +5,8 @@ import { batchPeriod, createBatch } from './batches.js'
 import { generateForServices } from './participation-generation.js'
 import { checkSettings } from './settings-rules.js'
 import { findSameName, newPersonBody, personPatch } from './people-rules.js'
-import { closedDateBody, dateCapacity, isoDate, monthQuery, newServiceBody, planSlot, todayInZone } from './service-rules.js'
+import { singleLine, TOPIC_MAX } from './preaching-rules.js'
+import { closedDateBody, dateCapacity, isoDate, monthQuery, newServiceBody, planSlot, setDirectorBody, todayInZone } from './service-rules.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 
 export const timeZone = 'America/Mexico_City'
@@ -36,10 +37,10 @@ const serviceSelect = {
   id: true, title: true, date: true, slot: true, time: true, status: true,
   director: { select: { person: { select: { id: true, name: true } } } },
 } as const
-type Row = { id: string; title: string; date: Date; slot: string; time: string | null; status: string; director: { person: { id: string; name: string } } }
+type Row = { id: string; title: string; date: Date; slot: string; time: string | null; status: string; director: { person: { id: string; name: string } } | null }
 const present = (row: Row) => ({
   id: row.id, title: row.title, date: row.date.toISOString().slice(0, 10), slot: row.slot,
-  time: row.time, status: row.status, director: row.director.person,
+  time: row.time, status: row.status, director: row.director?.person ?? null,
 })
 
 const personSelect = { id: true, name: true, phone: true, userId: true } as const
@@ -56,6 +57,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
   routes.use('/api/people', requireSession(config))
   routes.use('/api/people/*', requireSession(config))
   routes.use('/api/services', requireSession(config))
+  routes.use('/api/services/:serviceId/director', requireSession(config))
   routes.use('/api/service-batches', requireSession(config))
   routes.use('/api/service-batches/*', requireSession(config))
   routes.use('/api/closed-dates', requireSession(config))
@@ -184,8 +186,12 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     if (!church.canEdit) return c.json({ error: 'Forbidden' }, 403)
     const body = newServiceBody.safeParse(await c.req.json().catch(() => undefined))
     if (!body.success) return c.json({ error: 'Invalid request' }, 400)
-    const { directorId, date, ...fields } = body.data
+    const { directorId, preacher, date, ...fields } = body.data
     if (date < todayInZone(now())) return c.json({ error: 'Date in the past' }, 400)
+    const topic = singleLine(preacher?.topic ?? '')
+    if (topic.length > TOPIC_MAX) return c.json({ error: 'Invalid request' }, 400)
+    // Nothing of preaching can be stored while the church has it switched off.
+    if (preacher && !church.usesPreaching) return c.json({ error: 'Preaching disabled' }, 409)
     const plan = planSlot({ date, sundayDouble: church.sundayDouble, slot: fields.slot, time: fields.time })
     if ('error' in plan) return c.json({ error: plan.error }, 400)
     const dateValue = new Date(`${date}T00:00:00Z`)
@@ -194,22 +200,51 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       // Serialize creations per church so the capacity check cannot race another request.
       await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
       if (await tx.closedDate.findUnique({ where: { churchId_date: { churchId: church.churchId, date: dateValue } }, select: { date: true } })) return 'closed' as const
-      const director = await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: directorId }, select: { personId: true } })
-      if (!director) return 'director' as const
+      // Each job only accepts people the church marked for it.
+      if (directorId && !await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: directorId, canDirect: true }, select: { personId: true } })) return 'person' as const
+      if (preacher && !await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: preacher.personId, canPreach: true }, select: { personId: true } })) return 'person' as const
       const taken = await tx.service.count({ where: { churchId: church.churchId, date: dateValue } })
       if (taken >= dateCapacity(date, church.sundayDouble)) return 'full' as const
       const created = await tx.service.create({
-        data: { churchId: church.churchId, directorId, date: dateValue, slot: plan.slot, title: fields.title, time: fields.time ?? null, status: fields.status },
+        data: { churchId: church.churchId, directorId: directorId ?? null, date: dateValue, slot: plan.slot, title: fields.title, time: fields.time ?? null, status: fields.status },
         select: { ...serviceSelect, id: true },
       })
-      // Habitual people and the rotation's next turns, under the same church lock as the creation.
-      await generateForServices(tx, church.churchId, [{ id: created.id, date, slot: plan.slot, directorId }])
+      if (preacher) await tx.servicePreaching.create({ data: { serviceId: created.id, churchId: church.churchId, preacherId: preacher.personId, topic } })
+      // Habitual people and the rotation's next turns, under the same church lock as the creation. Without a
+      // director the musical side is still to plan: nothing is generated until one is chosen.
+      if (directorId) await generateForServices(tx, church.churchId, [{ id: created.id, date, slot: plan.slot, directorId }])
       return created
     }).catch(error => { if (safeErrorCode(error) === 'P2002') return 'full' as const; throw error })
-    if (result === 'director') return c.json({ error: 'Invalid request' }, 400)
+    if (result === 'person') return c.json({ error: 'Invalid request' }, 400)
     if (result === 'full') return c.json({ error: 'Date full' }, 409)
     if (result === 'closed') return c.json({ error: 'Date closed' }, 409)
     return c.json(present(result), 201)
+  }))
+
+  // A service created with only its preaching gets its director later; changing an existing one is not offered.
+  routes.put('/api/services/:serviceId/director', guarded('service_director_failed', async (c, db, church) => {
+    if (!church.canEdit) return c.json({ error: 'Forbidden' }, 403)
+    const body = setDirectorBody.safeParse(await c.req.json().catch(() => undefined))
+    if (!body.success) return c.json({ error: 'Invalid request' }, 400)
+    const result = await db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
+      const service = await tx.service.findFirst({ where: { id: c.req.param('serviceId'), churchId: church.churchId }, select: { id: true, date: true, slot: true, directorId: true } })
+      if (!service) return 'missing' as const
+      const date = service.date.toISOString().slice(0, 10)
+      if (date < todayInZone(now())) return 'past' as const
+      if (service.directorId) return 'set' as const
+      if (!await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId: body.data.directorId, canDirect: true }, select: { personId: true } })) return 'person' as const
+      const updated = await tx.service.update({ where: { id: service.id }, data: { directorId: body.data.directorId }, select: serviceSelect })
+      // The musical assignments were never generated for this service; manual ones, if any, are left alone.
+      if (await tx.assignment.count({ where: { serviceId: service.id } }) === 0) {
+        await generateForServices(tx, church.churchId, [{ id: service.id, date, slot: service.slot, directorId: body.data.directorId }])
+      }
+      return updated
+    })
+    if (result === 'missing') return c.json({ error: 'Not found' }, 404)
+    if (result === 'past' || result === 'person') return c.json({ error: result === 'past' ? 'Date in the past' : 'Invalid request' }, 400)
+    if (result === 'set') return c.json({ error: 'Director already set' }, 409)
+    return c.json(present(result))
   }))
 
   // Monthly batch: the reviewed assignment is validated again and created atomically (see batches.ts).

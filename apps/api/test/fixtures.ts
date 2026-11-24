@@ -25,7 +25,7 @@ export async function seedFixtures(db: PrismaClient) {
     await db.membership.upsert({ where: { userId_churchId: { userId, churchId } }, update: {}, create: { userId, churchId, role } })
   }
   for (const [id, churchId] of [['person-a', 'church-a'], ['person-b', 'church-b']]) {
-    await db.person.upsert({ where: { id }, update: {}, create: { id, name: `Director ${id}`, churches: { create: { churchId } } } })
+    await db.person.upsert({ where: { id }, update: {}, create: { id, name: `Director ${id}`, churches: { create: { churchId, canDirect: true, canPreach: true } } } })
   }
   await db.serviceDay.createMany({ data: [
     { churchId: 'church-a', weekday: 5, slot: 'SINGLE', time: '19:30', title: 'Servicio de viernes' },
@@ -35,6 +35,6 @@ export async function seedFixtures(db: PrismaClient) {
   ], skipDuplicates: true })
   await db.platformOwner.upsert({ where: { id: 1 }, update: {}, create: { userId: 'owner' } })
   await db.person.upsert({ where: { id: 'person-no-account' }, update: {}, create: {
-    id: 'person-no-account', name: 'Fixture Participant', churches: { create: [{ churchId: 'church-a' }, { churchId: 'church-b' }] },
+    id: 'person-no-account', name: 'Fixture Participant', churches: { create: [{ churchId: 'church-a', canDirect: true, canPreach: true }, { churchId: 'church-b', canDirect: true, canPreach: true }] },
   } })
 }

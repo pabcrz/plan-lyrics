@@ -26,7 +26,7 @@ const reset = async () => {
 beforeAll(async () => {
   await seedFixtures(db)
   for (const [id, name, userId] of [[luis, 'Luis', null], [pedro, 'Pedro', null], [withAccount, 'Ana con cuenta', 'combined']] as const) {
-    await db.person.upsert({ where: { id }, update: {}, create: { id, name, userId, churches: { create: { churchId: 'church-a' } } } })
+    await db.person.upsert({ where: { id }, update: {}, create: { id, name, userId, churches: { create: { churchId: 'church-a', canDirect: true, canPreach: true } } } })
   }
   await reset()
 })
