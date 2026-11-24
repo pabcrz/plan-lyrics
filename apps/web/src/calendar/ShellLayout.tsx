@@ -5,6 +5,7 @@ import { Button, Icon } from '../ui'
 import { cx } from '../ui/cx'
 import { NewSheet, extras, sections, type Section } from './AppShell'
 import { useChurch } from './api'
+import { ChurchName } from './ChurchGate'
 
 /** Sección del menú a la que pertenece una ruta; las pantallas de crear servicio cuelgan de Inicio y las de configuración, de «Más». */
 const sectionOf = (pathname: string): Section | null =>
@@ -33,7 +34,7 @@ export function ShellLayout() {
         <aside className="sticky top-0 hidden h-dvh flex-col gap-1 border-r border-line bg-surface p-4 lg:flex">
           <div className="flex items-center gap-3 px-2 pb-4">
             <span className="grid size-8 place-items-center rounded-md bg-accent text-sm font-bold text-on-accent" aria-hidden="true">{church.name.charAt(0).toUpperCase()}</span>
-            <span className="font-display text-lg font-bold">{church.name}</span>
+            <ChurchName name={church.name} className="font-display text-lg font-bold" />
           </div>
           {church.canEdit && <Button variant="primary" block onClick={() => setCreating(true)}><Icon name="plus" />Nuevo servicio</Button>}
           <nav aria-label="Secciones" className="grid gap-1 pt-3">

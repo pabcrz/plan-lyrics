@@ -3,7 +3,7 @@ import { cors } from 'hono/cors'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { accountRoutes } from './accounts.js'
-import { createChurch, newChurchBody, readChurch } from './church-access.js'
+import { createChurch, myChurches, newChurchBody, readChurch } from './church-access.js'
 import { safeErrorCode } from './errors.js'
 import type { IdentityProvider } from './identity-provider.js'
 import { memberRoutes } from './members.js'
@@ -39,12 +39,21 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
     app.use('/api/*', cors({
       origin: origin => (allowedOrigins.includes(origin) ? origin : null),
       allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Authorization', 'Content-Type'],
+      allowHeaders: ['Authorization', 'Content-Type', 'X-Church-Id'],
       maxAge: 600,
     }))
   }
   app.get('/api/health', (c) => c.json({ status: 'ok', service: 'plan-lyrics-api' }))
   app.get('/api/session', requireSession(config), (c) => c.json({ authenticated: true }))
+  app.get('/api/me/churches', requireSession(config), async (c) => {
+    if (!database) return c.json({ error: 'Access unavailable' }, 503)
+    try {
+      return c.json(await myChurches(database, c.get('clerkSubject')))
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'my_churches_failed', code: safeErrorCode(error) }))
+      return c.json({ error: 'Access unavailable' }, 503)
+    }
+  })
   app.get('/api/churches/:churchId', requireSession(config), async (c) => {
     if (!database) return c.json({ error: 'Access unavailable' }, 503)
     try {

@@ -29,3 +29,9 @@ export async function createChurch(db: PrismaClient, userSubject: string, name: 
     return tx.church.create({ data: { name, memberships: { create: { userId: user.id, role: 'ADMIN' } } }, select: { id: true, name: true } })
   })
 }
+
+/** The churches the caller belongs to, with their role there: what the client offers when choosing the active one. */
+export async function myChurches(db: PrismaClient, subject: string) {
+  const rows = await db.membership.findMany({ where: { user: { clerkSubject: subject } }, select: { role: true, church: { select: { id: true, name: true } } } })
+  return rows.map(row => ({ id: row.church.id, name: row.church.name, role: row.role })).sort((a, b) => a.name.localeCompare(b.name, 'es'))
+}

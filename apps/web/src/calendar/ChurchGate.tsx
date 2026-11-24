@@ -2,11 +2,43 @@ import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { UserButton } from '@clerk/react'
 import { useQueryClient } from '@tanstack/react-query'
-import { AppearanceSheet, Button, Icon, Notice, TextField } from '../ui'
+import { AppearanceSheet, Button, Icon, Notice, Sheet, TextField } from '../ui'
 import { AccountsLink } from '../access/AccessLinks'
 import { useAccess } from '../access/access-api'
-import { ApiError, useApiFetch, useChurch } from './api'
+import { ApiError, useApiFetch, useChurch, useMyChurches, useSwitchChurch } from './api'
 import type { Church } from './model'
+
+/** Lista de iglesias de la cuenta; al elegir una pasa a ser la activa de este dispositivo. */
+function ChurchList({ activeId, onPick }: { activeId?: string; onPick?: () => void }) {
+  const churches = useMyChurches()
+  const switchTo = useSwitchChurch()
+  if (!churches.data) return <p role="status" className="m-0 text-text-3">{churches.isError ? 'No se pudo cargar tus iglesias.' : 'Cargando tus iglesias…'}</p>
+  return (
+    <div className="overflow-hidden rounded-lg border border-line">
+      {churches.data.map((item) => (
+        <button key={item.id} type="button" aria-current={item.id === activeId ? 'true' : undefined} onClick={() => { switchTo(item.id); onPick?.() }}
+          className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-line bg-transparent px-4 text-left font-semibold last:border-b-0 hover:bg-surface-2">
+          {item.name}{item.id === activeId && <Icon name="check" />}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Nombre de la iglesia activa; con varias iglesias es el botón que abre el cambio de iglesia. */
+export function ChurchName({ name, className }: { name?: string; className: string }) {
+  const churches = useMyChurches()
+  const activeId = useChurch().data?.id
+  const [open, setOpen] = useState(false)
+  const label = name ?? 'Plan & Lyrics'
+  if (!churches.data || churches.data.length < 2) return <span className={className}>{label}</span>
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} aria-label={`${label}. Cambiar de iglesia`} className={`${className} cursor-pointer border-0 bg-transparent p-0 text-left text-text`}>{label}</button>
+      <Sheet open={open} onClose={() => setOpen(false)} title="Cambiar de iglesia"><ChurchList activeId={activeId} onPick={() => setOpen(false)} /></Sheet>
+    </>
+  )
+}
 
 /** Encabezado común: iglesia activa y cuenta. */
 export function TopBar({ name, settings, share }: { name?: string; settings?: boolean; share?: boolean }) {
@@ -17,7 +49,7 @@ export function TopBar({ name, settings, share }: { name?: string; settings?: bo
       <span className="grid size-8 place-items-center rounded-md bg-accent text-sm font-bold text-on-accent" aria-hidden="true">
         {name?.charAt(0).toUpperCase() ?? ''}
       </span>
-      <span className="min-w-0 flex-1 truncate font-semibold">{name ?? 'Plan & Lyrics'}</span>
+      <ChurchName name={name} className="min-w-0 flex-1 truncate font-semibold" />
       {share && <Button variant="quiet" icon aria-label="Compartir" onClick={() => void navigate('/compartir')}><Icon name="share" /></Button>}
       {settings && <Button variant="quiet" icon aria-label="Ajustes" onClick={() => void navigate('/ajustes')}><Icon name="settings" /></Button>}
       <Button variant="quiet" icon aria-label="Apariencia" onClick={() => setLooking(true)}><Icon name="palette" /></Button>
@@ -81,7 +113,8 @@ export function ChurchGate({ children }: { children: (church: Church) => ReactNo
         {status === 404 && access.data?.owner && <CreateChurch />}
         {status === 404 && !access.data?.owner && <Notice title="Sin iglesia asignada">Tu cuenta todavía no pertenece a ninguna iglesia. Pide acceso a quien la administra.</Notice>}
         {status === 404 && <AccountsLink />}
-        {status === 409 && <Notice title="Varias iglesias">Tu cuenta pertenece a más de una iglesia y elegir la activa aún no está disponible.</Notice>}
+        {status === 409 && <Notice title="Elige una iglesia">Tu cuenta pertenece a más de una iglesia. Elige con cuál trabajar; puedes cambiarla después desde el nombre de la iglesia.</Notice>}
+        {status === 409 && <ChurchList />}
         {church.isError && status !== 404 && status !== 409 && (
           <>
             <Notice tone="warn" icon="alert" role="alert" title="No se pudo cargar tu iglesia">Revisa tu conexión e inténtalo de nuevo.</Notice>

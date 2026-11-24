@@ -4,7 +4,7 @@ Primera rebanada de la Etapa 1. Todas las rutas requieren Bearer de sesión (ver
 
 ## Iglesia activa
 
-La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la sesión. Regla mínima provisional (producto aún no define un selector): una sola membresía = iglesia activa. Sin membresía (incluido el superadministrador y los gestores de cuentas sin membresía): `404`. Varias membresías: `409 {"error":"Active church required"}`.
+La iglesia activa **siempre es una membresía de la sesión**: con una sola, esa; con varias, la que el cliente indica en `X-Church-Id`, validada contra las membresías (una iglesia ajena es `404`; sin cabecera, `409`). Sin membresía (incluido el superadministrador y los gestores de cuentas sin membresía): `404`. Varias membresías: `409 {"error":"Active church required"}`.
 
 ## Rutas
 
@@ -45,7 +45,7 @@ La iglesia activa **nunca viene del cliente**: se deriva de la membresía de la 
 
 ## Pendiente de decisión de producto
 
-Selector de iglesia activa con varias membresías; acceso del superadministrador a una iglesia concreta; creación con estado completado/cancelado (aquí solo borrador o publicado, según el diseño); edición y cancelación de servicios; acceso del superadministrador sin membresía a los ajustes de una iglesia (hoy necesita tenerla como iglesia activa). Al apagar `sundayDouble` con un domingo que ya tiene dos servicios, esa fecha pasa a verse «Completa» (capacidad 1) y los servicios existentes se conservan.
+Acceso del superadministrador a una iglesia concreta; creación con estado completado/cancelado (aquí solo borrador o publicado, según el diseño); edición y cancelación de servicios; acceso del superadministrador sin membresía a los ajustes de una iglesia (hoy necesita tenerla como iglesia activa). Al apagar `sundayDouble` con un domingo que ya tiene dos servicios, esa fecha pasa a verse «Completa» (capacidad 1) y los servicios existentes se conservan.
 
 ## Interfaz web (apps/web)
 

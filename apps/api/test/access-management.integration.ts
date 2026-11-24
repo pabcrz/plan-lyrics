@@ -51,10 +51,10 @@ beforeAll(() => seedFixtures(db))
 beforeEach(seed)
 afterAll(async () => { await reset(); await db.$disconnect() })
 
-function call(subject: string | undefined, method: string, path: string, body?: unknown) {
+function call(subject: string | undefined, method: string, path: string, body?: unknown, church?: string) {
   return api.request(path, {
     method,
-    headers: { ...(subject ? { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}` } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+    headers: { ...(church ? { 'X-Church-Id': church } : {}), ...(subject ? { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}` } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 }
@@ -295,9 +295,17 @@ test('granting refuses people without an account, from other churches, members a
   await unchanged(() => call('acc-a1', 'POST', '/api/members', { personId: 'person-acc-b', role: 'MEMBER' }), 404, { error: 'Not found' })
   await unchanged(() => call('acc-a1', 'POST', '/api/members', { personId: 'person-acc-a2', role: 'ADMIN' }), 409, { error: 'Member exists' })
   await unchanged(() => call('acc-a1', 'POST', '/api/members', { personId: 'missing', role: 'MEMBER' }), 404, { error: 'Not found' })
-  // An account that already belongs to another church would lose its active church (no switcher yet).
+  // An account of another church can belong to this one too; it then picks the active church with X-Church-Id.
   await db.membership.create({ data: { userId: 'acc-free', churchId: 'church-b', role: 'MEMBER' } })
-  await unchanged(() => call('acc-a1', 'POST', '/api/members', { personId: 'person-acc-free', role: 'MEMBER' }), 409, { error: 'Account unavailable' })
+  expect((await call('acc-a1', 'POST', '/api/members', { personId: 'person-acc-free', role: 'MEMBER' })).status).toBe(201)
+  expect(await (await call('acc-free', 'GET', '/api/me/churches')).json()).toHaveLength(2)
+  expect((await call('acc-free', 'GET', '/api/active-church')).status).toBe(409)
+  const inA = await call('acc-free', 'GET', '/api/active-church', undefined, 'church-a')
+  expect(inA.status).toBe(200)
+  expect(await inA.json()).toMatchObject({ id: 'church-a' })
+  expect(await (await call('acc-free', 'GET', '/api/active-church', undefined, 'church-b')).json()).toMatchObject({ id: 'church-b' })
+  // A church the caller does not belong to does not exist for them, header or not.
+  expect((await call('acc-a1', 'GET', '/api/active-church', undefined, 'church-b')).status).toBe(404)
   // A person removed from this church's directory is not offered either.
   await db.churchPerson.update({ where: { churchId_personId: { churchId: 'church-a', personId: 'person-acc-free' } }, data: { removedAt: new Date() } })
   await db.membership.deleteMany({ where: { userId: 'acc-free' } })

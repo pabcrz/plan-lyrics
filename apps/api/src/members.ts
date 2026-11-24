@@ -75,18 +75,16 @@ export function memberRoutes(config: SessionConfig, db?: PrismaClient) {
       if (!link) return 'missing' as const
       const userId = link.person.userId
       if (!userId) return 'no-account' as const
-      // One account, one church for now: lock the account so two churches cannot both claim it.
+      // Lock the account so two churches cannot grant it at the same moment.
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
       const held = await tx.membership.findMany({ where: { userId }, select: { churchId: true } })
       if (held.some(row => row.churchId === church.churchId)) return 'exists' as const
-      if (held.length > 0) return 'unavailable' as const
       await tx.membership.create({ data: { userId, churchId: church.churchId, role: body.data.role } })
       return userId
     })
     if (outcome === 'missing') return c.json({ error: 'Not found' }, 404)
     if (outcome === 'no-account') return c.json({ error: 'No account' }, 409)
     if (outcome === 'exists') return c.json({ error: 'Member exists' }, 409)
-    if (outcome === 'unavailable') return c.json({ error: 'Account unavailable' }, 409)
     const row = await db.membership.findUniqueOrThrow({ where: { userId_churchId: { userId: outcome, churchId: church.churchId } }, select: memberSelect(church.churchId) })
     return c.json(present(row, await viewer(db, c.get('clerkSubject'))), 201)
   }))
