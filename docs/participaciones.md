@@ -51,3 +51,7 @@ Guardar la configuración (`PUT`) no cambia servicios ya creados. La rotación *
 ## Rotación opcional por iglesia
 
 `Church.usesRotation` (apagado por omisión; migración `20261123120000_church_uses_rotation`, que lo deja encendido en las iglesias que ya tenían algún rol rotando). Se lee en `GET /api/active-church` y se cambia con `PUT /api/active-church` (`usesRotation`, opcional: si falta, se conserva). Apagado, la API no aplica ninguna rotación al crear servicios ni en la vista previa de los roles y no mueve los cursores; la configuración guardada de cada rol se conserva y vuelve a aplicarse al encenderlo. En Ajustes, el interruptor «Usa rotación de turnos» explica la rotación con un ejemplo.
+
+## Equipo por rol
+
+Cada rol tiene su **equipo**: las personas con ese rol en `roleIds` de su vínculo con la iglesia. Quien administra lo arma desde la pantalla del rol («Administrar equipo»: agregar o quitar, sin entrar a la ficha de cada persona; usa `PUT /api/people/:id/roles`). Solo el equipo aparece al elegir habituales, rotación o cambios de un servicio. No se puede quitar del equipo a quien sigue como habitual o en la rotación del rol. Dirigir y predicar son aparte (`canDirect`, `canPreach`).
