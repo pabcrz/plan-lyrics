@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { MemoryRouter } from 'react-router'
+import { esMX } from '@clerk/localizations'
 import { ClerkApp } from './ClerkApp'
 
 const clerk = vi.hoisted(() => ({
@@ -85,7 +86,7 @@ test('signed-out view delegates modal sign-in to Clerk', () => {
   expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Cuenta de Clerk' })).toBeNull()
   expect(clerk.signIn).toHaveBeenCalledWith({ mode: 'modal' })
-  expect(clerk.provider).toHaveBeenCalledWith({ publishableKey: publicKey, afterSignOutUrl: '/' })
+  expect(clerk.provider).toHaveBeenCalledWith({ publishableKey: publicKey, afterSignOutUrl: '/', localization: esMX })
 })
 
 test('signed-in view hands over to the product screens, with the Clerk account', async () => {
