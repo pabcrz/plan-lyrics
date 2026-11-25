@@ -249,3 +249,19 @@ test('a service created without a status is published: statuses are not managed 
   expect(created.status).toBe(201)
   expect(await created.json()).toMatchObject({ title: 'Viernes 27 - Ana', status: 'PUBLISHED' })
 })
+
+test('the service list carries who preaches and the topic only while the church uses preaching, never the notes', async () => {
+  const created = await (await create('editor', { title: 'Viernes 27', date: '2026-12-04', time: '19:30', directorId: 'person-a' })).json() as { id: string }
+  await db.churchPerson.updateMany({ where: { churchId: 'church-a', personId: 'person-a' }, data: { canPreach: true } })
+  await db.servicePreaching.create({ data: { serviceId: created.id, churchId: 'church-a', preacherId: 'person-a', topic: 'El día de reposo', notes: 'Nota interna' } })
+  const list = async () => (await (await call('member', '/api/services?month=2026-12')).json()) as Array<{ id: string; preaching: unknown }>
+  expect((await list()).find(item => item.id === created.id)?.preaching).toBeNull()
+  await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: true } })
+  try {
+    const shown = (await list()).find(item => item.id === created.id)
+    expect(shown?.preaching).toEqual({ topic: 'El día de reposo', preacher: { id: 'person-a', name: expect.any(String) } })
+    expect(JSON.stringify(shown)).not.toContain('Nota interna')
+  } finally {
+    await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: false } })
+  }
+})

@@ -63,11 +63,10 @@ test('creates the service for the active church with the chosen director and ret
   fireEvent.focus(director)
   fireEvent.change(director, { target: { value: 'luis' } })
   fireEvent.click(await screen.findByRole('option', { name: /Luis Herrera/ }))
-  expect(screen.getByText('Se llamará «Viernes 13 - Luis».')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Crear servicio' }))
   expect(await screen.findByText('Calendario')).toBeTruthy()
   const [call] = posted(calls)
-  expect(JSON.parse(call.init!.body as string)).toEqual({ title: 'Viernes 13 - Luis', date: '2026-11-13', status: 'PUBLISHED', directorId: 'p2', time: '19:30' })
+  expect(JSON.parse(call.init!.body as string)).toEqual({ title: 'Viernes 13', date: '2026-11-13', status: 'PUBLISHED', directorId: 'p2', time: '19:30' })
 })
 
 test('a double Sunday asks for the slot, disables the taken one and bounds the hour to it', async () => {

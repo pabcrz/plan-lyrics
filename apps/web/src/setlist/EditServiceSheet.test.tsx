@@ -24,7 +24,7 @@ function open(reply: { status: number; body?: unknown } = { status: 200, body: {
 }
 const patches = (calls: Array<{ method: string; url: string; body?: unknown }>) => calls.filter((call) => call.method === 'PATCH')
 
-test('there is no title or status to manage: a new director renames the service on its own and only what changed is sent', async () => {
+test('there is no title or status to manage: changing the director leaves the name alone, and only what changed is sent', async () => {
   const { calls, onSaved } = open()
   const save = await screen.findByRole('button', { name: 'Guardar cambios' })
   expect((save as HTMLButtonElement).disabled).toBe(true)
@@ -33,7 +33,7 @@ test('there is no title or status to manage: a new director renames the service 
   fireEvent.click(await screen.findByRole('button', { name: /Luis Herrera/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  expect(patches(calls)).toEqual([{ method: 'PATCH', url: '/api/services/s1', body: { title: 'Domingo 22 - Luis', directorId: 'p2' } }])
+  expect(patches(calls)).toEqual([{ method: 'PATCH', url: '/api/services/s1', body: { directorId: 'p2' } }])
 })
 
 test('the date and an empty hour are sent, and the name follows the new date; the slot only appears on a double Sunday', async () => {
@@ -42,10 +42,9 @@ test('the date and an empty hour are sent, and the name follows the new date; th
   fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-11-27' } })
   expect(screen.queryByRole('group', { name: 'Franja' })).toBeNull()
   fireEvent.change(screen.getByLabelText('Hora de inicio'), { target: { value: '' } })
-  await screen.findByRole('button', { name: /Ana Ramírez/ })
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  expect(patches(calls)[0]?.body).toEqual({ title: 'Viernes 27 - Ana', date: '2026-11-27', time: null })
+  expect(patches(calls)[0]?.body).toEqual({ title: 'Viernes 27', date: '2026-11-27', time: null })
 })
 
 test('a service cancelled before can be reactivated, which is the only status left to manage', async () => {
