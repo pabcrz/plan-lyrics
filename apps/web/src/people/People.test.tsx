@@ -331,3 +331,22 @@ test('someone in the worship group has the roles section; leaving it while still
   expect((await screen.findByRole('alert')).textContent).toContain('habitual o en una rotación')
   expect((screen.getByRole('switch', { name: 'Grupo de alabanza' }) as HTMLButtonElement).getAttribute('aria-checked')).toBe('true')
 })
+
+test('creating a person in the worship group saves the chosen roles right after', async () => {
+  const calls = stubApi({ directory, church: { ...church, canEdit: true, canConfigure: true }, createPerson: () => ({ body: detail({ id: 'new', name: 'Juan Pérez', roleIds: [] }) }) })
+  app('/personas/nueva')
+  fireEvent.change(await screen.findByLabelText('Nombre completo'), { target: { value: 'Juan Pérez' } })
+  expect(screen.queryByRole('group', { name: 'Roles de la persona' })).toBeNull()
+  fireEvent.click(screen.getByRole('switch', { name: 'Grupo de alabanza' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Batería' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Agregar persona' }))
+  await waitFor(() => expect(sent(calls, 'PUT')).toEqual([{ url: '/api/people/new/roles', body: { roleIds: ['r-drums'] } }]))
+  expect(sent(calls, 'POST')[0]!.body).toMatchObject({ canPlay: true })
+})
+
+test('an editor who cannot configure roles sees no role chips when adding', async () => {
+  stubApi({ directory, church: editor })
+  app('/personas/nueva')
+  fireEvent.click(await screen.findByRole('switch', { name: 'Grupo de alabanza' }))
+  expect(screen.queryByRole('group', { name: 'Roles de la persona' })).toBeNull()
+})
