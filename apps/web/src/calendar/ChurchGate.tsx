@@ -2,11 +2,12 @@ import { useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { UserButton } from '@clerk/react'
 import { useQueryClient } from '@tanstack/react-query'
-import { AppearanceSheet, Button, Icon, Notice, Sheet, Switch, TextField } from '../ui'
+import { Button, Icon, Notice, Sheet, Switch, TextField } from '../ui'
 import { AccountsLink } from '../access/AccessLinks'
 import { useAccess } from '../access/access-api'
 import { ApiError, useApiFetch, useChurch, useMyChurches, useSwitchChurch } from './api'
 import type { Church } from './model'
+import { ChurchAppearanceSheet, ChurchBadge } from './church-identity'
 
 /** Lista de iglesias de la cuenta; al elegir una pasa a ser la activa de este dispositivo. */
 function ChurchList({ activeId, onPick }: { activeId?: string; onPick?: () => void }) {
@@ -52,15 +53,13 @@ export function TopBar({ name, settings, share }: { name?: string; settings?: bo
   const [looking, setLooking] = useState(false)
   return (
     <div className="flex min-h-14 items-center gap-3 border-b border-line px-4 lg:group-data-[frame]/app:hidden">
-      <span className="grid size-8 place-items-center rounded-md bg-accent text-sm font-bold text-on-accent" aria-hidden="true">
-        {name?.charAt(0).toUpperCase() ?? ''}
-      </span>
+      <ChurchBadge name={name} />
       <ChurchName name={name} className="min-w-0 flex-1 truncate font-semibold" />
       {share && <Button variant="quiet" icon aria-label="Compartir" onClick={() => void navigate('/compartir')}><Icon name="share" /></Button>}
       {settings && <Button variant="quiet" icon aria-label="Ajustes" onClick={() => void navigate('/ajustes')}><Icon name="settings" /></Button>}
       <Button variant="quiet" icon aria-label="Apariencia" onClick={() => setLooking(true)}><Icon name="palette" /></Button>
       <UserButton />
-      <AppearanceSheet open={looking} onClose={() => setLooking(false)} />
+      <ChurchAppearanceSheet open={looking} onClose={() => setLooking(false)} />
     </div>
   )
 }

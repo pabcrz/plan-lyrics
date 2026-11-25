@@ -9,6 +9,7 @@ import { useChurch } from './api'
 import { InstallBar } from '../InstallBar'
 import { StatusBars } from '../StatusBars'
 import { ChurchName } from './ChurchGate'
+import { ChurchAccentSync, ChurchBadge } from './church-identity'
 import { clearActiveChurch } from './active-church'
 
 /** Sección del menú a la que pertenece una ruta; las pantallas de crear servicio cuelgan de Inicio y las de configuración, de «Más». */
@@ -41,6 +42,7 @@ export function ShellLayout() {
   const item = (active: boolean) => cx(link, active ? 'bg-accent-soft text-accent-soft-text' : 'text-text-2')
   return (
     <>
+    <ChurchAccentSync />
     <StatusBars />
     <InstallBar />
     {church?.support && (
@@ -53,7 +55,7 @@ export function ShellLayout() {
       {church && (
         <aside className="sticky top-0 hidden h-dvh flex-col gap-1 border-r border-line bg-surface p-4 lg:flex">
           <div className="flex items-center gap-3 px-2 pb-4">
-            <span className="grid size-8 place-items-center rounded-md bg-accent text-sm font-bold text-on-accent" aria-hidden="true">{church.name.charAt(0).toUpperCase()}</span>
+            <ChurchBadge name={church.name} />
             <ChurchName name={church.name} className="font-display text-lg font-bold" />
           </div>
           {church.canEdit && <Button variant="primary" block onClick={() => setCreating(true)}><Icon name="plus" />Nuevo servicio</Button>}

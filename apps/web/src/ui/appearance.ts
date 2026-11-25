@@ -14,17 +14,19 @@ export const modes = [
 
 export type Accent = (typeof accents)[number]['value']
 export type Mode = (typeof modes)[number]['value']
-export type Appearance = { accent: Accent; mode: Mode }
+/** `byChurch`: el color de toda la aplicación sigue a la iglesia activa; si no, `accent` es fijo para todas. */
+export type Appearance = { accent: Accent; mode: Mode; byChurch: boolean }
 
 const KEY = 'plan-lyrics.appearance'
-const fallback: Appearance = { accent: 'azul', mode: 'system' }
+const fallback: Appearance = { accent: 'azul', mode: 'system', byChurch: false }
+const CHURCH_KEY = 'plan-lyrics.churchAccent'
 const valid = <T extends string>(options: ReadonlyArray<{ value: T }>, value: unknown): value is T => options.some((option) => option.value === value)
 
 /** El almacenamiento puede faltar o fallar (modo privado): sin él se usa la apariencia predeterminada. */
 export function readAppearance(): Appearance {
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<Appearance> | null
-    return { accent: valid(accents, stored?.accent) ? stored.accent : fallback.accent, mode: valid(modes, stored?.mode) ? stored.mode : fallback.mode }
+    return { accent: valid(accents, stored?.accent) ? stored.accent : fallback.accent, mode: valid(modes, stored?.mode) ? stored.mode : fallback.mode, byChurch: stored?.byChurch === true }
   } catch {
     return fallback
   }
@@ -32,9 +34,23 @@ export function readAppearance(): Appearance {
 
 const prefersDark = () => typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches
 
-export function applyAppearance({ accent, mode }: Appearance) {
+/** Último color de iglesia que se usó en este dispositivo: la app arranca ya con él, sin esperar a saber cuál es la iglesia activa. */
+function lastChurchAccent(): Accent | undefined {
+  try { const stored = localStorage.getItem(CHURCH_KEY); return valid(accents, stored) ? stored : undefined } catch { return undefined }
+}
+
+export const effectiveAccent = ({ accent, byChurch }: Appearance): Accent => (byChurch ? lastChurchAccent() ?? accent : accent)
+
+/** Guarda el color de la iglesia activa y, si la persona eligió «Según la iglesia», lo aplica. */
+export function setChurchAccent(accent: Accent) {
+  try { localStorage.setItem(CHURCH_KEY, accent) } catch { /* sin almacenamiento solo cambia en esta sesión */ }
+  applyAppearance(readAppearance())
+}
+
+export function applyAppearance(appearance: Appearance) {
+  const { mode } = appearance
   const root = document.documentElement
-  root.dataset.accent = accent
+  root.dataset.accent = effectiveAccent(appearance)
   root.dataset.mode = mode === 'system' ? (prefersDark() ? 'dark' : 'light') : mode
 }
 

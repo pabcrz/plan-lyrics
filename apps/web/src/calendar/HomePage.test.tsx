@@ -317,7 +317,7 @@ test('the colors exist only in «Todas»: picking one church brings the usual lo
   mount(<HomePage />)
   await screen.findByText('Próximos servicios')
   expect(screen.queryByRole('button', { name: 'Colores de las iglesias' })).toBeNull()
-  expect(document.querySelector('.tone')).toBeNull()
+  expect(document.querySelector('.tone:not([data-church-badge])')).toBeNull()
 })
 
 test('one church shows the rest of the month, and from its last week also the next one, with no cap', async () => {
