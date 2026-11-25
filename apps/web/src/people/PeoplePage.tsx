@@ -7,6 +7,7 @@ import { ChurchGate } from '../calendar/ChurchGate'
 import { usePeople } from '../calendar/api'
 import { useRoles } from '../calendar/roles-api'
 import type { Church, Person } from '../calendar/model'
+import { MANAGE, ManageGroup } from './ManageGroup'
 
 export function PeoplePage() {
   return <ChurchGate>{(church) => <Directory church={church} />}</ChurchGate>
@@ -22,6 +23,7 @@ function Directory({ church }: { church: Church }) {
   const people = usePeople(true)
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState<Group>('all')
+  const [managing, setManaging] = useState(false)
   const roles = useRoles()
   const [toast, setToast] = useState(removed ? `${removed} ya no figura en ${church.name}` : '')
   const everyone = people.data ?? []
@@ -61,6 +63,9 @@ function Directory({ church }: { church: Church }) {
               })}
             </div>
           )}
+          {group !== 'all' && church.canEdit && everyone.length > 0 && (
+            <Button variant="secondary" onClick={() => setManaging(true)}>{MANAGE[group].title}</Button>
+          )}
           {people.isPending && <p role="status">Cargando personas…</p>}
           {people.isError && (
             <>
@@ -96,11 +101,12 @@ function Directory({ church }: { church: Church }) {
           {people.data && people.data.length > 0 && found.length === 0 && (
             <div className="grid justify-items-center gap-2 py-6 text-center">
               <h2 className="m-0 font-display text-lg font-bold">Sin resultados</h2>
-              <p className="m-0 text-text-2">{query.trim() ? `Nadie coincide con «${query.trim()}».` : `Nadie está en ${group === 'play' ? 'el grupo de alabanza' : group === 'direct' ? 'dirección' : 'predicación'} todavía. Se marca en la ficha de cada persona.`}</p>
+              <p className="m-0 text-text-2">{query.trim() ? `Nadie coincide con «${query.trim()}».` : `Nadie está en ${group === 'play' ? 'el grupo de alabanza' : group === 'direct' ? 'dirección' : 'predicación'} todavía.${church.canEdit ? ' Agrégalas con «Gestionar».' : ''}`}</p>
               {church.canEdit && query.trim() && <Button variant="secondary" onClick={add}>Agregar «{query.trim()}»</Button>}
             </div>
           )}
         </main>
+        {managing && group !== 'all' && <ManageGroup church={church} group={group} people={everyone} onClose={() => setManaging(false)} />}
         {toast !== '' && <div className="px-4 pb-2"><Toast message={toast} onDismiss={() => setToast('')} /></div>}
     </AppShell>
   )
