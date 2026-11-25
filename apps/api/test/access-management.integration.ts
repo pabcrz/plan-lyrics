@@ -428,20 +428,25 @@ test('the agenda lists the upcoming services of every church of the caller and n
 
 const invite = (subject: string, personId: string, body: unknown) => call(subject, 'POST', `/api/people/${personId}/invite`, body)
 
-test('an administrator invites a person of the directory in one step: account, link and role', async () => {
-  expect((await invite('acc-a2', 'person-acc-none', { role: 'MEMBER', email: 'nueva@example.com' })).status).toBe(403)
+test('an administrator invites a person of the directory in one step, to the contact e-mail the person already has', async () => {
+  expect((await invite('acc-a2', 'person-acc-none', { role: 'MEMBER' })).status).toBe(403)
+  // Without a contact e-mail there is nowhere to send it; a second address in the body is not accepted either.
+  const missing = await invite('acc-a1', 'person-acc-none', { role: 'EDITOR' })
+  expect(missing.status).toBe(400)
+  expect(await missing.json()).toEqual({ error: 'Email required' })
+  expect((await invite('acc-a1', 'person-acc-none', { role: 'EDITOR', email: 'otro@example.com' })).status).toBe(400)
+  await db.person.update({ where: { id: 'person-acc-none' }, data: { email: 'no-es-correo' } })
   expect((await invite('acc-a1', 'person-acc-none', { role: 'EDITOR' })).status).toBe(400)
-  expect(await (await invite('acc-a1', 'person-acc-none', { role: 'EDITOR' })).json()).toEqual({ error: 'Email required' })
-  expect((await invite('acc-a1', 'person-acc-none', { role: 'EDITOR', email: 'no-es-correo' })).status).toBe(400)
-  expect((await invite('acc-a1', 'person-acc-b', { role: 'MEMBER', email: 'otra@example.com' })).status).toBe(404)
+  await db.person.update({ where: { id: 'person-acc-none' }, data: { email: ' Nueva@Example.com ' } })
+  expect((await invite('acc-a1', 'person-acc-b', { role: 'MEMBER' })).status).toBe(404)
   expect(inviteByEmail).not.toHaveBeenCalled()
 
-  const done = await invite('acc-a1', 'person-acc-none', { role: 'EDITOR', email: ' Nueva@Example.com ' })
+  const done = await invite('acc-a1', 'person-acc-none', { role: 'EDITOR' })
   expect(done.status).toBe(201)
   expect(await done.json()).toMatchObject({ role: 'EDITOR', invited: true, person: { id: 'person-acc-none' } })
   expect(inviteByEmail).toHaveBeenCalledExactlyOnceWith('nueva@example.com')
   const person = await db.person.findUniqueOrThrow({ where: { id: 'person-acc-none' } })
-  expect(person.email).toBe('nueva@example.com')
+  expect(person.email).toBe(' Nueva@Example.com ')
   expect(person.userId).not.toBeNull()
   expect(await db.membership.findMany({ where: { userId: person.userId! } })).toMatchObject([{ churchId: 'church-a', role: 'EDITOR' }])
   // Again: the person already is a member; nothing is sent twice.
@@ -449,7 +454,7 @@ test('an administrator invites a person of the directory in one step: account, l
   expect(inviteByEmail).toHaveBeenCalledTimes(1)
 })
 
-test('inviting uses the contact e-mail of the person, refuses a registered address and leaves nothing behind when the provider fails', async () => {
+test('a refused address or a failing provider leaves nothing behind', async () => {
   await db.person.update({ where: { id: 'person-acc-none' }, data: { email: 'contacto@example.com' } })
   const before = await db.membership.count({ where: { churchId: 'church-a' } })
   inviteByEmail.mockRejectedValueOnce(new Error('proveedor caído'))
@@ -462,8 +467,9 @@ test('inviting uses the contact e-mail of the person, refuses a registered addre
   expect(ok.status).toBe(201)
   expect(inviteByEmail).toHaveBeenLastCalledWith('contacto@example.com')
 
-  await db.person.create({ data: { id: 'person-inv-dup', name: 'Prueba acceso Duplicada', churches: { create: [{ churchId: 'church-a' }] } } })
-  const taken = await invite('acc-a1', 'person-inv-dup', { role: 'MEMBER', email: 'acc-a2@example.com' })
+  // An address that already has an account is never invited again.
+  await db.person.create({ data: { id: 'person-inv-dup', name: 'Prueba acceso Duplicada', email: 'acc-a2@example.com', churches: { create: [{ churchId: 'church-a' }] } } })
+  const taken = await invite('acc-a1', 'person-inv-dup', { role: 'MEMBER' })
   expect(taken.status).toBe(409)
   expect(await taken.json()).toEqual({ error: 'Email registered' })
   expect(inviteByEmail).toHaveBeenCalledTimes(2)

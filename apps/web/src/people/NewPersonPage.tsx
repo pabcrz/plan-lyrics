@@ -81,7 +81,7 @@ function Form({ church }: { church: Church }) {
           </Notice>
         )}
         <PhoneField value={phone} error={phoneProblem || undefined} onChange={(digits) => { setPhone(digits); setPhoneError('') }} />
-        <TextField label="Correo (opcional)" type="email" inputMode="email" autoComplete="off" value={email} maxLength={254} onChange={(event) => setEmail(event.target.value)} />
+        <TextField label={inviting ? 'Correo (con el que entrará a la app)' : 'Correo (opcional)'} type="email" inputMode="email" autoComplete="off" value={email} maxLength={254} onChange={(event) => setEmail(event.target.value)} />
         <PersonRoles value={jobs} onChange={setJobs} showPreach={church.usesPreaching} />
         <p className="m-0 text-[0.8125rem] text-text-3">El nombre, el teléfono y el correo son información general: se ven en todas las iglesias donde participe. Sus roles y turnos se configuran en cada iglesia.</p>
         {church.canConfigure && (

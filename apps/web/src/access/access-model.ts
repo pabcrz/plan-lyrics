@@ -20,7 +20,7 @@ export function memberFailure(caught: unknown) {
     if (caught.code === 'Last administrator') return 'La iglesia debe conservar al menos un administrador. Nombra a otro antes de cambiar o quitar a esta persona.'
     if (caught.code === 'Protected account') return 'Esta cuenta es del superadministrador y no se cambia desde una iglesia.'
     if (caught.code === 'Account unavailable') return 'Esta cuenta ya pertenece a otra iglesia. Mientras no exista el selector de iglesia activa, una cuenta solo puede estar en una.'
-    if (caught.code === 'Email required') return 'Escribe el correo al que enviar la invitación.'
+    if (caught.code === 'Email required') return 'Esta persona no tiene un correo válido. Corrígelo en Información personal y guarda.'
     if (caught.code === 'Email registered') return 'Ese correo ya tiene una cuenta. Pide a quien gestiona las cuentas que la vincule a esta persona.'
     if (caught.code === 'Identity provider unavailable') return 'No se pudo enviar la invitación. Inténtalo de nuevo en un momento.'
     if (caught.status === 429) return 'Hay demasiadas invitaciones seguidas. Inténtalo más tarde.'
