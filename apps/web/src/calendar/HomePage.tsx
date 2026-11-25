@@ -12,6 +12,7 @@ import { useAgenda, useApiFetch, useClosedDates, useMyChurches, useServices, use
 import { formatDay, formatLongDay, monthOf, monthTitle, shiftMonth, todayIn } from './dates'
 import { serviceSummary, type Profile } from './service-summary'
 import { ChurchFilter, SwitchNotice, useSwitchNotice } from './ChurchFilter'
+import { ChurchColorNotice } from './church-identity'
 import { useChurchColors } from './church-colors'
 import { homeAll } from './home-filter'
 import { allWindowEnd, churchWindowEnd } from './home-window'
@@ -123,6 +124,7 @@ function Home({ church }: { church: Church }) {
           <div className="grid min-w-0 gap-2 lg:col-start-1">
             <ChurchFilter churches={churches} activeId={church.id} all={united} onAll={() => homeAll.set(true)} onPick={pickChurch} />
             {notice.shown && !united && <SwitchNotice name={church.name} onClose={notice.dismiss} />}
+            <ChurchColorNotice />
           </div>
         )}
         {!united && <div className="lg:col-start-2 lg:row-span-4 lg:row-start-1">{calendar}</div>}
