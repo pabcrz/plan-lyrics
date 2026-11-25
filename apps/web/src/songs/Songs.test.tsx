@@ -176,6 +176,7 @@ test('each song says when this church last used it and what is already scheduled
   stub(false)
   app('/canciones')
   const used = (await screen.findByText('Canción de ejemplo')).closest('li')!
-  expect(used.textContent).toMatch(/Última vez: dom 4 ene \(hace \d+ meses\) · Programada el dom 4 ene/)
+  expect(within(used).getByText(/^Última vez: dom 4 ene \(hace \d+ meses\)$/)).toBeTruthy()
+  expect(within(used).getByText('Programada el dom 4 ene')).toBeTruthy()
   expect(within(screen.getByText('Himno ficticio').closest('li')!).getByText('Sin usar en esta iglesia')).toBeTruthy()
 })

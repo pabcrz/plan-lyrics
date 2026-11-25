@@ -93,7 +93,7 @@ function Library({ church }: { church: Church }) {
                     {/* Escritorio con permiso: elegir abre el panel de edición, que ofrece la letra; en móvil abre la letra. */}
                     <button type="button" aria-current={editing === song.id ? 'true' : undefined} onClick={() => (desktop && canCreate ? edit(song) : void navigate(lyricsPath(song.id)))}
                       className="flex min-h-16 min-w-0 flex-1 cursor-pointer items-center gap-3 border-0 bg-transparent px-4 text-left hover:bg-surface-2">
-                      <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-2">{song.author || 'Sin autor'}{song.hasLyrics === false ? ' · Sin letra' : song.hasChords === false ? ' · Sin acordes' : ''}</small>{usageText(song) && <small className="block text-[0.8125rem] text-text-2">{usageText(song)}</small>}</span>
+                      <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-2">{song.author || 'Sin autor'}{song.hasLyrics === false ? ' · Sin letra' : song.hasChords === false ? ' · Sin acordes' : ''}</small>{usageText(song)?.split(' · ').map((line) => <small key={line} className="block text-[0.8125rem] text-text-2">{line}</small>)}</span>
                       {!canCreate && <Icon name="right" className="text-text-3" />}
                     </button>
                     {canCreate && (
