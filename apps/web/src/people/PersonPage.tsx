@@ -6,6 +6,7 @@ import { ApiError, usePerson, usePersonActions } from '../calendar/api'
 import { useRoles } from '../calendar/roles-api'
 import type { Church, PersonDetail } from '../calendar/model'
 import { PersonRoles, rolesText, type RoleFlags } from '../calendar/PersonRoles'
+import { AccessSection } from './AccessSection'
 import { PhoneField, phoneDigits, phoneError, phoneStored } from './phone'
 
 export function PersonPage() {
@@ -172,11 +173,7 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
 
         <RolesSection church={church} person={person} />
 
-        <section className="grid gap-2" aria-labelledby="account">
-          <h2 id="account" className="m-0 font-display text-lg font-bold">Cuenta de acceso</h2>
-          <p className="m-0 text-[0.9375rem]"><span className="text-text-3">Estado: </span><b>{person.hasAccount ? 'Con cuenta vinculada' : 'Sin cuenta'}</b></p>
-          <p className="m-0 text-[0.8125rem] text-text-3">Vincular o desvincular la cuenta lo hace el superadministrador o un gestor de cuentas.</p>
-        </section>
+        <AccessSection church={church} person={person} />
 
         {church.canConfigure && <Button variant="danger" block onClick={() => setConfirming(true)}>Quitar de {church.name}</Button>}
       </div>

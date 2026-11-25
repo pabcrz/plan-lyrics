@@ -36,11 +36,13 @@ export function useMemberActions() {
       return await request()
     } finally {
       // También cambian quién puede agregarse y lo que ve esa persona, así que se vuelve a leer todo.
-      await Promise.all([client.invalidateQueries({ queryKey: ['members'] }), client.invalidateQueries({ queryKey: ['church'] })])
+      await Promise.all([client.invalidateQueries({ queryKey: ['members'] }), client.invalidateQueries({ queryKey: ['church'] }), client.invalidateQueries({ queryKey: ['people'] }), client.invalidateQueries({ queryKey: ['person'] })])
     }
   }, [client])
   return {
     grant: useCallback((personId: string, role: Role) => run(() => api<Member>('/api/members', { method: 'POST', body: { personId, role } })), [api, run]),
+    /** Desde la ficha: crea la cuenta y envía la invitación si la persona no la tiene, la vincula y le da el rol en esta iglesia. */
+    invite: useCallback((personId: string, role: Role, email?: string) => run(() => api<Member & { invited: boolean }>(`/api/people/${encodeURIComponent(personId)}/invite`, { method: 'POST', body: { role, ...(email ? { email } : {}) } })), [api, run]),
     changeRole: useCallback((userId: string, role: Role) => run(() => api<Member>(`/api/members/${encodeURIComponent(userId)}`, { method: 'PATCH', body: { role } })), [api, run]),
     remove: useCallback((userId: string) => run(() => api<void>(`/api/members/${encodeURIComponent(userId)}`, { method: 'DELETE' })), [api, run]),
   }

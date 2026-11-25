@@ -8,6 +8,9 @@ const email = z.string().trim().toLowerCase().max(254).regex(/^[^\s@]+@[^\s@]+\.
 
 // Nothing here carries a church: the church always comes from the caller's session.
 export const inviteBody = z.strictObject({ email })
+/** From a person of the directory: the role to give in this church and, when the person has no contact address yet, where to send the invitation. */
+export const personInviteBody = z.strictObject({ role: z.enum(CHURCH_ROLES), email: email.optional() })
+export const isEmailAddress = (value: string) => email.safeParse(value).success
 export const memberGrantBody = z.strictObject({ personId: id, role: z.enum(CHURCH_ROLES) })
 export const memberRoleBody = z.strictObject({ role: z.enum(CHURCH_ROLES) })
 export const linkBody = z.strictObject({ personId: id })

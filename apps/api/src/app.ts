@@ -109,7 +109,7 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
     }
   })
   app.route('/', accountRoutes(config, database, options.identity))
-  app.route('/', memberRoutes(config, database))
+  app.route('/', memberRoutes(config, database, options.identity))
   app.route('/', serviceRoutes(config, database, now))
   app.route('/', roleRoutes(config, database, now))
   app.route('/', participationRoutes(config, database, now))

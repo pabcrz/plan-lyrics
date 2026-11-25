@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { Button, Notice, TextField } from '../ui'
+import { Button, Notice, Segmented, Switch, TextField } from '../ui'
+import { ROLE_HELP, ROLE_SHORT, ROLES, looksLikeEmail, memberFailure } from '../access/access-model'
+import { useMemberActions, type Role } from '../access/access-api'
 import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, usePersonActions } from '../calendar/api'
 import type { Church } from '../calendar/model'
@@ -24,6 +26,10 @@ function ReadOnly({ church }: { church: Church }) {
 function Form({ church }: { church: Church }) {
   const navigate = useNavigate()
   const { create } = usePersonActions()
+  const { invite } = useMemberActions()
+  const [inviting, setInviting] = useState(false)
+  const [role, setRole] = useState<Role>('MEMBER')
+  const [created, setCreated] = useState<string | null>(null)
   const [name, setName] = useState((useLocation().state as { name?: string } | null)?.name ?? '')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -35,7 +41,7 @@ function Form({ church }: { church: Church }) {
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || (inviting && !looksLikeEmail(email))) return
     const invalid = phoneError(phone)
     setPhoneError(invalid)
     if (invalid) return
@@ -43,7 +49,11 @@ function Form({ church }: { church: Church }) {
     setExisting(null)
     setFailure('')
     try {
-      const person = await create({ name: name.trim(), ...(phone ? { phone: phoneStored(phone) as string } : {}), ...(email.trim() ? { email: email.trim() } : {}), ...jobs })
+      const person = created ? { id: created } : await create({ name: name.trim(), ...(phone ? { phone: phoneStored(phone) as string } : {}), ...(email.trim() ? { email: email.trim() } : {}), ...jobs })
+      if (inviting) {
+        setCreated(person.id)
+        try { await invite(person.id, role) } catch (caught) { setFailure(`${memberFailure(caught)} La persona ya quedó registrada: puedes reintentar o abrir su ficha.`); setSending(false); return }
+      }
       void navigate(`/personas/${encodeURIComponent(person.id)}`, { replace: true })
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409 && caught.existing) setExisting(caught.existing)
@@ -74,8 +84,22 @@ function Form({ church }: { church: Church }) {
         <TextField label="Correo (opcional)" type="email" inputMode="email" autoComplete="off" value={email} maxLength={254} onChange={(event) => setEmail(event.target.value)} />
         <PersonRoles value={jobs} onChange={setJobs} showPreach={church.usesPreaching} />
         <p className="m-0 text-[0.8125rem] text-text-3">El nombre, el teléfono y el correo son información general: se ven en todas las iglesias donde participe. Sus roles y turnos se configuran en cada iglesia.</p>
+        {church.canConfigure && (
+          <div className="grid gap-3 rounded-lg border border-line p-3">
+            <Switch checked={inviting} onCheckedChange={setInviting} disabled={created !== null} label="Invitar a la app"
+              description="Crea su cuenta, le envía la invitación al correo de arriba y le da su rol en esta iglesia." />
+            {inviting && (
+              <>
+                {!looksLikeEmail(email) && <p className="m-0 text-[0.8125rem] text-text-3">Escribe su correo arriba para poder invitarla.</p>}
+                <Segmented<Role> label="Rol en esta iglesia" value={role} onChange={setRole} options={ROLES.map((value) => ({ value, label: ROLE_SHORT[value] }))} />
+                <p className="m-0 text-[0.8125rem] text-text-3">{ROLE_HELP[role]}</p>
+              </>
+            )}
+          </div>
+        )}
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
-        <Button type="submit" variant="primary" block loading={sending} disabled={!name.trim()}>Agregar persona</Button>
+        {created && <Link className="font-semibold underline" to={`/personas/${encodeURIComponent(created)}`}>Abrir su ficha</Link>}
+        <Button type="submit" variant="primary" block loading={sending} disabled={!name.trim() || (inviting && !looksLikeEmail(email))}>{inviting ? 'Agregar e invitar' : 'Agregar persona'}</Button>
       </form>
     </main>
   )
