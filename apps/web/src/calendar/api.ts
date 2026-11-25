@@ -1,4 +1,5 @@
 import { clearActiveChurch, getActiveChurch, setActiveChurch } from './active-church'
+import { homeAll } from './home-filter'
 import { useCallback } from 'react'
 import { useAuth } from '@clerk/react'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -83,6 +84,8 @@ export function useSwitchChurch() {
   const client = useQueryClient()
   return useCallback((id: string) => {
     setActiveChurch(id)
+    // Elegir una iglesia (desde el menú o el filtro del inicio) deja de ser la vista «Todas».
+    homeAll.set(false)
     void client.resetQueries({ predicate: (query) => query.queryKey[0] !== 'my-churches' })
   }, [client])
 }

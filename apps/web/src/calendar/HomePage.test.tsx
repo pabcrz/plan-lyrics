@@ -2,11 +2,13 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { HomePage } from './HomePage'
+import { churchColorsStore } from './church-colors'
+import { homeAll } from './home-filter'
 import { church, detail, mount, service, stubApi } from './test-utils'
 
 vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-ficticio' }), UserButton: () => <button>Cuenta</button> }))
 
-beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-13T18:00:00Z') }) })
+beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-13T18:00:00Z') }); localStorage.clear(); homeAll.set(null); churchColorsStore.set({}) })
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() })
 
 const services = [
@@ -25,10 +27,9 @@ test('lists the upcoming services as cards with date, time and director, soonest
   // Sin estados que gestionar: ningún servicio muestra «Borrador» ni «Publicado».
   expect(within(card).queryByText('Borrador')).toBeNull()
   expect(within(card).getByText(/4 canciones en el setlist/)).toBeTruthy()
-  expect(within(screen.getByRole('link', { name: /Servicio de diciembre/ })).getByText(/Setlist sin preparar/)).toBeTruthy()
   expect(screen.getByText('Próximos servicios')).toBeTruthy()
   expect(screen.getAllByRole('link', { name: /,/ }).map((item) => item.getAttribute('aria-label'))).toEqual([
-    expect.stringContaining('Servicio de viernes'), expect.stringContaining('Viernes cancelado'), expect.stringContaining('Servicio de diciembre'),
+    expect.stringContaining('Servicio de viernes'), expect.stringContaining('Viernes cancelado'),
   ])
   expect(screen.queryByText('Servicio pasado')).toBeNull()
 })
@@ -239,19 +240,103 @@ test('there is no «Ver anteriores» when nothing passed this month or when look
   expect(screen.queryByRole('button', { name: /Ver anteriores/ })).toBeNull()
 })
 
-test('with several churches the upcoming list gathers all of them and opening one makes it the active church', async () => {
-  const calls = stubApi({
-    services: [], myChurches: [{ id: 'c1', name: 'Iglesia Central', role: 'ADMIN' }, { id: 'c2', name: 'Iglesia Norte', role: 'EDITOR' }],
-    agenda: [{ ...service({ id: 'n1', date: '2026-11-15', title: 'Culto norte' }), churchId: 'c2', churchName: 'Iglesia Norte' }, { ...service({ id: 'n2', date: '2026-11-22', title: 'Culto central' }), churchId: 'c1', churchName: 'Iglesia Central' }],
-  })
+const two = [{ id: 'church-a', name: 'Betel', role: 'ADMIN' as const }, { id: 'c2', name: 'Iglesia de Cristo', role: 'EDITOR' as const }]
+const inAgenda = (id: string, date: string, title: string, churchId: string, churchName: string) => ({ ...service({ id, date, title }), churchId, churchName })
+// Viernes 13 de noviembre: esta semana va del dom 8 al sáb 14 y la siguiente del dom 15 al sáb 21.
+const agenda = [
+  inAgenda('n1', '2026-11-15', 'Culto norte', 'c2', 'Iglesia de Cristo'), inAgenda('n2', '2026-11-21', 'Culto central', 'church-a', 'Betel'), inAgenda('n3', '2026-11-22', 'Culto lejano', 'c2', 'Iglesia de Cristo'),
+]
+
+test('with several churches the home starts in «Todas»: this week and the next of every church, in order, without the calendar', async () => {
+  const calls = stubApi({ services: [], myChurches: two, agenda })
+  mount(<HomePage />)
+  const first = await screen.findByRole('link', { name: /Culto norte/ })
+  expect(within(first).getByText('Iglesia de Cristo')).toBeTruthy()
+  expect(screen.getByRole('link', { name: /Culto central/ })).toBeTruthy()
+  // Beyond the next Saturday nothing is listed.
+  expect(screen.queryByRole('link', { name: /Culto lejano/ })).toBeNull()
+  expect(screen.getAllByRole('link', { name: /Culto/ }).map((item) => item.getAttribute('aria-label')?.split(',')[0])).toEqual(['Culto norte', 'Culto central'])
+  expect(screen.getByText('Esta semana y la siguiente')).toBeTruthy()
+  expect(screen.queryByRole('region', { name: 'Calendario' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Todas' }).getAttribute('aria-pressed')).toBe('true')
+  expect(calls.some((call) => call.url === '/api/me/agenda')).toBe(true)
+})
+
+test('picking a church makes it the active church of the whole app, warns once, and «Todas» brings the union back', async () => {
+  stubApi({ services: [], myChurches: two, agenda })
+  mount(<HomePage />)
+  await screen.findByRole('link', { name: /Culto norte/ })
+  fireEvent.click(screen.getByRole('button', { name: 'Iglesia de Cristo' }))
+  expect(localStorage.getItem('plan-lyrics.activeChurch')).toBe('c2')
+  expect(localStorage.getItem('plan-lyrics.homeAll')).toBe('0')
+  expect(await screen.findByText(/Ahora trabajas en/)).toBeTruthy()
+  expect(screen.getByText(/«Todas» solo reúne los próximos servicios/)).toBeTruthy()
+  expect(await screen.findByRole('region', { name: 'Calendario' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Entendido' }))
+  expect(screen.queryByText(/Ahora trabajas en/)).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Todas' }))
+  expect(localStorage.getItem('plan-lyrics.homeAll')).toBe('1')
+  expect(await screen.findByText('Esta semana y la siguiente')).toBeTruthy()
+  // The warning never comes back.
+  fireEvent.click(screen.getByRole('button', { name: 'Betel' }))
+  await screen.findByRole('region', { name: 'Calendario' })
+  expect(screen.queryByText(/Ahora trabajas en/)).toBeNull()
+})
+
+test('the last choice is remembered: a single church opens straight into its month, and switching church elsewhere leaves «Todas»', async () => {
+  localStorage.setItem('plan-lyrics.homeAll', '0')
+  homeAll.refresh()
+  stubApi({ services, myChurches: two, agenda })
+  mount(<HomePage />)
+  expect(await screen.findByText('Próximos servicios')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Betel' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.getByRole('button', { name: 'Todas' }).getAttribute('aria-pressed')).toBe('false')
+})
+
+test('each church takes the color of one of the app themes in «Todas», and the person can choose which', async () => {
+  stubApi({ services: [], myChurches: two, agenda })
   mount(<HomePage />)
   const card = await screen.findByRole('link', { name: /Culto norte/ })
-  expect(within(card).getByText('Iglesia Norte')).toBeTruthy()
-  expect(screen.getByRole('link', { name: /Culto central/ })).toBeTruthy()
-  fireEvent.click(card)
-  expect(localStorage.getItem('plan-lyrics.activeChurch')).toBe('c2')
-  expect(calls.some((call) => call.url === '/api/me/agenda')).toBe(true)
-  localStorage.clear()
+  // Sin elegir: cada iglesia empieza con un tema distinto (por el orden de sus ids: «c2» va antes que «church-a»).
+  const hueOf = (element: Element) => (element.querySelector('.tone') as HTMLElement).style.getPropertyValue('--h')
+  expect(hueOf(card)).toBe('235')
+  expect(hueOf(screen.getByRole('link', { name: /Culto central/ }))).toBe('178')
+  fireEvent.click(screen.getByRole('button', { name: 'Colores de las iglesias' }))
+  const sheet = within(await screen.findByRole('dialog', { name: 'Color de cada iglesia' }))
+  fireEvent.click(within(sheet.getByRole('group', { name: 'Color de Iglesia de Cristo' })).getByRole('button', { name: 'Granate' }))
+  fireEvent.click(within(sheet.getByRole('group', { name: 'Color de Betel' })).getByRole('button', { name: 'Ocre' }))
+  expect(JSON.parse(localStorage.getItem('plan-lyrics.churchColors')!)).toEqual({ c2: 'granate', 'church-a': 'ocre' })
+  expect(within(sheet.getByRole('group', { name: 'Color de Iglesia de Cristo' })).getByRole('button', { name: 'Granate' }).getAttribute('aria-pressed')).toBe('true')
+  expect(hueOf(card)).toBe('15')
+})
+
+test('the colors exist only in «Todas»: picking one church brings the usual look and no palette', async () => {
+  localStorage.setItem('plan-lyrics.homeAll', '0')
+  homeAll.refresh()
+  stubApi({ services, myChurches: two, agenda })
+  mount(<HomePage />)
+  await screen.findByText('Próximos servicios')
+  expect(screen.queryByRole('button', { name: 'Colores de las iglesias' })).toBeNull()
+  expect(document.querySelector('.tone')).toBeNull()
+})
+
+test('one church shows the rest of the month, and from its last week also the next one, with no cap', async () => {
+  const month = [
+    service({ id: 'm1', date: '2026-11-13', title: 'Uno' }), service({ id: 'm2', date: '2026-11-20', title: 'Dos' }), service({ id: 'm3', date: '2026-11-27', title: 'Tres' }),
+    service({ id: 'm4', date: '2026-12-04', title: 'Cuatro' }), service({ id: 'm5', date: '2026-12-11', title: 'Cinco' }), service({ id: 'm6', date: '2026-12-18', title: 'Seis' }),
+  ]
+  stubApi({ services: month })
+  mount(<HomePage />)
+  await screen.findByRole('link', { name: /Uno/ })
+  // Viernes 13: lo que queda de noviembre; diciembre aún no.
+  expect(screen.getAllByRole('link', { name: /,/ }).map((item) => item.getAttribute('aria-label')?.split(',')[0])).toEqual(['Uno', 'Dos', 'Tres'])
+  cleanup()
+  // Domingo 29: ya es la última semana del mes, así que se suma la siguiente (hasta el sábado 12 de diciembre).
+  vi.setSystemTime(new Date('2026-11-29T18:00:00Z'))
+  stubApi({ services: month })
+  mount(<HomePage />)
+  await screen.findByRole('link', { name: /Cuatro/ })
+  expect(screen.getAllByRole('link', { name: /,/ }).map((item) => item.getAttribute('aria-label')?.split(',')[0])).toEqual(['Cuatro', 'Cinco'])
 })
 
 const withPreaching = service({ id: 'p', date: '2026-11-13', title: 'Viernes 13', songCount: 6, preaching: { topic: 'El día de reposo', preacher: { id: 'p3', name: 'Fernando Maya' } } })
