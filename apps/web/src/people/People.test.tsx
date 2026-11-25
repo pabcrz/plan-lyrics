@@ -205,3 +205,61 @@ test('without administration the roles are text, not controls', async () => {
   expect(await screen.findByText('Batería, Voces')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Piano' })).toBeNull()
 })
+
+const admin: Church = { ...church, canEdit: true, canConfigure: true }
+const invitesOf = (calls: ReturnType<typeof stubApi>) => sent(calls, 'POST').filter((call) => call.url.endsWith('/invite'))
+
+test('an administrator invites from the record using the contact e-mail, choosing only the role', async () => {
+  const calls = stubApi({ directory: [detail({ id: 'p2', name: 'Álvaro Núñez', email: 'alvaro@example.com' })], church: admin })
+  app('/personas/p2')
+  const field = await screen.findByLabelText('Correo para la invitación') as HTMLInputElement
+  expect(field.value).toBe('alvaro@example.com')
+  fireEvent.click(screen.getByRole('button', { name: 'Editor' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Invitar a la app' }))
+  expect(await screen.findByText('Invitación enviada a alvaro@example.com.')).toBeTruthy()
+  expect(invitesOf(calls)).toEqual([{ url: '/api/people/p2/invite', body: { role: 'EDITOR' } }])
+})
+
+test('a person without a contact e-mail needs one to be invited, and it travels with the invitation', async () => {
+  const calls = stubApi({ directory: [detail({ id: 'p2', name: 'Álvaro Núñez', email: null })], church: admin })
+  app('/personas/p2')
+  const send = await screen.findByRole('button', { name: 'Invitar a la app' }) as HTMLButtonElement
+  expect(send.disabled).toBe(true)
+  fireEvent.change(screen.getByLabelText('Correo para la invitación'), { target: { value: 'nuevo@example.com' } })
+  fireEvent.click(send)
+  await waitFor(() => expect(invitesOf(calls)).toEqual([{ url: '/api/people/p2/invite', body: { role: 'MEMBER', email: 'nuevo@example.com' } }]))
+})
+
+test('a registered address is explained, and who already has access sees the role instead of the form', async () => {
+  stubApi({ directory: [detail({ id: 'p2', name: 'Álvaro Núñez', email: 'alvaro@example.com' })], church: admin, invite: () => ({ status: 409, body: { error: 'Email registered' } }) })
+  app('/personas/p2')
+  fireEvent.click(await screen.findByRole('button', { name: 'Invitar a la app' }))
+  expect((await screen.findByRole('alert')).textContent).toContain('ya tiene una cuenta')
+  cleanup()
+
+  stubApi({ directory: [detail({ id: 'p1', name: 'Ana Ramírez', hasAccount: true })], church: admin, members: [{ userId: 'u1', role: 'EDITOR', self: false, protected: false, email: null, person: { id: 'p1', name: 'Ana Ramírez' } }] })
+  app('/personas/p1')
+  expect(await screen.findByText('Editor de servicios')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Invitar a la app' })).toBeNull()
+})
+
+test('only whoever administers the church is offered the invitation', async () => {
+  stubApi({ directory: [detail({ id: 'p2', name: 'Álvaro Núñez' })], church: editor })
+  app('/personas/p2')
+  expect(await screen.findByText(/Quien administra .* da el acceso/)).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Invitar a la app' })).toBeNull()
+})
+
+test('adding a person can invite them in the same step', async () => {
+  const calls = stubApi({ directory, church: admin, createPerson: () => ({ body: detail({ id: 'new', name: 'Juan Pérez Rodríguez' }) }) })
+  app('/personas/nueva')
+  fireEvent.change(await screen.findByLabelText('Nombre completo'), { target: { value: 'Juan Pérez Rodríguez' } })
+  fireEvent.click(screen.getByRole('switch', { name: 'Invitar a la app' }))
+  const save = screen.getByRole('button', { name: 'Agregar e invitar' }) as HTMLButtonElement
+  expect(save.disabled).toBe(true)
+  fireEvent.change(screen.getByLabelText('Correo (opcional)'), { target: { value: 'juan@example.com' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Editor' }))
+  fireEvent.click(save)
+  await waitFor(() => expect(invitesOf(calls)).toEqual([{ url: '/api/people/new/invite', body: { role: 'EDITOR' } }]))
+  expect(sent(calls, 'POST')[0]!.body).toMatchObject({ name: 'Juan Pérez Rodríguez', email: 'juan@example.com' })
+})

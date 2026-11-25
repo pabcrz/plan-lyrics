@@ -425,3 +425,55 @@ test('the agenda lists the upcoming services of every church of the caller and n
     await db.service.deleteMany({ where: { id: { in: ['agenda-a', 'agenda-b', 'agenda-old'] } } })
   }
 })
+
+const invite = (subject: string, personId: string, body: unknown) => call(subject, 'POST', `/api/people/${personId}/invite`, body)
+
+test('an administrator invites a person of the directory in one step: account, link and role', async () => {
+  expect((await invite('acc-a2', 'person-acc-none', { role: 'MEMBER', email: 'nueva@example.com' })).status).toBe(403)
+  expect((await invite('acc-a1', 'person-acc-none', { role: 'EDITOR' })).status).toBe(400)
+  expect(await (await invite('acc-a1', 'person-acc-none', { role: 'EDITOR' })).json()).toEqual({ error: 'Email required' })
+  expect((await invite('acc-a1', 'person-acc-none', { role: 'EDITOR', email: 'no-es-correo' })).status).toBe(400)
+  expect((await invite('acc-a1', 'person-acc-b', { role: 'MEMBER', email: 'otra@example.com' })).status).toBe(404)
+  expect(inviteByEmail).not.toHaveBeenCalled()
+
+  const done = await invite('acc-a1', 'person-acc-none', { role: 'EDITOR', email: ' Nueva@Example.com ' })
+  expect(done.status).toBe(201)
+  expect(await done.json()).toMatchObject({ role: 'EDITOR', invited: true, person: { id: 'person-acc-none' } })
+  expect(inviteByEmail).toHaveBeenCalledExactlyOnceWith('nueva@example.com')
+  const person = await db.person.findUniqueOrThrow({ where: { id: 'person-acc-none' } })
+  expect(person.email).toBe('nueva@example.com')
+  expect(person.userId).not.toBeNull()
+  expect(await db.membership.findMany({ where: { userId: person.userId! } })).toMatchObject([{ churchId: 'church-a', role: 'EDITOR' }])
+  // Again: the person already is a member; nothing is sent twice.
+  expect((await invite('acc-a1', 'person-acc-none', { role: 'ADMIN' })).status).toBe(409)
+  expect(inviteByEmail).toHaveBeenCalledTimes(1)
+})
+
+test('inviting uses the contact e-mail of the person, refuses a registered address and leaves nothing behind when the provider fails', async () => {
+  await db.person.update({ where: { id: 'person-acc-none' }, data: { email: 'contacto@example.com' } })
+  const before = await db.membership.count({ where: { churchId: 'church-a' } })
+  inviteByEmail.mockRejectedValueOnce(new Error('proveedor caído'))
+  const failed = await invite('acc-a1', 'person-acc-none', { role: 'MEMBER' })
+  expect(failed.status).toBe(502)
+  expect((await db.person.findUniqueOrThrow({ where: { id: 'person-acc-none' } })).userId).toBeNull()
+  expect(await db.membership.count({ where: { churchId: 'church-a' } })).toBe(before)
+
+  const ok = await invite('acc-a1', 'person-acc-none', { role: 'MEMBER' })
+  expect(ok.status).toBe(201)
+  expect(inviteByEmail).toHaveBeenLastCalledWith('contacto@example.com')
+
+  await db.person.create({ data: { id: 'person-inv-dup', name: 'Prueba acceso Duplicada', churches: { create: [{ churchId: 'church-a' }] } } })
+  const taken = await invite('acc-a1', 'person-inv-dup', { role: 'MEMBER', email: 'acc-a2@example.com' })
+  expect(taken.status).toBe(409)
+  expect(await taken.json()).toEqual({ error: 'Email registered' })
+  expect(inviteByEmail).toHaveBeenCalledTimes(2)
+  await db.person.delete({ where: { id: 'person-inv-dup' } })
+})
+
+test('a person who already has an account only receives the role, without a new invitation', async () => {
+  const granted = await invite('acc-a1', 'person-acc-free', { role: 'MEMBER' })
+  expect(granted.status).toBe(201)
+  expect(await granted.json()).toMatchObject({ userId: 'acc-free', invited: false })
+  expect(inviteByEmail).not.toHaveBeenCalled()
+  expect(await db.membership.findUnique({ where: { userId_churchId: { userId: 'acc-free', churchId: 'church-a' } } })).toMatchObject({ role: 'MEMBER' })
+})

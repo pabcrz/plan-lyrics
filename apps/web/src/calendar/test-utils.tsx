@@ -34,7 +34,7 @@ export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
 })
 
 export function stubApi(routes: {
-  church?: Church | number; owner?: boolean; agenda?: Array<Service & { churchId: string; churchName: string }>; myChurches?: Array<{ id: string; name: string; role: 'ADMIN' | 'EDITOR' | 'MEMBER' | null }>; services?: Service[]; closed?: ClosedDate[]; post?: Handler; save?: Handler; mark?: Handler; unmark?: Handler
+  church?: Church | number; members?: Array<{ userId: string; role: 'ADMIN' | 'EDITOR' | 'MEMBER'; self: boolean; protected: boolean; email: string | null; person: { id: string; name: string } | null }>; invite?: Handler; owner?: boolean; agenda?: Array<Service & { churchId: string; churchName: string }>; myChurches?: Array<{ id: string; name: string; role: 'ADMIN' | 'EDITOR' | 'MEMBER' | null }>; services?: Service[]; closed?: ClosedDate[]; post?: Handler; save?: Handler; mark?: Handler; unmark?: Handler
   /** Directorio: lista, ficha por id y respuestas a alta, edición y baja. */
   directory?: PersonDetail[]; createPerson?: Handler; patchPerson?: Handler; removePerson?: Handler
   /** Roles y restricciones de la iglesia; las altas y bajas los cambian como lo haría el servidor. */
@@ -177,6 +177,11 @@ export function stubApi(routes: {
       const role = new URL(url, 'http://local').searchParams.get('role')
       const list = (routes.directory ?? people.map((person) => detail(person))).filter((person) => (role === 'direct' ? person.canDirect : role === 'preach' ? person.canPreach : true))
       return reply(200, list.map(({ id, name, hasAccount, isYou, roleIds, canDirect, canPreach }) => ({ id, name, hasAccount, isYou, roleIds, canDirect, canPreach })))
+    }
+    if (url === '/api/members' && init?.method !== 'POST') return reply(200, { members: routes.members ?? [], candidates: [] })
+    if (/^\/api\/people\/[^/]+\/invite$/.test(url) && init?.method === 'POST') {
+      const result = routes.invite?.(url, init)
+      return reply(result?.status ?? 201, result?.body ?? { userId: 'nuevo', role: JSON.parse(String(init.body)).role, self: false, protected: false, email: null, person: null, invited: true })
     }
     if (/^\/api\/people\/[^/]+\/roles$/.test(url) && init?.method === 'PUT') return reply(200, { roleIds: JSON.parse(String(init.body)).roleIds })
     if (url.startsWith('/api/people/')) {
