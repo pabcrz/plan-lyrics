@@ -1,3 +1,4 @@
+import { AllPeoplePage } from '../platform/AllPeoplePage'
 import { Navigate, Route, Routes, useParams } from 'react-router'
 import { ChurchesPage } from './ChurchesPage'
 import { AccessPage } from '../access/AccessPage'
@@ -48,6 +49,7 @@ export function ProductRoutes() {
       <Route path="/personas" element={<PeoplePage />} />
       <Route path="/personas/nueva" element={<NewPersonPage />} />
       <Route path="/personas/:personId" element={<PersonPage />} />
+      <Route path="/todas-las-personas" element={<AllPeoplePage />} />
       <Route path="/compartir" element={<SharePage />} />
       <Route path="/compartir/enlace" element={<NewLinkPage />} />
       <Route path="/compartir/documento/:kind" element={<DocumentPage />} />
