@@ -69,7 +69,7 @@ test('adds a person with a full name and an optional phone, then opens the recor
   fireEvent.change(screen.getByLabelText('Nombre completo'), { target: { value: ' Juan Pérez Rodríguez ' } })
   fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '5550101234' } })
   fireEvent.click(save)
-  await waitFor(() => expect(sent(calls, 'POST')).toEqual([{ url: '/api/people', body: { name: 'Juan Pérez Rodríguez', phone: '+525550101234', canDirect: true, canPreach: false } }]))
+  await waitFor(() => expect(sent(calls, 'POST')).toEqual([{ url: '/api/people', body: { name: 'Juan Pérez Rodríguez', phone: '+525550101234', canDirect: false, canPreach: false, canPlay: false } }]))
 })
 
 test('an existing name is not created again: it asks to complete the name and links to the record', async () => {
@@ -262,4 +262,58 @@ test('adding a person can invite them in the same step', async () => {
   fireEvent.click(save)
   await waitFor(() => expect(invitesOf(calls)).toEqual([{ url: '/api/people/new/invite', body: { role: 'EDITOR' } }]))
   expect(sent(calls, 'POST')[0]!.body).toMatchObject({ name: 'Juan Pérez Rodríguez', email: 'juan@example.com' })
+})
+
+const mixed = [
+  detail({ id: 'a1', name: 'Abril Soto', canPlay: true, canDirect: false, canPreach: false, roleIds: ['r-voices'] }),
+  detail({ id: 'a2', name: 'Fernando Maya', canPlay: false, canDirect: false, canPreach: true, roleIds: [] }),
+  detail({ id: 'a3', name: 'Isaac Ruiz', canPlay: true, canDirect: true, canPreach: false, roleIds: ['r-drums', 'r-guitar'] }),
+  detail({ id: 'a4', name: 'Marta Vega', canPlay: false, canDirect: false, canPreach: false, roleIds: [] }),
+]
+const names = () => screen.getAllByRole('button', { name: /^(Abril|Fernando|Isaac|Marta)/ }).map((item) => item.querySelector('b')?.textContent)
+const preaching: Church = { ...church, usesPreaching: true }
+
+test('the directory separates the worship group, direction and preaching from everyone else, with counts', async () => {
+  stubApi({ directory: mixed, church: preaching })
+  app('/personas')
+  await screen.findByText('Abril Soto')
+  expect(screen.getByRole('button', { name: /^Todas 4/ })).toBeTruthy()
+  expect(screen.getByRole('button', { name: /^Alabanza 2/ })).toBeTruthy()
+  expect(screen.getByRole('button', { name: /^Dirección 1/ })).toBeTruthy()
+  expect(screen.getByRole('button', { name: /^Predicación 1/ })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /^Alabanza/ }))
+  expect(names()).toEqual(['Abril Soto', 'Isaac Ruiz'])
+  // Each row says the musical roles of the group and the other jobs.
+  expect(screen.getByText('Batería, Guitarra · Dirige')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /^Predicación/ }))
+  expect(names()).toEqual(['Fernando Maya'])
+  fireEvent.click(screen.getByRole('button', { name: /^Todas/ }))
+  expect(names()).toHaveLength(4)
+})
+
+test('a church without preaching has no preaching filter, and an empty group explains how to fill it', async () => {
+  stubApi({ directory: [mixed[1]!, mixed[3]!], church })
+  app('/personas')
+  await screen.findByText('Fernando Maya')
+  expect(screen.queryByRole('button', { name: /^Predicación/ })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: /^Alabanza/ }))
+  expect(await screen.findByText(/Nadie está en el grupo de alabanza todavía/)).toBeTruthy()
+})
+
+test('musical roles only exist for the worship group: without it the record offers none and says how to get them', async () => {
+  const calls = stubApi({ directory: [mixed[1]!], church: admin })
+  app('/personas/a2')
+  expect(await screen.findByText('Sin roles de alabanza')).toBeTruthy()
+  expect(screen.queryByRole('group', { name: 'Roles de la persona' })).toBeNull()
+  fireEvent.click(screen.getByRole('switch', { name: 'Grupo de alabanza' }))
+  await waitFor(() => expect(calls.filter((call) => call.init?.method === 'PATCH').map((call) => JSON.parse(String(call.init?.body)))).toEqual([{ canDirect: false, canPreach: true, canPlay: true }]))
+})
+
+test('someone in the worship group has the roles section; leaving it while still habitual in a role is explained', async () => {
+  stubApi({ directory: [mixed[2]!], church: admin, patchPerson: () => ({ status: 409, body: { error: 'In use' } }) })
+  app('/personas/a3')
+  expect(await screen.findByRole('group', { name: 'Roles de la persona' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('switch', { name: 'Grupo de alabanza' }))
+  expect((await screen.findByRole('alert')).textContent).toContain('habitual o en una rotación')
+  expect((screen.getByRole('switch', { name: 'Grupo de alabanza' }) as HTMLButtonElement).getAttribute('aria-checked')).toBe('true')
 })

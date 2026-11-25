@@ -30,6 +30,8 @@ export type Person = {
   roleIds: string[]
   /** Si los selectores de dirección y de predicación la ofrecen. */
   canDirect: boolean; canPreach: boolean
+  /** Pertenece al grupo de alabanza de esta iglesia: solo así puede tener roles musicales. */
+  canPlay: boolean
 }
 /** Ficha: datos personales generales y lo que el servidor sabe de ella en esta iglesia. */
 export type PersonDetail = Person & { phone: string | null; email: string | null; sharedWithOtherChurches: boolean; upcomingServices: number }

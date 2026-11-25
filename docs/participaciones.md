@@ -55,3 +55,14 @@ Guardar la configuración (`PUT`) no cambia servicios ya creados. La rotación *
 ## Equipo por rol
 
 Cada rol tiene su **equipo**: las personas con ese rol en `roleIds` de su vínculo con la iglesia. Quien administra lo arma desde la pantalla del rol («Administrar equipo»: agregar o quitar, sin entrar a la ficha de cada persona; usa `PUT /api/people/:id/roles`). Solo el equipo aparece al elegir habituales, rotación o cambios de un servicio. No se puede quitar del equipo a quien sigue como habitual o en la rotación del rol. Dirigir y predicar son aparte (`canDirect`, `canPreach`).
+
+## Grupos de personas
+
+Cada persona pertenece, **por iglesia** y de forma independiente, a hasta tres grupos: **Grupo de alabanza** (`canPlay`), **Dirige alabanza** (`canDirect`) y **Predica** (`canPreach`, solo si la iglesia usa predicación). Una persona puede estar en uno, en varios o en ninguno (quedan como «personas en general»).
+
+- **Roles musicales solo con grupo de alabanza.** `PUT /api/people/:id/roles` responde `409 Not in worship group` si la persona no está en el grupo (quitar todos los roles siempre se puede). Quien solo dirige o predica no recibe roles de batería, guitarra, etc.
+- **Salir del grupo** (`PATCH /api/people/:id {canPlay: false}`) le quita los roles; se rechaza con `409 In use` mientras siga como habitual o en la rotación de alguno de ellos.
+- `GET /api/people?role=play|direct|preach` filtra por grupo; la lista de Personas tiene los filtros Todas / Alabanza / Dirección / Predicación con su conteo, y cada fila muestra los roles musicales y las demás funciones.
+- El equipo de un rol («Administrar equipo») solo ofrece a quienes están en el grupo de alabanza.
+- Migración `20261126120000_church_person_can_play`: quien ya tenía roles musicales queda en el grupo; el resto se marca desde su ficha. Las personas nuevas empiezan sin ningún grupo.
+
