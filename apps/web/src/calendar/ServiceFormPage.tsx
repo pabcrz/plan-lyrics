@@ -7,6 +7,7 @@ import {
 import { ChurchGate, PageHeader, TopBar } from './ChurchGate'
 import { ApiError, useClosedDates, useCreateService, usePeople, usePersonActions, useServices } from './api'
 import { formatDay, formatLongDay, monthOf, todayIn, weekdayOf } from './dates'
+import { serviceTitle } from './service-title'
 import { freeSlots, habitualFor, upcomingDates, type Church, type Slot } from './model'
 
 const timeText = (time: string | null) => (time ? format12h(from24h(time)) : 'Sin hora fija')
@@ -40,9 +41,7 @@ function Form({ church }: { church: Church }) {
   const [choice, setChoice] = useState(preset ? (options.includes(preset) ? preset : 'other') : '') // una fecha habitual, «other» o vacío
   const [other, setOther] = useState(preset)
   const [slot, setSlot] = useState<Slot | ''>('')
-  const [title, setTitle] = useState('')
   const [time, setTime] = useState<string | null>(null)
-  const [status, setStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT')
   const [query, setQuery] = useState('')
   const [director, setDirector] = useState<Person | null>(null)
   const [preacherQuery, setPreacherQuery] = useState('')
@@ -73,6 +72,8 @@ function Form({ church }: { church: Church }) {
   const past = Boolean(date) && date < today
   const closed = Boolean(date) && !loading && isClosed(date)
   const full = Boolean(date) && !loading && !closed && slots.length === 0
+  // El nombre del servicio sale solo de la fecha: no se escribe, y quién dirige o predica se muestra aparte.
+  const title = date && slot ? serviceTitle({ date, slot: slot || undefined }) : ''
   const doubleDay = church.sundayDouble && Boolean(date) && weekdayOf(date) === 0
   const matches = (people.data ?? []).filter((person) => fold(person.name).includes(fold(query)))
   const preacherMatches = (preachers.data ?? []).filter((person) => fold(person.name).includes(fold(preacherQuery)))
@@ -80,7 +81,6 @@ function Form({ church }: { church: Church }) {
   /** Elegir fecha o franja precarga título y hora habituales; un día no habitual queda sin precarga. */
   function prefill(target: string, chosen: Slot | '') {
     const habitual = chosen ? habitualFor(church, target, chosen) : undefined
-    setTitle(habitual?.title ?? '')
     setTime(habitual?.time ?? null)
   }
   function pickDate(target: string, from: string) {
@@ -131,11 +131,11 @@ function Form({ church }: { church: Church }) {
     event.preventDefault()
     setAttempted(true)
     setFailure('')
-    if (!date || past || closed || full || !slot || !title.trim() || !(director || preacher)) return
+    if (!date || past || closed || full || !slot || !(director || preacher)) return
     setSending(true)
     try {
       await create({
-        title: title.trim(), date, status, time,
+        title, date, status: 'PUBLISHED', time,
         ...(director ? { directorId: director.id } : {}),
         ...(preacher ? { preacher: { personId: preacher.id, ...(topic.trim() ? { topic: topic.trim() } : {}) } } : {}),
         ...(slot === 'SINGLE' ? {} : { slot }),
@@ -196,9 +196,6 @@ function Form({ church }: { church: Church }) {
             })} />
         )}
 
-        <TextField label="Título" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120}
-          error={attempted && !title.trim() ? 'Escribe un título.' : undefined} />
-
         <Field label="Hora de inicio" help={choice === 'other' && !time ? 'Un servicio especial no tiene hora precargada.' : undefined}>
           {(control) => (
             <button type="button" {...control} aria-label={`Hora de inicio: ${timeText(time)}`} className={`${inputClass} cursor-pointer text-left`} onClick={() => setWheel(from24h(initialTime))}>
@@ -206,9 +203,6 @@ function Form({ church }: { church: Church }) {
             </button>
           )}
         </Field>
-
-        <Segmented label="Estado" value={status} onChange={setStatus}
-          options={[{ value: 'DRAFT', label: 'Borrador' }, { value: 'PUBLISHED', label: 'Publicado' }]} />
 
         <PersonPicker label="Dirección" query={query} onQueryChange={(next) => { setQuery(next); setDirector(null); setDuplicate(null); setPersonFailure('') }} people={matches}
           onSelect={(person) => { choose(person, 'direct'); setDuplicate(null) }} onAddNew={(name) => void addPerson(name, 'direct')}

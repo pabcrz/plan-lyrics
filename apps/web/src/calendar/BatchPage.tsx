@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { Avatar, Button, Field, Icon, Notice, PersonPicker, Sheet, Switch, TextField, TimeWheel, fold, format12h, from24h, inputClass, to24h, type Person, type Time12 } from '../ui'
+import { Avatar, Button, Field, Icon, Notice, PersonPicker, Sheet, Switch, TimeWheel, fold, format12h, from24h, inputClass, to24h, type Person, type Time12 } from '../ui'
 import { ChurchGate, TopBar } from './ChurchGate'
 import { ApiError, usePeople, usePersonActions } from './api'
+import { serviceTitle } from './service-title'
 import {
   assignmentFor, changeDirector, defaultDayConfig, entryKey, sundayHoursOk, swapDirectors,
   type Assignment, type DayConfig, type PeriodEntry,
@@ -109,7 +110,6 @@ function Batch({ church }: { church: Church }) {
   const double = (weekday: number) => church.sundayDouble && weekday === 0
   const configIssue = (weekday: number) => {
     const item = config(weekday)
-    if (!item.title.trim()) return 'Escribe el nombre del servicio.'
     if (double(weekday)) return sundayHoursOk(item.time, item.time2) ? '' : 'Pon la hora de la mañana antes de las 12:00 y la de la tarde desde las 12:00.'
     return item.time ? '' : 'Elige la hora.'
   }
@@ -213,7 +213,7 @@ function Batch({ church }: { church: Church }) {
       const result = await createBatch({
         month, directorIds: directors.map((person) => person.id),
         entries: included.map((entry) => ({
-          date: entry.date, title: config(weekdayOf(entry.date)).title.trim(), time: timeOf(entry), directorId: review.assignment[entryKey(entry)]!,
+          date: entry.date, title: serviceTitle({ date: entry.date, slot: entry.slot }), time: timeOf(entry), directorId: review.assignment[entryKey(entry)]!,
           ...(usesPreaching && review.preachers[entryKey(entry)] ? { preacherId: review.preachers[entryKey(entry)]! } : {}),
           ...(entry.slot === 'SINGLE' ? {} : { slot: entry.slot }),
         })),
@@ -527,7 +527,6 @@ function DayFields({ weekday, double, value, issue, onChange }: { weekday: numbe
   return (
     <fieldset className="m-0 grid gap-3 rounded-lg border border-line bg-surface p-4">
       <legend className="px-1 text-sm font-semibold">{double ? 'Domingo · dos servicios' : name}</legend>
-      <TextField label={`Nombre del servicio (${WEEKDAYS[weekday]})`} value={value.title} maxLength={120} onChange={(event) => onChange({ title: event.target.value })} />
       <div className={double ? 'grid grid-cols-2 gap-3' : ''}>
         {hour('time', double ? 'Hora de la mañana' : `Hora (${WEEKDAYS[weekday]})`)}
         {double && hour('time2', 'Hora de la tarde')}

@@ -22,13 +22,14 @@ const date = async (name: RegExp) => {
 }
 const posted = (calls: ReturnType<typeof stubApi>) => calls.filter((call) => call.init?.method === 'POST')
 
-test('offers the habitual dates with their hour and preloads title and hour for the chosen one', async () => {
+test('offers the habitual dates with their hour and preloads the hour for the chosen one, with no title to fill', async () => {
   stubApi({})
   form()
   expect(await date(/vie 13 nov\s*7:30 p\.m\./)).toBeTruthy()
   expect(screen.getByRole('button', { name: /dom 15 nov\s*10:00 a\.m\./ })).toBeTruthy()
   fireEvent.click(await date(/vie 13 nov/))
-  expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe('Servicio de viernes')
+  expect(screen.queryByLabelText('Título')).toBeNull()
+  expect(screen.queryByRole('group', { name: 'Estado' })).toBeNull()
   expect(screen.getByRole('button', { name: 'Hora de inicio: 7:30 p.m.' })).toBeTruthy()
 })
 
@@ -39,7 +40,6 @@ test('a full date is disabled and labelled, and a special date has no preloaded 
   expect((busy as HTMLButtonElement).disabled).toBe(true)
   fireEvent.click(screen.getByRole('button', { name: /Otra fecha/ }))
   fireEvent.change(screen.getByLabelText('Día del servicio'), { target: { value: '2026-11-17' } })
-  expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe('')
   expect(screen.getByRole('button', { name: 'Hora de inicio: Sin hora fija' })).toBeTruthy()
   fireEvent.change(screen.getByLabelText('Día del servicio'), { target: { value: '2026-11-13' } })
   expect(await screen.findByText('Fecha completa')).toBeTruthy()
@@ -63,11 +63,10 @@ test('creates the service for the active church with the chosen director and ret
   fireEvent.focus(director)
   fireEvent.change(director, { target: { value: 'luis' } })
   fireEvent.click(await screen.findByRole('option', { name: /Luis Herrera/ }))
-  fireEvent.click(screen.getByRole('button', { name: 'Publicado' }))
   fireEvent.click(screen.getByRole('button', { name: 'Crear servicio' }))
   expect(await screen.findByText('Calendario')).toBeTruthy()
   const [call] = posted(calls)
-  expect(JSON.parse(call.init!.body as string)).toEqual({ title: 'Servicio de viernes', date: '2026-11-13', status: 'PUBLISHED', directorId: 'p2', time: '19:30' })
+  expect(JSON.parse(call.init!.body as string)).toEqual({ title: 'Viernes 13', date: '2026-11-13', status: 'PUBLISHED', directorId: 'p2', time: '19:30' })
 })
 
 test('a double Sunday asks for the slot, disables the taken one and bounds the hour to it', async () => {
@@ -80,7 +79,6 @@ test('a double Sunday asks for the slot, disables the taken one and bounds the h
   const group = screen.getByRole('group', { name: 'Franja del domingo' })
   expect((within(group).getByRole('button', { name: /Mañana/ }) as HTMLButtonElement).disabled).toBe(true)
   expect(within(group).getByRole('button', { name: /Tarde/ }).getAttribute('aria-pressed')).toBe('true')
-  expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe('Culto de la tarde')
   fireEvent.click(screen.getByRole('button', { name: 'Hora de inicio: 5:00 p.m.' }))
   const wheel = await screen.findByRole('group', { name: 'Hora' })
   expect(within(wheel).queryByRole('option', { name: 'a.m.' })).toBeNull()
@@ -200,10 +198,10 @@ test('an existing name is not created again: the form asks for the full name or 
   expect(JSON.parse(String(posted(calls).find((call) => call.url === '/api/services')!.init!.body)).directorId).toBe('p1')
 })
 
-test('arrives with the date chosen from the calendar and its habitual title and hour', async () => {
+test('arrives with the date chosen from the calendar and its habitual hour', async () => {
   stubApi({})
   mount(<Routes><Route path="/servicios/nuevo" element={<ServiceFormPage />} /></Routes>, '/servicios/nuevo?fecha=2026-11-13')
-  await waitFor(() => expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe('Servicio de viernes'))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Hora de inicio: 7:30 p.m.' })).toBeTruthy())
   expect(screen.getByRole('button', { name: /vie 13 nov/ }).getAttribute('aria-pressed')).toBe('true')
 })
 

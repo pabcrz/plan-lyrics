@@ -89,6 +89,9 @@ test('an editor adds the preaching: preacher without account, topic, one passage
   fireEvent.change(dialog.getByLabelText('Tema'), { target: { value: '  La   gracia ' } })
   fireEvent.change(dialog.getByLabelText('Citas bíblicas'), { target: { value: 'Efesios 2:8\n\n  Tito   2:11 ' } })
   fireEvent.change(dialog.getByLabelText('Notas internas'), { target: { value: '- Uno\n- **Dos**' } })
+  // Las instrucciones de las notas van en lista, no en un párrafo.
+  expect(dialog.getByText('Empieza una línea con «- » para hacer una viñeta.').closest('li')).not.toBeNull()
+  expect(dialog.getByText(/Escribe \*\*así\*\* para negrita/)).toBeTruthy()
   fireEvent.click(dialog.getByRole('button', { name: 'Guardar predicación' }))
   await waitFor(() => expect(writes(calls)).toHaveLength(1))
   const [put] = writes(calls)

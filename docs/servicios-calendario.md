@@ -62,3 +62,11 @@ Acceso del superadministrador a una iglesia concreta; creación con estado compl
 ## Borrador del lote mensual (interfaz)
 
 El lote se crea en una sola operación atómica, así que lo armado (mes, días, personas y revisión) se guarda en el dispositivo (`localStorage`, por iglesia, hasta 14 días) y, si se cierra la pestaña o se pierde la conexión, la pantalla ofrece «Retomar borrador» o «Empezar de nuevo». Se borra al crear el lote. Los selectores del lote ofrecen solo a quienes dirigen (y, con predicación, solo a quienes predican); el servidor rechaza a cualquiera sin el rol.
+
+## Nombre y estado del servicio (simplificación)
+
+- **El nombre es solo la fecha** y se genera solo: «Viernes 27» (con dos servicios el domingo, «Domingo 29 mañana»). No se escribe, ni al crear (individual o en lote) ni al editar (se regenera al cambiar la fecha o la franja), y no lleva a nadie, así que nunca queda viejo. Los títulos por día de Ajustes ya no se muestran.
+- **La tarjeta cambia según quién mira** (`service-summary.ts`): administradores y editores ven todo (el tema o, sin tema, la fecha; quién dirige y quién predica; hora y setlist); quien solo está en el grupo de alabanza o dirige ve «Dirige X», la hora y el setlist; quien solo predica ve el tema, «Predica X» y la hora; con las dos funciones, todo. El perfil sale de las funciones de la persona vinculada a la cuenta. `GET /api/services` y `GET /api/me/agenda` traen `preaching {topic, preacher}` solo mientras la iglesia usa predicación (nunca notas ni citas).
+- **Sin estados que gestionar.** Un servicio creado queda publicado (`POST /api/services` sin `status` es `PUBLISHED`); no hay selector de borrador, publicado ni completado: los viewers ven todos los servicios y «Completado» no se marca a mano. Solo queda visible «Cancelado» en servicios que ya lo estaban, con «Reactivar servicio» en su edición; para quitar un servicio se usa «Eliminar servicio».
+- El aviso «Lo interno no se publica» se muestra una sola vez a quien edita y no vuelve.
+

@@ -1,6 +1,6 @@
 import { Icon, type IconName, type ServiceStatus } from '../ui'
 import { formatLongDay, monthCells, monthTitle } from './dates'
-import { status, statusText } from './service-ui'
+import { visibleStatus } from './service-ui'
 import type { ClosedDate, Service } from './model'
 
 const markerIcon: Record<ServiceStatus, IconName> = { draft: 'dash', published: 'dot', completed: 'check', cancelled: 'x' }
@@ -29,7 +29,7 @@ export function MonthGrid({ month, today, services, closed, canEdit, onOpen, onO
               <span className={date === today ? 'grid size-6 place-items-center rounded-full bg-accent text-on-accent' : ''}>{Number(date.slice(8))}</span>
               <span className="flex h-4 items-center gap-0.5" aria-hidden="true">
                 {off && <Icon name="ban" width={14} height={14} strokeWidth={2.25} className="text-text-2" />}
-                {day.map((service) => <Icon key={service.id} name={markerIcon[status(service.status)]} width={14} height={14} strokeWidth={2.25} className={markerColor[status(service.status)]} />)}
+                {day.map((service) => <Icon key={service.id} name={markerIcon[visibleStatus(service.status)]} width={14} height={14} strokeWidth={2.25} className={markerColor[visibleStatus(service.status)]} />)}
               </span>
             </>
           )
@@ -51,7 +51,7 @@ export function MonthGrid({ month, today, services, closed, canEdit, onOpen, onO
           }
           return day.length > 0 ? (
             <button key={date} type="button" aria-current={date === today ? 'date' : undefined} onClick={() => onOpen(day[0].id)}
-              aria-label={`${formatLongDay(date)}: ${day.map((service) => `${service.title}, ${statusText[status(service.status)]}`).join('; ')}`}
+              aria-label={`${formatLongDay(date)}: ${day.map((service) => `${service.title}${service.status === 'CANCELLED' ? ', cancelado' : ''}`).join('; ')}`}
               className={`${cell} cursor-pointer border-0 bg-surface-2 hover:bg-accent-soft`}>{body}</button>
           ) : (
             <div key={date} aria-current={date === today ? 'date' : undefined} className={`${cell} text-text-2`}>{body}</div>

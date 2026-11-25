@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { Avatar, Button, Icon, Notice, StatusChip, Toast, format12h, from24h, type ServiceStatus } from '../ui'
+import { Avatar, Button, Icon, Notice, StatusChip, Toast, format12h, from24h } from '../ui'
 import { AppShell } from '../calendar/AppShell'
 import { ChurchGate } from '../calendar/ChurchGate'
 import { ApiError, useServices } from '../calendar/api'
@@ -63,7 +63,7 @@ function Screen({ church }: { church: Church }) {
           <>
             <header className="grid justify-items-start gap-2">
               <div className="flex w-full items-center justify-between gap-3">
-                <StatusChip status={setlist.service.status.toLowerCase() as ServiceStatus} />
+                {setlist.service.status === 'CANCELLED' && <StatusChip status="cancelled" />}
                 {setlist.canEdit && <Button variant="secondary" onClick={() => setEditing(true)}><Icon name="edit" width={16} height={16} />Editar servicio</Button>}
               </div>
               {saved && <p role="status" className="m-0 text-[0.8125rem] font-medium text-pub-fg">Servicio actualizado</p>}
@@ -230,7 +230,7 @@ function SetlistSection({ setlist }: { setlist: Setlist }) {
             {canEdit && <p className="m-0 text-[0.8125rem] text-text-3">Arrastra el asa para reordenar. Con teclado, usa las flechas arriba y abajo sobre el asa.</p>}
           </>
         )}
-      <Notice title="Lo interno no se publica">Los tonos, el BPM y las notas son solo para el equipo. La vista pública muestra títulos y letras.</Notice>
+      {canEdit && <InternalNotice />}
       {notice && (
         <div className="fixed inset-x-0 bottom-24 z-40 mx-auto max-w-[480px] lg:max-w-[720px] px-4">
           <Toast message={notice.message} onUndo={notice.restore} onDismiss={() => setNotice(null)} />
@@ -246,4 +246,14 @@ function SetlistSection({ setlist }: { setlist: Setlist }) {
       )}
     </section>
   )
+}
+
+const SEEN = 'plan-lyrics.seen.internal-notice'
+
+/** Aviso de lo que no se publica: lo ven una sola vez quienes editan; después de la primera vista no vuelve, para no hacer ruido. */
+function InternalNotice() {
+  const [show] = useState(() => { try { return localStorage.getItem(SEEN) === null } catch { return false } })
+  useEffect(() => { try { localStorage.setItem(SEEN, '1') } catch { /* sin almacenamiento: no se vuelve a mostrar en esta sesión */ } }, [])
+  if (!show) return null
+  return <Notice title="Lo interno no se publica">Los tonos, el BPM y las notas son solo para el equipo. La vista pública muestra títulos y letras.</Notice>
 }

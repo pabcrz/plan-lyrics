@@ -19,6 +19,8 @@ export type Service = {
   director: { id: string; name: string } | null
   /** Canciones del setlist (sin contar los momentos). */
   songCount: number
+  /** Quién predica y el tema, solo si la iglesia usa predicación (nunca las notas ni las citas). */
+  preaching?: { topic: string; preacher: { id: string; name: string } | null } | null
 }
 
 /** Persona del directorio de la iglesia activa (lista). */

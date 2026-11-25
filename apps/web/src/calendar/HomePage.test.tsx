@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { HomePage } from './HomePage'
-import { church, mount, service, stubApi } from './test-utils'
+import { church, detail, mount, service, stubApi } from './test-utils'
 
 vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-ficticio' }), UserButton: () => <button>Cuenta</button> }))
 
@@ -21,10 +21,11 @@ test('lists the upcoming services as cards with date, time and director, soonest
   stubApi({ services })
   mount(<HomePage />)
   const card = await screen.findByRole('link', { name: /Servicio de viernes/ })
-  expect(within(card).getByText('Ana Ramírez')).toBeTruthy()
-  expect(within(card).getByText('Borrador')).toBeTruthy()
-  expect(within(card).getByText('4 canciones en el setlist')).toBeTruthy()
-  expect(within(screen.getByRole('link', { name: /Servicio de diciembre/ })).getByText('Setlist sin preparar')).toBeTruthy()
+  expect(within(card).getByText(/Dirige Ana Ramírez/)).toBeTruthy()
+  // Sin estados que gestionar: ningún servicio muestra «Borrador» ni «Publicado».
+  expect(within(card).queryByText('Borrador')).toBeNull()
+  expect(within(card).getByText(/4 canciones en el setlist/)).toBeTruthy()
+  expect(within(screen.getByRole('link', { name: /Servicio de diciembre/ })).getByText(/Setlist sin preparar/)).toBeTruthy()
   expect(screen.getByText('Próximos servicios')).toBeTruthy()
   expect(screen.getAllByRole('link', { name: /,/ }).map((item) => item.getAttribute('aria-label'))).toEqual([
     expect.stringContaining('Servicio de viernes'), expect.stringContaining('Viernes cancelado'), expect.stringContaining('Servicio de diciembre'),
@@ -41,8 +42,8 @@ test('the month grid is collapsed by default, marks every state in text, and ope
   fireEvent.click(toggle)
   expect(toggle.getAttribute('aria-expanded')).toBe('true')
   const grid = await screen.findByRole('group', { name: 'Días de Noviembre 2026' })
-  expect(within(grid).getByRole('button', { name: /13 de noviembre: Servicio de viernes, Borrador/ })).toBeTruthy()
-  expect(within(grid).getByRole('button', { name: /20 de noviembre: Viernes cancelado, Cancelado/ })).toBeTruthy()
+  expect(within(grid).getByRole('button', { name: /13 de noviembre: Servicio de viernes$/ })).toBeTruthy()
+  expect(within(grid).getByRole('button', { name: /20 de noviembre: Viernes cancelado, cancelado/ })).toBeTruthy()
   expect(grid.firstElementChild?.textContent).toContain('1') // 1 de noviembre de 2026 es domingo: abre la primera columna
 })
 
@@ -251,4 +252,32 @@ test('with several churches the upcoming list gathers all of them and opening on
   expect(localStorage.getItem('plan-lyrics.activeChurch')).toBe('c2')
   expect(calls.some((call) => call.url === '/api/me/agenda')).toBe(true)
   localStorage.clear()
+})
+
+const withPreaching = service({ id: 'p', date: '2026-11-13', title: 'Viernes 13', songCount: 6, preaching: { topic: 'El día de reposo', preacher: { id: 'p3', name: 'Fernando Maya' } } })
+const mine = (over: Record<string, unknown>) => detail({ id: 'me', name: 'Yo', isYou: true, canDirect: false, canPlay: false, canPreach: false, ...over })
+const preachingChurch = { ...church, usesPreaching: true }
+
+test('who administers sees the card complete: topic, who directs, who preaches, hour and setlist', async () => {
+  stubApi({ services: [withPreaching], church: preachingChurch })
+  mount(<HomePage />)
+  const card = await screen.findByRole('link', { name: /El día de reposo/ })
+  expect(within(card).getByText('Dirige Ana Ramírez · Predica Fernando Maya')).toBeTruthy()
+  expect(within(card).getByText(/7:30 p\.m\. · 6 canciones en el setlist/)).toBeTruthy()
+})
+
+test('a member of the worship group only sees who directs, when and the setlist', async () => {
+  stubApi({ services: [withPreaching], church: { ...preachingChurch, canEdit: false, canConfigure: false }, directory: [mine({ canPlay: true })] })
+  mount(<HomePage />)
+  const card = await screen.findByRole('link', { name: /Dirige Ana Ramírez/ })
+  expect(within(card).getByText('6 canciones en el setlist')).toBeTruthy()
+  expect(within(card).queryByText(/Fernando Maya|El día de reposo/)).toBeNull()
+})
+
+test('a member who only preaches sees the topic, who preaches and when, without the setlist', async () => {
+  stubApi({ services: [withPreaching], church: { ...preachingChurch, canEdit: false, canConfigure: false }, directory: [mine({ canPreach: true })] })
+  mount(<HomePage />)
+  const card = await screen.findByRole('link', { name: /El día de reposo/ })
+  expect(within(card).getByText('Predica Fernando Maya')).toBeTruthy()
+  expect(within(card).queryByText(/canciones|Ana Ramírez/)).toBeNull()
 })
