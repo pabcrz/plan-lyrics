@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { UserButton } from '@clerk/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Icon, Notice, Sheet, Switch, TextField } from '../ui'
-import { AccountsLink } from '../access/AccessLinks'
+import { AccountsLink, AllPeopleLink } from '../access/AccessLinks'
 import { useAccess } from '../access/access-api'
 import { ApiError, useApiFetch, useChurch, useMyChurches, useSwitchChurch } from './api'
 import type { Church } from './model'
@@ -123,6 +123,7 @@ export function ChurchGate({ children }: { children: (church: Church) => ReactNo
         {status === 404 && access.data?.owner && <CreateChurch />}
         {status === 404 && !access.data?.owner && <Notice title="Sin iglesia asignada">Tu cuenta todavía no pertenece a ninguna iglesia. Pide acceso a quien la administra.</Notice>}
         {status === 404 && <AccountsLink />}
+        {status === 404 && <AllPeopleLink />}
         {status === 409 && <Notice title="Elige una iglesia">Tu cuenta pertenece a más de una iglesia. Elige con cuál trabajar; puedes cambiarla después desde el nombre de la iglesia.</Notice>}
         {status === 409 && <ChurchList />}
         {church.isError && status !== 404 && status !== 409 && (

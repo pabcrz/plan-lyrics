@@ -15,3 +15,11 @@ export function AccessLink() {
   const navigate = useNavigate()
   return <Button variant="secondary" block onClick={() => void navigate('/accesos')}>Accesos de la iglesia<Icon name="right" /></Button>
 }
+
+/** Entrada a «Todas las personas»: solo el superadministrador (la API lo vuelve a comprobar). */
+export function AllPeopleLink() {
+  const navigate = useNavigate()
+  const access = useAccess()
+  if (!access.data?.owner) return null
+  return <Button variant="secondary" block onClick={() => void navigate('/todas-las-personas')}>Todas las personas<Icon name="right" /></Button>
+}

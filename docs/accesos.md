@@ -18,6 +18,12 @@ Implementa los [accesos acordados](producto.md#accesos-acordados) y el [alta de 
 
 Quien no tiene la capacidad recibe `404` genérico (no se revela que la ruta existe). Un gestor nunca ve ni toca la cuenta del superadministrador (`404`). `POST /api/users` (registro interno por `clerkSubject`) se mantiene sin cambios.
 
+### Todas las personas (solo superadministrador)
+
+Pantalla `/todas-las-personas` (botón «Todas las personas» junto a «Gestionar cuentas» en Ajustes): el directorio de toda la plataforma, con las iglesias de cada persona. Permite crear personas sin iglesia, editar su nombre, teléfono y correo (datos generales, iguales en todas sus iglesias) y asignarlas o quitarlas de cada iglesia, con sus grupos (alabanza, dirección, predicación) y, en alabanza, los roles de esa iglesia. Los administradores de iglesia no ven nada de esto.
+
+API, todo solo para el superadministrador (cualquier otra persona recibe el 404 genérico): `GET /api/platform/people`, `GET /api/platform/churches`, `POST /api/platform/people`, `PATCH /api/platform/people/:personId`, `PUT` y `DELETE /api/platform/people/:personId/churches/:churchId`. El nombre es único en toda la plataforma (`409 Name exists`). Asignar de nuevo a una iglesia de la que se quitó a la persona reactiva el enlace. Sacarla del grupo de alabanza mientras es habitual o está en una rotación se rechaza (`409 In use`). Pruebas: `apps/api/test/platform-people.integration.ts`.
+
 ### Puerto `IdentityProvider`
 
 `apps/api/src/identity-provider.ts` define `inviteByEmail(email) → { subject }`. La implementación de Clerk usa la Backend API con `CLERK_SECRET_KEY`: busca el usuario por correo (o lo crea sin contraseña) y crea la invitación con `notify`. Es idempotente ante reintentos. Los tests inyectan un doble; la clave nunca se lee ni se registra y los errores del proveedor no se reenvían (`502 Identity provider unavailable`). Sin `CLERK_SECRET_KEY` las rutas de invitación responden `503` y la API avisa al arrancar. No hay registro público: el modo **Invite-only** de Clerk sigue siendo un paso manual (ver [autenticación](autenticacion-api.md)).

@@ -18,7 +18,7 @@ const sectionOf = (pathname: string): Section | null =>
     : pathname.startsWith('/canciones') ? 'songs'
       : pathname.startsWith('/predicaciones') ? 'preaching'
         : pathname.startsWith('/personas') ? 'people' : null
-const SETTINGS = ['/ajustes', '/accesos', '/cuentas']
+const SETTINGS = ['/ajustes', '/accesos', '/cuentas', '/todas-las-personas']
 
 /**
  * Marco común de todas las pantallas de la aplicación en escritorio (≥1024 px, la frontera de `lg:`): la barra lateral con las secciones,

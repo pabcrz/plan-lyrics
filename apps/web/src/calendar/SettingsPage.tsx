@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Button, Field, Icon, Notice, Segmented, Sheet, Switch, TextField, TimeWheel, Toast, format12h, from24h, inputClass, to24h, type Time12 } from '../ui'
-import { AccessLink, AccountsLink } from '../access/AccessLinks'
+import { AccessLink, AccountsLink, AllPeopleLink } from '../access/AccessLinks'
 import { ChurchGate, PageHeader, TopBar } from './ChurchGate'
 import { ApiError, useSaveChurch } from './api'
 import type { Church, ChurchSettings, Slot, SongRepeat } from './model'
@@ -83,6 +83,7 @@ function ReadOnly({ church }: { church: Church }) {
         <Notice title="Solo lectura">Cambiar los ajustes requiere ser administrador de tu iglesia.</Notice>
         <ParticipationsLink />
         <AccountsLink />
+        <AllPeopleLink />
         <RolesSettings editable={false} />
       </div>
     </main>
@@ -165,6 +166,7 @@ function Settings({ church }: { church: Church }) {
           <ParticipationsLink />
           <AccessLink />
           <AccountsLink />
+        <AllPeopleLink />
         </div>
 
         <TextField label="Nombre de la iglesia" value={form.name} maxLength={120} onChange={(event) => change((prev) => ({ ...prev, name: event.target.value }))} error={errors.name} />
