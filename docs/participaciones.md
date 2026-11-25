@@ -64,5 +64,6 @@ Cada persona pertenece, **por iglesia** y de forma independiente, a hasta tres g
 - **Salir del grupo** (`PATCH /api/people/:id {canPlay: false}`) le quita los roles; se rechaza con `409 In use` mientras siga como habitual o en la rotación de alguno de ellos.
 - `GET /api/people?role=play|direct|preach` filtra por grupo; la lista de Personas tiene los filtros Todas / Alabanza / Dirección / Predicación con su conteo, y cada fila muestra los roles musicales y las demás funciones.
 - El equipo de un rol («Administrar equipo») solo ofrece a quienes están en el grupo de alabanza.
+- **Alta con roles y «Gestionar».** En «Persona nueva», al activar «Grupo de alabanza» quien administra marca sus roles musicales en ese momento (el alta guarda la persona y luego `PUT /roles`). Con un filtro de grupo elegido, quien edita ve «Gestionar grupo de alabanza», «Gestionar directores» o «Gestionar predicadores»: una hoja para agregar y quitar personas del grupo y, en alabanza, quien administra edita los roles de cada integrante. Sacar a alguien de alabanza mientras es habitual o está en una rotación se rechaza (`409 In use`).
 - Migración `20261126120000_church_person_can_play`: quien ya tenía roles musicales queda en el grupo; el resto se marca desde su ficha. Las personas nuevas empiezan sin ningún grupo.
 

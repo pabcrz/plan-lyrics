@@ -117,12 +117,12 @@ export function usePersonActions() {
   const api = useApiFetch()
   const client = useQueryClient()
   const refresh = useCallback(() => Promise.all([client.invalidateQueries({ queryKey: ['people'] }), client.invalidateQueries({ queryKey: ['person'] })]), [client])
-  const create = useCallback(async (person: { name: string; phone?: string; email?: string; canDirect?: boolean; canPreach?: boolean }) => {
+  const create = useCallback(async (person: { name: string; phone?: string; email?: string; canDirect?: boolean; canPreach?: boolean; canPlay?: boolean }) => {
     const created = await api<Omit<PersonDetail, 'sharedWithOtherChurches' | 'upcomingServices'>>('/api/people', { method: 'POST', body: person })
     await refresh()
     return created
   }, [api, refresh])
-  const update = useCallback(async (id: string, patch: { name?: string; phone?: string | null; email?: string | null; canDirect?: boolean; canPreach?: boolean }) => {
+  const update = useCallback(async (id: string, patch: { name?: string; phone?: string | null; email?: string | null; canDirect?: boolean; canPreach?: boolean; canPlay?: boolean }) => {
     const saved = await api<Omit<PersonDetail, 'sharedWithOtherChurches' | 'upcomingServices'>>(`/api/people/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
     await refresh()
     return saved

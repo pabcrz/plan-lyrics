@@ -7,6 +7,7 @@ import { useRoles } from '../calendar/roles-api'
 import type { Church, PersonDetail } from '../calendar/model'
 import { PersonRoles, rolesText, type RoleFlags } from '../calendar/PersonRoles'
 import { AccessSection } from './AccessSection'
+import { RoleChips, toggled } from './RoleChips'
 import { PhoneField, phoneDigits, phoneError, phoneStored } from './phone'
 
 export function PersonPage() {
@@ -221,7 +222,7 @@ function RolesSection({ church, person }: { church: Church; person: PersonDetail
   const [done, setDone] = useState(false)
   const catalog = roles.data ?? []
   const dirty = chosen.length !== saved.length || chosen.some((id) => !saved.includes(id))
-  const toggle = (id: string) => { setChosen((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])); setDone(false) }
+  const toggle = (id: string) => { setChosen((current) => toggled(current, id)); setDone(false) }
 
   async function save() {
     setSending(true)
@@ -245,14 +246,7 @@ function RolesSection({ church, person }: { church: Church; person: PersonDetail
       {roles.data && catalog.length === 0 && <p className="m-0 text-[0.9375rem] text-text-2">La iglesia aún no tiene roles musicales.</p>}
       {roles.data && catalog.length > 0 && (church.canConfigure ? (
         <>
-          <div role="group" aria-label="Roles de la persona" className="flex flex-wrap gap-2">
-            {catalog.map((role) => (
-              <button key={role.id} type="button" aria-pressed={chosen.includes(role.id)} onClick={() => toggle(role.id)}
-                className="min-h-touch cursor-pointer rounded-full border border-line-strong bg-surface px-4 text-[0.9375rem] font-semibold aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent">
-                {role.name}
-              </button>
-            ))}
-          </div>
+          <RoleChips roles={catalog} chosen={chosen} onToggle={toggle} label="Roles de la persona" />
           <p className="m-0 text-[0.8125rem] text-text-3">Solo puede tener, o recibir en un servicio, los roles marcados. Dirigir no depende de esto.</p>
           {done && <p role="status" className="m-0 flex items-center gap-1.5 text-[0.8125rem] font-medium text-pub-fg"><Icon name="check" width={16} height={16} />Roles guardados</p>}
           {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}

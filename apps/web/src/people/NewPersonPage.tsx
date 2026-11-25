@@ -7,6 +7,8 @@ import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
 import { ApiError, usePersonActions } from '../calendar/api'
 import type { Church } from '../calendar/model'
 import { PersonRoles, type RoleFlags } from '../calendar/PersonRoles'
+import { useRoles } from '../calendar/roles-api'
+import { RoleChips, toggled } from './RoleChips'
 import { PhoneField, phoneError, phoneStored } from './phone'
 
 export function NewPersonPage() {
@@ -25,7 +27,9 @@ function ReadOnly({ church }: { church: Church }) {
 
 function Form({ church }: { church: Church }) {
   const navigate = useNavigate()
-  const { create } = usePersonActions()
+  const { create, setRoles } = usePersonActions()
+  const roles = useRoles()
+  const [roleIds, setRoleIds] = useState<string[]>([])
   const { invite } = useMemberActions()
   const [inviting, setInviting] = useState(false)
   const [role, setRole] = useState<Role>('MEMBER')
@@ -50,6 +54,10 @@ function Form({ church }: { church: Church }) {
     setFailure('')
     try {
       const person = created ? { id: created } : await create({ name: name.trim(), ...(phone ? { phone: phoneStored(phone) as string } : {}), ...(email.trim() ? { email: email.trim() } : {}), ...jobs })
+      if (roleIds.length > 0 && !created) {
+        setCreated(person.id)
+        try { await setRoles(person.id, roleIds) } catch { setFailure('La persona ya quedó registrada, pero no se pudieron guardar sus roles. Asígnalos desde su ficha.'); setSending(false); return }
+      }
       if (inviting) {
         setCreated(person.id)
         try { await invite(person.id, role) } catch (caught) { setFailure(`${memberFailure(caught)} La persona ya quedó registrada: puedes reintentar o abrir su ficha.`); setSending(false); return }
@@ -82,7 +90,11 @@ function Form({ church }: { church: Church }) {
         )}
         <PhoneField value={phone} error={phoneProblem || undefined} onChange={(digits) => { setPhone(digits); setPhoneError('') }} />
         <TextField label={inviting ? 'Correo (con el que entrará a la app)' : 'Correo (opcional)'} type="email" inputMode="email" autoComplete="off" value={email} maxLength={254} onChange={(event) => setEmail(event.target.value)} />
-        <PersonRoles value={jobs} onChange={setJobs} showPreach={church.usesPreaching} />
+        <PersonRoles value={jobs} onChange={(next) => { setJobs(next); if (!next.canPlay) setRoleIds([]) }} showPreach={church.usesPreaching} disabled={created !== null} />
+        {jobs.canPlay && church.canConfigure && (roles.data?.length ?? 0) > 0 && (
+          <RoleChips roles={roles.data ?? []} chosen={roleIds} onToggle={(id) => setRoleIds((current) => toggled(current, id))} label="Roles de la persona" disabled={created !== null} />
+        )}
+        {jobs.canPlay && church.canConfigure && roles.data?.length === 0 && <p className="m-0 text-[0.8125rem] text-text-3">Crea los roles en Ajustes para poder asignarlos.</p>}
         <p className="m-0 text-[0.8125rem] text-text-3">El nombre, el teléfono y el correo son información general: se ven en todas las iglesias donde participe. Sus roles y turnos se configuran en cada iglesia.</p>
         {church.canConfigure && (
           <div className="grid gap-3 rounded-lg border border-line p-3">
