@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 import type { PrismaClient } from './generated/prisma/client.ts'
 import { accountRoutes } from './accounts.js'
+import { platformPeopleRoutes } from './platform-people.js'
 import { createChurch, myChurches, newChurchBody, readChurch } from './church-access.js'
 import { safeErrorCode } from './errors.js'
 import type { IdentityProvider } from './identity-provider.js'
@@ -109,6 +110,7 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
     }
   })
   app.route('/', accountRoutes(config, database, options.identity))
+  app.route('/', platformPeopleRoutes(config, database))
   app.route('/', memberRoutes(config, database, options.identity))
   app.route('/', serviceRoutes(config, database, now))
   app.route('/', roleRoutes(config, database, now))

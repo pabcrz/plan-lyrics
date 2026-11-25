@@ -28,3 +28,10 @@ export const newPersonBody = z.strictObject({ name, phone: phone.optional(), ema
 export const personPatch = z.strictObject({ name: name.optional(), phone: phone.nullable().optional(), email: email.nullable().optional(), ...roles })
   .refine(body => Object.values(body).some(value => value !== undefined))
 export const peopleRoleQuery = z.enum(['direct', 'preach', 'play'])
+
+// Superadministrador: datos generales de una persona (sin iglesia) y su enlace con una iglesia.
+export const platformPersonBody = z.strictObject({ name, phone: phone.optional(), email: email.optional() })
+export const platformPersonPatch = z.strictObject({ name: name.optional(), phone: phone.nullable().optional(), email: email.nullable().optional() }).refine(body => Object.values(body).some(value => value !== undefined))
+// Los roles musicales solo existen para quien está en el grupo de alabanza.
+export const platformLinkBody = z.strictObject({ canPlay: z.boolean(), canDirect: z.boolean(), canPreach: z.boolean(), roleIds: personRolesBody.shape.roleIds })
+  .refine(body => body.roleIds.length === 0 || body.canPlay)
