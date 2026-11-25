@@ -24,27 +24,35 @@ function open(reply: { status: number; body?: unknown } = { status: 200, body: {
 }
 const patches = (calls: Array<{ method: string; url: string; body?: unknown }>) => calls.filter((call) => call.method === 'PATCH')
 
-test('saving needs a change, and only what changed is sent: title, director and status', async () => {
+test('there is no title or status to manage: a new director renames the service on its own and only what changed is sent', async () => {
   const { calls, onSaved } = open()
   const save = await screen.findByRole('button', { name: 'Guardar cambios' })
   expect((save as HTMLButtonElement).disabled).toBe(true)
-  fireEvent.change(screen.getByLabelText('Título'), { target: { value: ' Servicio de gracias ' } })
+  expect(screen.queryByLabelText('Título')).toBeNull()
+  expect(screen.queryByRole('group', { name: 'Estado' })).toBeNull()
   fireEvent.click(await screen.findByRole('button', { name: /Luis Herrera/ }))
-  fireEvent.click(screen.getByRole('button', { name: 'Publicado' }))
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  expect(patches(calls)).toEqual([{ method: 'PATCH', url: '/api/services/s1', body: { title: 'Servicio de gracias', status: 'PUBLISHED', directorId: 'p2' } }])
+  expect(patches(calls)).toEqual([{ method: 'PATCH', url: '/api/services/s1', body: { title: 'Domingo 22 - Luis', directorId: 'p2' } }])
 })
 
-test('the date and an empty hour are sent; the slot only appears on a double Sunday', async () => {
+test('the date and an empty hour are sent, and the name follows the new date; the slot only appears on a double Sunday', async () => {
   const { calls, onSaved } = open({ status: 200, body: {} }, { sundayDouble: true })
   expect(await screen.findByRole('group', { name: 'Franja' })).toBeTruthy()
   fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-11-27' } })
   expect(screen.queryByRole('group', { name: 'Franja' })).toBeNull()
   fireEvent.change(screen.getByLabelText('Hora de inicio'), { target: { value: '' } })
+  await screen.findByRole('button', { name: /Ana Ramírez/ })
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  expect(patches(calls)[0]?.body).toEqual({ date: '2026-11-27', time: null })
+  expect(patches(calls)[0]?.body).toEqual({ title: 'Viernes 27 - Ana', date: '2026-11-27', time: null })
+})
+
+test('a service cancelled before can be reactivated, which is the only status left to manage', async () => {
+  const { calls, onSaved } = open({ status: 200, body: {} }, {}, { ...service, status: 'CANCELLED' as never })
+  fireEvent.click(await screen.findByRole('button', { name: 'Reactivar servicio' }))
+  await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(patches(calls)).toEqual([{ method: 'PATCH', url: '/api/services/s1', body: { status: 'PUBLISHED' } }])
 })
 
 test('a refused change explains why and keeps the sheet open', async () => {

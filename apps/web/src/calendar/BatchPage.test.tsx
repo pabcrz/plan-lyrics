@@ -68,7 +68,7 @@ test('the period offers the current and next months, up to three weekdays, and p
   expect(await screen.findByRole('radio', { name: /Noviembre 2026\s*Desde hoy, inclusive/ })).toBeTruthy()
   expect(screen.getByRole('radio', { name: /Diciembre 2026/ })).toBeTruthy()
   expect(screen.getByRole('radio', { name: /Enero 2027/ })).toBeTruthy()
-  expect((screen.getByLabelText('Nombre del servicio (viernes)') as HTMLInputElement).value).toBe('Servicio de viernes')
+  expect(screen.queryByLabelText('Nombre del servicio (viernes)')).toBeNull()
   expect(screen.getByRole('button', { name: 'Hora (viernes): 7:30 p.m.' })).toBeTruthy()
   await screen.findByText('2 fechas disponibles · viernes')
   expect(calls.some((call) => call.url === '/api/service-batches/period?month=2026-11&weekdays=5')).toBe(true)
@@ -101,16 +101,6 @@ test('a period without free dates cannot continue', async () => {
   expect((screen.getByRole('button', { name: 'Continuar con directores' }) as HTMLButtonElement).disabled).toBe(true)
 })
 
-test('asks for the service name before continuing', async () => {
-  stubApi({ period: period(fridays('13')) })
-  page()
-  await screen.findByText('1 fecha disponible · viernes')
-  fireEvent.change(screen.getByLabelText('Nombre del servicio (viernes)'), { target: { value: '  ' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Continuar con directores' }))
-  expect(await screen.findByText('Escribe el nombre del servicio.')).toBeTruthy()
-  expect(screen.queryByRole('button', { name: 'Revisar' })).toBeNull()
-})
-
 test('does not pass to the review without at least one director', async () => {
   stubApi({ period: period(fridays('13', '20')), directory: people })
   page()
@@ -136,9 +126,9 @@ test('repeats the list until every free date has a director, and creates the rev
   expect(sent(calls)).toEqual({
     month: '2026-11', directorIds: ['p1', 'p2'],
     entries: [
-      { date: '2026-11-13', title: 'Servicio de viernes', time: '19:30', directorId: 'p1' },
-      { date: '2026-11-20', title: 'Servicio de viernes', time: '19:30', directorId: 'p2' },
-      { date: '2026-11-27', title: 'Servicio de viernes', time: '19:30', directorId: 'p1' },
+      { date: '2026-11-13', title: 'Viernes 13 - Ana', time: '19:30', directorId: 'p1' },
+      { date: '2026-11-20', title: 'Viernes 20 - Luis', time: '19:30', directorId: 'p2' },
+      { date: '2026-11-27', title: 'Viernes 27 - Ana', time: '19:30', directorId: 'p1' },
     ],
   })
   expect(screen.getByText(/Quedaron como borrador/)).toBeTruthy()
@@ -271,8 +261,8 @@ test('a double Sunday asks for both hours, shows two entries and sends each slot
   fireEvent.click(screen.getByRole('button', { name: 'Crear 2 servicios' }))
   await screen.findByText('2 servicios creados')
   expect(sent(calls).entries).toEqual([
-    { date: '2026-11-15', title: 'Culto de la mañana', time: '09:00', directorId: 'p1', slot: 'MORNING' },
-    { date: '2026-11-15', title: 'Culto de la mañana', time: '17:00', directorId: 'p2', slot: 'AFTERNOON' },
+    { date: '2026-11-15', title: 'Domingo 15 mañana - Ana', time: '09:00', directorId: 'p1', slot: 'MORNING' },
+    { date: '2026-11-15', title: 'Domingo 15 tarde - Luis', time: '17:00', directorId: 'p2', slot: 'AFTERNOON' },
   ])
 })
 

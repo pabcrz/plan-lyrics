@@ -22,7 +22,8 @@ test('lists the upcoming services as cards with date, time and director, soonest
   mount(<HomePage />)
   const card = await screen.findByRole('link', { name: /Servicio de viernes/ })
   expect(within(card).getByText('Ana Ramírez')).toBeTruthy()
-  expect(within(card).getByText('Borrador')).toBeTruthy()
+  // Sin estados que gestionar: ningún servicio muestra «Borrador» ni «Publicado».
+  expect(within(card).queryByText('Borrador')).toBeNull()
   expect(within(card).getByText('4 canciones en el setlist')).toBeTruthy()
   expect(within(screen.getByRole('link', { name: /Servicio de diciembre/ })).getByText('Setlist sin preparar')).toBeTruthy()
   expect(screen.getByText('Próximos servicios')).toBeTruthy()
@@ -41,8 +42,8 @@ test('the month grid is collapsed by default, marks every state in text, and ope
   fireEvent.click(toggle)
   expect(toggle.getAttribute('aria-expanded')).toBe('true')
   const grid = await screen.findByRole('group', { name: 'Días de Noviembre 2026' })
-  expect(within(grid).getByRole('button', { name: /13 de noviembre: Servicio de viernes, Borrador/ })).toBeTruthy()
-  expect(within(grid).getByRole('button', { name: /20 de noviembre: Viernes cancelado, Cancelado/ })).toBeTruthy()
+  expect(within(grid).getByRole('button', { name: /13 de noviembre: Servicio de viernes$/ })).toBeTruthy()
+  expect(within(grid).getByRole('button', { name: /20 de noviembre: Viernes cancelado, cancelado/ })).toBeTruthy()
   expect(grid.firstElementChild?.textContent).toContain('1') // 1 de noviembre de 2026 es domingo: abre la primera columna
 })
 

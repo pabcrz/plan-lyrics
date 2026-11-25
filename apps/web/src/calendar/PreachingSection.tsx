@@ -155,7 +155,17 @@ function EditBody({ service, data, onClose, onDone }: { service: Service; data: 
       <TextArea label="Citas bíblicas" rows={3} value={form.passages} error={issues.passages} onChange={(event) => change({ passages: event.target.value })}
         help="Una cita por línea, por ejemplo «Hebreos 11:1-6». Se muestran tal como las escribes." />
       <TextArea label="Notas internas" rows={6} value={form.notes} error={issues.notes} onChange={(event) => change({ notes: event.target.value })}
-        help="Puntos a considerar. Empieza una línea con «- » para una viñeta; usa **negrita** y __subrayado__. Solo las ven quienes administran o editan servicios y el predicador asignado con cuenta." />
+        help={(
+          <span className="grid gap-1">
+            <span>Puntos a considerar para el predicador y el equipo:</span>
+            <ul className="m-0 grid list-disc gap-0.5 pl-5">
+              <li>Empieza una línea con «- » para hacer una viñeta.</li>
+              <li>Escribe **así** para negrita.</li>
+              <li>Escribe __así__ para subrayado.</li>
+              <li>Solo las ven quienes administran o editan servicios y el predicador asignado, si tiene cuenta.</li>
+            </ul>
+          </span>
+        )} />
       {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
       <Button variant="primary" block loading={sending} disabled={invalid} onClick={() => void submit()}>Guardar predicación</Button>
       <Button variant="quiet" block onClick={onClose}>Cancelar</Button>

@@ -9,7 +9,8 @@ export const newServiceBody = z.strictObject({
   date: isoDate,
   slot: z.enum(['MORNING', 'AFTERNOON']).optional(),
   time: z.string().regex(hhmm).nullish(),
-  status: z.enum(['DRAFT', 'PUBLISHED']),
+  // Services are not managed by status: a new one is published unless the client says otherwise.
+  status: z.enum(['DRAFT', 'PUBLISHED']).default('PUBLISHED'),
   directorId: z.string().trim().min(1).max(64).optional(),
   // The topic is cleaned and capped by the route (preaching-rules imports this file, so it cannot be imported here).
   preacher: z.strictObject({ personId: z.string().trim().min(1).max(64), topic: z.string().max(2000).optional() }).optional(),

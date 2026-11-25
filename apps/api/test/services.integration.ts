@@ -243,3 +243,9 @@ test('deleting a service needs a session and an editor, and frees its date', asy
   expect(await db.service.count({ where: { id } })).toBe(0)
   expect((await create('editor', friday)).status).toBe(201)
 })
+
+test('a service created without a status is published: statuses are not managed when creating', async () => {
+  const created = await create('editor', { title: 'Viernes 27 - Ana', date: '2026-12-04', time: '19:30', directorId: 'person-a' })
+  expect(created.status).toBe(201)
+  expect(await created.json()).toMatchObject({ title: 'Viernes 27 - Ana', status: 'PUBLISHED' })
+})

@@ -10,7 +10,7 @@ import { DaySheet } from './DaySheet'
 import { MonthGrid, closedOn } from './MonthGrid'
 import { useAgenda, useApiFetch, useClosedDates, useMyChurches, useServices, useSwitchChurch, type AgendaService } from './api'
 import { formatDay, formatLongDay, monthOf, monthTitle, shiftMonth, todayIn } from './dates'
-import { slotText, status, timeText } from './service-ui'
+import { slotText, timeText } from './service-ui'
 import type { Church, ClosedDate, Service } from './model'
 
 // Cuántos servicios próximos muestra el panel del mes en curso; el calendario llega a cualquier otro mes.
@@ -169,7 +169,7 @@ function ServiceCard({ service, church }: { service: Service; church?: { id: str
         <b className="font-display text-[1.0625rem] leading-snug">{service.title}</b>
         <span className="text-sm text-text-2">{timeText(service.time)}{slotText[service.slot]} · {service.director ? <>Dirige <b className="font-semibold text-text">{service.director.name}</b></> : 'Sin director'}</span>
         <span className="text-sm text-text-2">{service.songCount === 0 ? 'Setlist sin preparar' : `${service.songCount} ${service.songCount === 1 ? 'canción' : 'canciones'} en el setlist`}</span>
-        <StatusChip status={status(service.status)} className="mt-1.5 w-fit" />
+        {service.status === 'CANCELLED' && <StatusChip status="cancelled" className="mt-1.5 w-fit" />}
       </span>
       <Icon name="right" className="flex-none text-text-3" />
     </Link>

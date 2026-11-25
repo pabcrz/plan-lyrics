@@ -19,7 +19,8 @@ test('shows the saved settings and keeps save disabled until something changes',
   expect(((await screen.findByLabelText('Nombre de la iglesia')) as HTMLInputElement).value).toBe('Betel')
   expect(day('viernes').getAttribute('aria-pressed')).toBe('true')
   expect(day('lunes').getAttribute('aria-pressed')).toBe('false')
-  expect((screen.getByLabelText('Título · viernes') as HTMLInputElement).value).toBe('Servicio de viernes')
+  // El nombre de cada servicio se genera solo: ya no hay título que llenar.
+  expect(screen.queryByLabelText('Título · viernes')).toBeNull()
   expect(screen.getByRole('button', { name: 'Hora viernes: 7:30 p.m.' })).toBeTruthy()
   expect(screen.getByRole('switch', { name: 'Usa predicación' }).getAttribute('aria-checked')).toBe('false')
   expect(save().disabled).toBe(true)
@@ -72,10 +73,8 @@ test('shows errors next to the field and sends nothing when invalid', async () =
   const calls = stubApi({})
   page()
   fireEvent.change(await screen.findByLabelText('Nombre de la iglesia'), { target: { value: ' ' } })
-  fireEvent.change(screen.getByLabelText('Título · viernes'), { target: { value: '' } })
   fireEvent.click(save())
   expect(await screen.findByText('Escribe el nombre de la iglesia.')).toBeTruthy()
-  expect(screen.getByText('Escribe un título.')).toBeTruthy()
   expect(screen.getByLabelText('Nombre de la iglesia').getAttribute('aria-invalid')).toBe('true')
   fireEvent.click(day('viernes'))
   fireEvent.click(day('domingo'))
@@ -88,9 +87,9 @@ test('the double Sunday shows a morning and an afternoon card and saves both slo
   const calls = stubApi({})
   page()
   fireEvent.click(await screen.findByRole('switch', { name: 'Dos servicios los domingos' }))
-  expect(screen.getByLabelText('Título · domingo por la mañana')).toBeTruthy()
-  expect(screen.getByLabelText('Título · domingo por la tarde')).toBeTruthy()
-  expect(screen.queryByLabelText('Título · domingo')).toBeNull()
+  expect(screen.getByLabelText('Hora · domingo por la mañana')).toBeTruthy()
+  expect(screen.getByLabelText('Hora · domingo por la tarde')).toBeTruthy()
+  expect(screen.queryByLabelText('Hora · domingo')).toBeNull()
   fireEvent.click(save())
   await screen.findByText('Cambios guardados')
   expect(sent(calls)).toMatchObject({
@@ -120,11 +119,11 @@ test('the hour opens the wheel and the chosen time is saved', async () => {
 })
 
 test('server field errors appear next to the field', async () => {
-  stubApi({ save: () => ({ status: 400, body: { error: 'Invalid request', issues: ['days.5.SINGLE.title'] } }) })
+  stubApi({ save: () => ({ status: 400, body: { error: 'Invalid request', issues: ['days.5.SINGLE.time'] } }) })
   page()
-  fireEvent.change(await screen.findByLabelText('Título · viernes'), { target: { value: 'Otro' } })
+  fireEvent.change(await screen.findByLabelText('Nombre de la iglesia'), { target: { value: 'Otra Betel' } })
   fireEvent.click(save())
-  expect(await screen.findByText('Escribe un título.')).toBeTruthy()
+  expect(await screen.findByText('La hora no es válida para esta franja.')).toBeTruthy()
   expect(screen.getByText(/No se pudieron guardar/)).toBeTruthy()
 })
 

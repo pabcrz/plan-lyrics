@@ -195,7 +195,6 @@ function Settings({ church }: { church: Church }) {
               const name = `${DAY_NAMES[weekday]}${slotText[slot]}`
               return (
                 <div key={slot} className="grid gap-3">
-                  <TextField label={`Título · ${name}`} value={entry.title} maxLength={120} onChange={(event) => setEntry(weekday, slot, { title: event.target.value })} error={errors[`days.${weekday}.${slot}.title`]} />
                   <Field label={`Hora · ${name}`} error={errors[`days.${weekday}.${slot}.time`]}>
                     {(control) => (
                       <button type="button" {...control} className={`${inputClass} cursor-pointer text-left`} aria-label={`Hora ${name}: ${format12h(from24h(entry.time))}`}

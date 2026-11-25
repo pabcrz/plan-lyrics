@@ -62,3 +62,10 @@ Acceso del superadministrador a una iglesia concreta; creación con estado compl
 ## Borrador del lote mensual (interfaz)
 
 El lote se crea en una sola operación atómica, así que lo armado (mes, días, personas y revisión) se guarda en el dispositivo (`localStorage`, por iglesia, hasta 14 días) y, si se cierra la pestaña o se pierde la conexión, la pantalla ofrece «Retomar borrador» o «Empezar de nuevo». Se borra al crear el lote. Los selectores del lote ofrecen solo a quienes dirigen (y, con predicación, solo a quienes predican); el servidor rechaza a cualquiera sin el rol.
+
+## Nombre y estado del servicio (simplificación)
+
+- **El nombre se genera solo** con la fecha y quien dirige: «Viernes 27 - Jairo» (primer nombre; con dos servicios el domingo lleva la franja: «Domingo 29 mañana - Jairo»; sin dirección, el de quien predica; sin ninguno, solo la fecha). No se escribe: ni al crear (individual o en lote) ni al editar, donde se regenera al cambiar la fecha, la franja o la dirección. Los títulos por día de Ajustes ya no se muestran.
+- **Sin estados que gestionar.** Un servicio creado queda publicado (`POST /api/services` sin `status` es `PUBLISHED`); no hay selector de borrador, publicado ni completado: los viewers ven todos los servicios y «Completado» no se marca a mano. Solo queda visible «Cancelado» en servicios que ya lo estaban, con «Reactivar servicio» en su edición; para quitar un servicio se usa «Eliminar servicio».
+- El aviso «Lo interno no se publica» se muestra una sola vez a quien edita y no vuelve.
+
