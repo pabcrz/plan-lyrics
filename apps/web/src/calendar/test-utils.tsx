@@ -30,7 +30,7 @@ type Handler =(url: string, init?: RequestInit) => { status?: number; body?: unk
 
 /** Doble de fetch por ruta; devuelve las peticiones hechas para poder inspeccionarlas. */
 export const detail = (over: Partial<PersonDetail> = {}): PersonDetail => ({
-  id: 'p1', name: 'Ana Ramírez', phone: null, email: null, hasAccount: false, isYou: false, roleIds: defaultRoles.map((role) => role.id), canDirect: true, canPreach: true, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
+  id: 'p1', name: 'Ana Ramírez', phone: null, email: null, hasAccount: false, isYou: false, roleIds: defaultRoles.map((role) => role.id), canDirect: true, canPreach: true, canPlay: true, sharedWithOtherChurches: false, upcomingServices: 0, ...over,
 })
 
 export function stubApi(routes: {
@@ -175,8 +175,8 @@ export function stubApi(routes: {
     }
     if (url === '/api/people' || url.startsWith('/api/people?')) {
       const role = new URL(url, 'http://local').searchParams.get('role')
-      const list = (routes.directory ?? people.map((person) => detail(person))).filter((person) => (role === 'direct' ? person.canDirect : role === 'preach' ? person.canPreach : true))
-      return reply(200, list.map(({ id, name, hasAccount, isYou, roleIds, canDirect, canPreach }) => ({ id, name, hasAccount, isYou, roleIds, canDirect, canPreach })))
+      const list = (routes.directory ?? people.map((person) => detail(person))).filter((person) => (role === 'direct' ? person.canDirect : role === 'preach' ? person.canPreach : role === 'play' ? person.canPlay : true))
+      return reply(200, list.map(({ id, name, hasAccount, isYou, roleIds, canDirect, canPreach, canPlay }) => ({ id, name, hasAccount, isYou, roleIds, canDirect, canPreach, canPlay })))
     }
     if (url === '/api/members' && init?.method !== 'POST') return reply(200, { members: routes.members ?? [], candidates: [] })
     if (/^\/api\/people\/[^/]+\/invite$/.test(url) && init?.method === 'POST') {

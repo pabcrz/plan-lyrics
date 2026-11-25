@@ -99,7 +99,7 @@ export function useSaveChurch() {
 }
 
 /** Directorio de la iglesia; con `role` solo quienes pueden dirigir o predicar. */
-export function usePeople(enabled: boolean, role?: 'direct' | 'preach') {
+export function usePeople(enabled: boolean, role?: 'direct' | 'preach' | 'play') {
   const api = useApiFetch()
   return useQuery({ queryKey: role ? ['people', role] : ['people'], queryFn: () => api<Person[]>(`/api/people${role ? `?role=${role}` : ''}`), enabled, retry: false })
 }

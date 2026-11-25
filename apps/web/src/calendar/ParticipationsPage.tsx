@@ -327,7 +327,8 @@ function TeamSheet({ open, onClose, roleId, roleName, everyone, locked }: {
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
         {adding ? (
           <>
-            <PersonList people={everyone.filter((person) => !person.roleIds.includes(roleId))} empty="Todas las personas del directorio ya están en el equipo. Las nuevas se dan de alta en Personas."
+            <p className="m-0 text-[0.8125rem] text-text-3">Solo aparecen quienes están en el grupo de alabanza; se marca en la ficha de cada persona.</p>
+            <PersonList people={everyone.filter((person) => person.canPlay && !person.roleIds.includes(roleId))} empty="Nadie más del grupo de alabanza falta aquí. Para sumar a otra persona, actívala en «Grupo de alabanza» desde su ficha."
               onSelect={(person) => void change(person, [...person.roleIds, roleId], 'No se pudo agregar al equipo. Inténtalo de nuevo.')} />
             <Button variant="quiet" block onClick={() => setAdding(false)}>Volver al equipo</Button>
           </>

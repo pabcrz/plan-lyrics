@@ -61,10 +61,10 @@ const present = (row: Row) => ({
 
 const personSelect = { id: true, name: true, phone: true, email: true, userId: true } as const
 // `roleIds` are the musical roles the person may hold; `canDirect`/`canPreach` say who the director and preacher pickers offer.
-type Link = { roleIds: string[]; canDirect: boolean; canPreach: boolean }
-const linkSelect = { roleIds: true, canDirect: true, canPreach: true } as const
+type Link = { roleIds: string[]; canDirect: boolean; canPreach: boolean; canPlay: boolean }
+const linkSelect = { roleIds: true, canDirect: true, canPreach: true, canPlay: true } as const
 const presentPerson = (person: { id: string; name: string; phone: string | null; email: string | null; userId: string | null }, link: Link) =>
-  ({ id: person.id, name: person.name, phone: person.phone, email: person.email, hasAccount: person.userId !== null, roleIds: link.roleIds, canDirect: link.canDirect, canPreach: link.canPreach })
+  ({ id: person.id, name: person.name, phone: person.phone, email: person.email, hasAccount: person.userId !== null, roleIds: link.roleIds, canDirect: link.canDirect, canPreach: link.canPreach, canPlay: link.canPlay })
 // A removed link stays for past services but is invisible everywhere else.
 const activeLink = (churchId: string) => ({ churchId, removedAt: null })
 
@@ -131,12 +131,12 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     const asked = c.req.query('role')
     const role = asked === undefined ? undefined : peopleRoleQuery.safeParse(asked)
     if (role && !role.success) return c.json({ error: 'Invalid request' }, 400)
-    const only = role?.data === 'direct' ? { canDirect: true } : role?.data === 'preach' ? { canPreach: true } : {}
+    const only = role?.data === 'direct' ? { canDirect: true } : role?.data === 'preach' ? { canPreach: true } : role?.data === 'play' ? { canPlay: true } : {}
     const [links, me] = await Promise.all([
       db.churchPerson.findMany({ where: { ...activeLink(church.churchId), ...only }, select: { ...linkSelect, person: { select: personSelect } } }),
       db.user.findUnique({ where: { clerkSubject: c.get('clerkSubject') }, select: { id: true } }),
     ])
-    return c.json(links.map(link => ({ id: link.person.id, name: link.person.name, hasAccount: link.person.userId !== null, isYou: me !== null && link.person.userId === me.id, roleIds: link.roleIds, canDirect: link.canDirect, canPreach: link.canPreach }))
+    return c.json(links.map(link => ({ id: link.person.id, name: link.person.name, hasAccount: link.person.userId !== null, isYou: me !== null && link.person.userId === me.id, roleIds: link.roleIds, canDirect: link.canDirect, canPreach: link.canPreach, canPlay: link.canPlay }))
       .sort((a, b) => a.name.localeCompare(b.name, 'es')))
   }))
 
@@ -163,9 +163,9 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       const links = await tx.churchPerson.findMany({ where: activeLink(church.churchId), select: { person: { select: { id: true, name: true } } } })
       const same = findSameName(links.map(link => link.person), body.data.name)
       if (same) return { same }
-      const link = { roleIds: [] as string[], canDirect: body.data.canDirect ?? false, canPreach: body.data.canPreach ?? false }
+      const link = { roleIds: [] as string[], canDirect: body.data.canDirect ?? false, canPreach: body.data.canPreach ?? false, canPlay: body.data.canPlay ?? false }
       return { link, person: await tx.person.create({
-        data: { name: body.data.name, phone: body.data.phone ?? null, email: body.data.email ?? null, churches: { create: { churchId: church.churchId, canDirect: link.canDirect, canPreach: link.canPreach } } }, select: personSelect,
+        data: { name: body.data.name, phone: body.data.phone ?? null, email: body.data.email ?? null, churches: { create: { churchId: church.churchId, canDirect: link.canDirect, canPreach: link.canPreach, canPlay: link.canPlay } } }, select: personSelect,
       }) }
     })
     if ('same' in result) return c.json({ error: 'Name exists', existing: result.same }, 409)
@@ -181,20 +181,29 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     const result = await db.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
       if (!await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId }, select: { personId: true } })) return 'missing' as const
-      const { canDirect, canPreach, ...personal } = body.data
+      const { canDirect, canPreach, canPlay, ...personal } = body.data
       if (body.data.name !== undefined) {
         const links = await tx.churchPerson.findMany({ where: activeLink(church.churchId), select: { person: { select: { id: true, name: true } } } })
         const same = findSameName(links.map(link => link.person), body.data.name, personId)
         if (same) return { same }
       }
       // Roles belong to this church's link; personal data is shared by every church of the person.
-      const link = await tx.churchPerson.update({ where: { churchId_personId: { churchId: church.churchId, personId } }, data: { canDirect, canPreach }, select: linkSelect })
+      // Leaving the worship group takes the musical roles away; refused while the person is still habitual or in a rotation of one of them.
+      let dropRoles = false
+      if (canPlay === false) {
+        const held = (await tx.churchPerson.findFirst({ where: { churchId: church.churchId, personId }, select: { roleIds: true } }))?.roleIds ?? []
+        if (held.length > 0 && (await tx.rolePlan.findFirst({ where: { churchId: church.churchId, roleId: { in: held }, habitualIds: { has: personId } }, select: { roleId: true } })
+          || await tx.rotationSequence.findFirst({ where: { roleId: { in: held }, memberIds: { has: personId } }, select: { roleId: true } }))) return 'in-use' as const
+        dropRoles = held.length > 0
+      }
+      const link = await tx.churchPerson.update({ where: { churchId_personId: { churchId: church.churchId, personId } }, data: { canDirect, canPreach, canPlay, ...(dropRoles ? { roleIds: [] } : {}) }, select: linkSelect })
       const person = Object.keys(personal).length > 0
         ? await tx.person.update({ where: { id: personId }, data: personal, select: personSelect })
         : await tx.person.findUniqueOrThrow({ where: { id: personId }, select: personSelect })
       return { person, link }
     })
     if (result === 'missing') return c.json({ error: 'Not found' }, 404)
+    if (result === 'in-use') return c.json({ error: 'In use' }, 409)
     if ('same' in result) return c.json({ error: 'Name exists', existing: result.same }, 409)
     return c.json(presentPerson(result.person, result.link))
   }))
@@ -209,11 +218,14 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     const result = await db.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
       if (await tx.musicalRole.count({ where: { churchId: church.churchId, id: { in: body.data.roleIds } } }) !== body.data.roleIds.length) return 'invalid' as const
+      // Only the worship group holds musical roles; taking all of them away is always allowed.
+      if (body.data.roleIds.length > 0 && !await tx.churchPerson.findFirst({ where: { ...activeLink(church.churchId), personId }, select: { canPlay: true } }).then(row => row?.canPlay ?? true)) return 'not-in-group' as const
       const changed = await tx.churchPerson.updateMany({ where: { ...activeLink(church.churchId), personId }, data: { roleIds: body.data.roleIds } })
       return changed.count > 0 ? 'ok' as const : 'missing' as const
     })
     if (result === 'missing') return c.json({ error: 'Not found' }, 404)
     if (result === 'invalid') return c.json({ error: 'Invalid request' }, 400)
+    if (result === 'not-in-group') return c.json({ error: 'Not in worship group' }, 409)
     return c.json({ roleIds: body.data.roleIds })
   }))
 
