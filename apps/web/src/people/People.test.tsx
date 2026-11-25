@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router'
 import { afterEach, expect, test, vi } from 'vitest'
 import { church, detail, mount, stubApi } from '../calendar/test-utils'
@@ -146,7 +146,7 @@ test('an editor changes name and phone; save and discard appear only when someth
   expect(name.value).toBe('Ana Ramírez')
   fireEvent.change(name, { target: { value: 'Ana Ramírez Soto' } })
   fireEvent.change(screen.getByLabelText('Teléfono (opcional)'), { target: { value: '5550199000' } })
-  fireEvent.change(screen.getByLabelText('Correo (opcional)'), { target: { value: ' ana@example.com ' } })
+  fireEvent.change(screen.getByLabelText('Correo'), { target: { value: ' ana@example.com ' } })
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   expect(await screen.findByText('Cambios guardados')).toBeTruthy()
   expect(sent(calls, 'PATCH')).toEqual([{ url: '/api/people/p1', body: { name: 'Ana Ramírez Soto', phone: '+525550199000', email: 'ana@example.com' } }])
@@ -209,25 +209,39 @@ test('without administration the roles are text, not controls', async () => {
 const admin: Church = { ...church, canEdit: true, canConfigure: true }
 const invitesOf = (calls: ReturnType<typeof stubApi>) => sent(calls, 'POST').filter((call) => call.url.endsWith('/invite'))
 
-test('an administrator invites from the record using the contact e-mail, choosing only the role', async () => {
+test('an administrator invites from the record to the e-mail of the personal information, choosing only the role', async () => {
   const calls = stubApi({ directory: [detail({ id: 'p2', name: 'Álvaro Núñez', email: 'alvaro@example.com' })], church: admin })
   app('/personas/p2')
-  const field = await screen.findByLabelText('Correo para la invitación') as HTMLInputElement
-  expect(field.value).toBe('alvaro@example.com')
+  expect(await screen.findByText('La invitación se envía al correo de su información personal')).toBeTruthy()
+  // No second e-mail field: the address is shown, not asked again.
+  expect(screen.queryByLabelText('Correo para la invitación')).toBeNull()
+  expect(within(screen.getByRole('region', { name: 'Acceso a la app' })).getByText('alvaro@example.com')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Editor' }))
   fireEvent.click(screen.getByRole('button', { name: 'Invitar a la app' }))
   expect(await screen.findByText('Invitación enviada a alvaro@example.com.')).toBeTruthy()
   expect(invitesOf(calls)).toEqual([{ url: '/api/people/p2/invite', body: { role: 'EDITOR' } }])
 })
 
-test('a person without a contact e-mail needs one to be invited, and it travels with the invitation', async () => {
-  const calls = stubApi({ directory: [detail({ id: 'p2', name: 'Álvaro Núñez', email: null })], church: admin })
+test('without an e-mail the person cannot be invited: the section points to the e-mail field and highlights it', async () => {
+  stubApi({ directory: [detail({ id: 'p2', name: 'Álvaro Núñez', email: null })], church: admin })
   app('/personas/p2')
-  const send = await screen.findByRole('button', { name: 'Invitar a la app' }) as HTMLButtonElement
-  expect(send.disabled).toBe(true)
-  fireEvent.change(screen.getByLabelText('Correo para la invitación'), { target: { value: 'nuevo@example.com' } })
-  fireEvent.click(send)
-  await waitFor(() => expect(invitesOf(calls)).toEqual([{ url: '/api/people/p2/invite', body: { role: 'MEMBER', email: 'nuevo@example.com' } }]))
+  expect(await screen.findByText('Falta su correo')).toBeTruthy()
+  expect((screen.getByRole('button', { name: 'Invitar a la app' }) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: 'Agregar su correo' }))
+  expect(document.activeElement).toBe(screen.getByLabelText('Correo'))
+  expect(screen.getByLabelText('Correo').closest('div.ring-2')).not.toBeNull()
+})
+
+test('changing the e-mail goes to the personal information, and an unsaved e-mail blocks the invitation until it is saved', async () => {
+  stubApi({ directory: [detail({ id: 'p2', name: 'Álvaro Núñez', email: 'alvaro@example.com' })], church: admin })
+  app('/personas/p2')
+  const invite = await screen.findByRole('button', { name: 'Invitar a la app' }) as HTMLButtonElement
+  expect(invite.disabled).toBe(false)
+  fireEvent.click(screen.getByRole('button', { name: 'Cambiar correo' }))
+  expect(document.activeElement).toBe(screen.getByLabelText('Correo'))
+  fireEvent.change(screen.getByLabelText('Correo'), { target: { value: 'otro@example.com' } })
+  expect(await screen.findByText(/Guarda los cambios de su correo antes de invitarla/)).toBeTruthy()
+  expect((screen.getByRole('button', { name: 'Invitar a la app' }) as HTMLButtonElement).disabled).toBe(true)
 })
 
 test('a registered address is explained, and who already has access sees the role instead of the form', async () => {
@@ -257,7 +271,7 @@ test('adding a person can invite them in the same step', async () => {
   fireEvent.click(screen.getByRole('switch', { name: 'Invitar a la app' }))
   const save = screen.getByRole('button', { name: 'Agregar e invitar' }) as HTMLButtonElement
   expect(save.disabled).toBe(true)
-  fireEvent.change(screen.getByLabelText('Correo (opcional)'), { target: { value: 'juan@example.com' } })
+  fireEvent.change(screen.getByLabelText('Correo (con el que entrará a la app)'), { target: { value: 'juan@example.com' } })
   fireEvent.click(screen.getByRole('button', { name: 'Editor' }))
   fireEvent.click(save)
   await waitFor(() => expect(invitesOf(calls)).toEqual([{ url: '/api/people/new/invite', body: { role: 'EDITOR' } }]))

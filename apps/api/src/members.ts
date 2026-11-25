@@ -81,7 +81,7 @@ export function memberRoutes(config: SessionConfig, db?: PrismaClient, identity?
     const link = await db.churchPerson.findFirst({ where: { churchId: church.churchId, personId, removedAt: null }, select: { person: { select: { email: true, userId: true } } } })
     if (!link) return c.json({ error: 'Not found' }, 404)
     let subject: string | undefined
-    const address = (body.data.email ?? link.person.email ?? '').trim().toLowerCase()
+    const address = (link.person.email ?? '').trim().toLowerCase()
     if (!link.person.userId) {
       if (!isEmailAddress(address)) return c.json({ error: 'Email required' }, 400)
       if (await db.user.findUnique({ where: { email: address }, select: { id: true } })) return c.json({ error: 'Email registered' }, 409)
@@ -94,7 +94,7 @@ export function memberRoutes(config: SessionConfig, db?: PrismaClient, identity?
     }
     const outcome = await db.$transaction(async tx => {
       await lockChurch(tx, church.churchId)
-      const person = await tx.churchPerson.findFirst({ where: { churchId: church.churchId, personId, removedAt: null }, select: { person: { select: { email: true, userId: true } } } })
+      const person = await tx.churchPerson.findFirst({ where: { churchId: church.churchId, personId, removedAt: null }, select: { person: { select: { userId: true } } } })
       if (!person) return 'missing' as const
       let userId = person.person.userId
       if (!userId) {
@@ -102,7 +102,7 @@ export function memberRoutes(config: SessionConfig, db?: PrismaClient, identity?
         userId = (await tx.user.findUnique({ where: { clerkSubject: subject }, select: { id: true } }))?.id
           ?? (await tx.user.create({ data: { clerkSubject: subject, email: address }, select: { id: true } })).id
         // The condition lives in the write: of two racing links of one person, exactly one matches.
-        const linked = await tx.person.updateMany({ where: { id: personId, userId: null }, data: { userId, ...(person.person.email ? {} : { email: address }) } })
+        const linked = await tx.person.updateMany({ where: { id: personId, userId: null }, data: { userId } })
         if (linked.count !== 1) return 'changed' as const
       }
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`

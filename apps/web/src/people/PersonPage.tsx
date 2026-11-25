@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { Avatar, Button, Icon, Notice, Sheet, TextField } from '../ui'
 import { ChurchGate, PageHeader, TopBar } from '../calendar/ChurchGate'
@@ -75,6 +75,15 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
   const [done, setDone] = useState(false)
   const dirty = name.trim() !== saved.name || phone !== saved.phone || email.trim() !== saved.email
   const edit = church.canEdit
+  // «Cambiar correo» desde Acceso lleva a este campo: se desplaza hasta él, lo enfoca y lo resalta un momento.
+  const emailBox = useRef<HTMLDivElement>(null)
+  const [highlight, setHighlight] = useState(false)
+  function goToEmail() {
+    emailBox.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+    emailBox.current?.querySelector('input')?.focus({ preventScroll: true })
+    setHighlight(true)
+    setTimeout(() => setHighlight(false), 2600)
+  }
 
   async function save() {
     if (!name.trim()) return setNameError('Escribe el nombre de la persona.')
@@ -144,8 +153,11 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
               <TextField label="Nombre completo" value={name} maxLength={120} autoComplete="off" error={nameError || undefined}
                 onChange={(event) => { setName(event.target.value); setNameError(''); setDone(false) }} />
               <PhoneField value={phone} error={phoneProblem || undefined} onChange={(digits) => { setPhone(digits); setPhoneProblem(''); setDone(false) }} />
-              <TextField label="Correo (opcional)" type="email" inputMode="email" autoComplete="off" maxLength={254} value={email}
-                onChange={(event) => { setEmail(event.target.value); setDone(false) }} />
+              <div ref={emailBox} className={highlight ? 'rounded-lg bg-accent-soft p-2 ring-2 ring-accent transition-shadow motion-reduce:transition-none -m-2' : '-m-2 p-2'}>
+                <TextField label="Correo" type="email" inputMode="email" autoComplete="off" maxLength={254} value={email}
+                  help="Con este correo entra a la app si la invitas; no hace falta invitarla para guardarlo."
+                  onChange={(event) => { setEmail(event.target.value); setDone(false) }} />
+              </div>
             </>
           ) : (
             <dl className="m-0 grid gap-1 text-[0.9375rem]">
@@ -173,7 +185,7 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
 
         <RolesSection church={church} person={person} />
 
-        <AccessSection church={church} person={person} />
+        <AccessSection church={church} person={person} unsavedEmail={email.trim() !== saved.email} onEditEmail={goToEmail} />
 
         {church.canConfigure && <Button variant="danger" block onClick={() => setConfirming(true)}>Quitar de {church.name}</Button>}
       </div>
