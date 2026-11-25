@@ -1,13 +1,12 @@
 import { expect, test } from 'vitest'
 import { serviceTitle } from './service-title'
 
-test('the title is the day and the first name of whoever directs', () => {
-  expect(serviceTitle({ date: '2026-11-27', who: 'Jairo León' })).toBe('Viernes 27 - Jairo')
-  expect(serviceTitle({ date: '2026-11-29', who: '  Ana María  Ramírez ' })).toBe('Domingo 29 - Ana')
+test('the title is only the day: nobody\'s name goes in it, so it never goes stale', () => {
+  expect(serviceTitle({ date: '2026-11-27' })).toBe('Viernes 27')
+  expect(serviceTitle({ date: '2026-12-04', slot: 'SINGLE' })).toBe('Viernes 4')
 })
 
-test('a Sunday with two services says which, and without a person it is just the date', () => {
-  expect(serviceTitle({ date: '2026-11-29', slot: 'MORNING', who: 'Jairo León' })).toBe('Domingo 29 mañana - Jairo')
+test('a Sunday with two services says which', () => {
+  expect(serviceTitle({ date: '2026-11-29', slot: 'MORNING' })).toBe('Domingo 29 mañana')
   expect(serviceTitle({ date: '2026-11-29', slot: 'AFTERNOON' })).toBe('Domingo 29 tarde')
-  expect(serviceTitle({ date: '2026-12-04', slot: 'SINGLE', who: null })).toBe('Viernes 4')
 })

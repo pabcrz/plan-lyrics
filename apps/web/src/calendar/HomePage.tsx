@@ -10,7 +10,8 @@ import { DaySheet } from './DaySheet'
 import { MonthGrid, closedOn } from './MonthGrid'
 import { useAgenda, useApiFetch, useClosedDates, useMyChurches, useServices, useSwitchChurch, type AgendaService } from './api'
 import { formatDay, formatLongDay, monthOf, monthTitle, shiftMonth, todayIn } from './dates'
-import { slotText, timeText } from './service-ui'
+import { serviceSummary, type Profile } from './service-summary'
+import { useViewProfile } from './profile'
 import type { Church, ClosedDate, Service } from './model'
 
 // Cuántos servicios próximos muestra el panel del mes en curso; el calendario llega a cualquier otro mes.
@@ -35,6 +36,7 @@ function Home({ church }: { church: Church }) {
   const [openDate, setOpenDate] = useState<string | null>(null)
   const [showPast, setShowPast] = useState(false)
   const [creating, setCreating] = useState(false)
+  const profile = useViewProfile(church)
   const [expanded, setExpanded] = useState(() => window.matchMedia?.(DESKTOP).matches ?? false)
   const today = todayIn()
   const requested = params.get('mes') ?? ''
@@ -113,7 +115,7 @@ function Home({ church }: { church: Church }) {
             agenda.isError ? <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
               : !agenda.data ? <p role="status" className="m-0 text-text-2">Cargando servicios…</p>
                 : agenda.data.length === 0 ? <p className="m-0 py-6 text-center text-text-2">No hay servicios próximos en tus iglesias.</p>
-                  : <ul className="m-0 grid list-none gap-3 p-0">{agenda.data.map((item: AgendaService) => <li key={item.id}><ServiceCard service={item} church={{ id: item.churchId, name: item.churchName, open: () => switchTo(item.churchId) }} /></li>)}</ul>
+                  : <ul className="m-0 grid list-none gap-3 p-0">{agenda.data.map((item: AgendaService) => <li key={item.id}><ServiceCard service={item} profile={profile} church={{ id: item.churchId, name: item.churchName, open: () => switchTo(item.churchId) }} /></li>)}</ul>
           ) : error ? (
             <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
           ) : loading ? (
@@ -128,7 +130,7 @@ function Home({ church }: { church: Church }) {
             <ul className="m-0 grid list-none gap-3 p-0">
               {items.map((item) => (
                 <li key={item.kind === 'service' ? item.service.id : `closed-${item.date}`}>
-                  {item.kind === 'service' ? <ServiceCard service={item.service} /> : <ClosedCard item={item.closed} onOpen={() => setOpenDate(item.date)} />}
+                  {item.kind === 'service' ? <ServiceCard service={item.service} profile={profile} /> : <ClosedCard item={item.closed} onOpen={() => setOpenDate(item.date)} />}
                 </li>
               ))}
             </ul>
@@ -158,17 +160,18 @@ function DateTile({ date, muted = false }: { date: string; muted?: boolean }) {
 /** Tono propio de cada iglesia, estable por su id; el nombre siempre acompaña al color. */
 const hueOf = (id: string) => [...id].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 360, 7)
 
-function ServiceCard({ service, church }: { service: Service; church?: { id: string; name: string; open: () => void } }) {
+function ServiceCard({ service, profile, church }: { service: Service; profile: Profile; church?: { id: string; name: string; open: () => void } }) {
+  // Lo que se resalta depende de quién mira: administración ve todo, la alabanza ve quién dirige y el setlist, la predicación ve el tema y quién predica.
+  const { headline, details } = serviceSummary(service, profile)
   return (
-    <Link to={`/servicios/${service.id}`} onClick={church?.open} aria-label={`${service.title}, ${formatLongDay(service.date)}${church ? `, ${church.name}` : ''}`}
+    <Link to={`/servicios/${service.id}`} onClick={church?.open} aria-label={`${headline}, ${formatLongDay(service.date)}${church ? `, ${church.name}` : ''}`}
       style={church ? { borderLeftColor: `oklch(0.62 0.09 ${hueOf(church.id)})` } : undefined}
       className={cx('flex items-center gap-4 rounded-lg border border-line bg-surface p-4 text-text no-underline shadow-1 hover:border-line-strong hover:bg-surface-2', church && 'border-l-[6px]')}>
       <DateTile date={service.date} />
       <span className="grid min-w-0 flex-1 content-start gap-0.5">
         {church && <span className="text-sm font-semibold text-text-2">{church.name}</span>}
-        <b className="font-display text-[1.0625rem] leading-snug">{service.title}</b>
-        <span className="text-sm text-text-2">{timeText(service.time)}{slotText[service.slot]} · {service.director ? <>Dirige <b className="font-semibold text-text">{service.director.name}</b></> : 'Sin director'}</span>
-        <span className="text-sm text-text-2">{service.songCount === 0 ? 'Setlist sin preparar' : `${service.songCount} ${service.songCount === 1 ? 'canción' : 'canciones'} en el setlist`}</span>
+        <b className="font-display text-[1.0625rem] leading-snug [overflow-wrap:anywhere]">{headline}</b>
+        {details.map((line) => <span key={line} className="text-sm text-text-2">{line}</span>)}
         {service.status === 'CANCELLED' && <StatusChip status="cancelled" className="mt-1.5 w-fit" />}
       </span>
       <Icon name="right" className="flex-none text-text-3" />

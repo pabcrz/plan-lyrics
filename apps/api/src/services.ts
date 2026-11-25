@@ -52,11 +52,18 @@ const serviceSelect = {
   director: { select: { person: { select: { id: true, name: true } } } },
   // Songs only: the moments of the setlist («Ofrenda») are not counted.
   _count: { select: { setlist: { where: { songId: { not: null } } } } },
+  // Who preaches and the topic: shown on the cards of whoever has to see them (never the notes or the passages).
+  preaching: { select: { topic: true, preacher: { select: { person: { select: { id: true, name: true } } } } } },
 } as const
-type Row = { id: string; title: string; date: Date; slot: string; time: string | null; status: string; director: { person: { id: string; name: string } } | null; _count: { setlist: number } }
-const present = (row: Row) => ({
+type Row = {
+  id: string; title: string; date: Date; slot: string; time: string | null; status: string; director: { person: { id: string; name: string } } | null; _count: { setlist: number }
+  preaching?: { topic: string; preacher: { person: { id: string; name: string } } | null } | null
+}
+/** `preaching` only travels while the church uses preaching (switched off, nothing of it is shown even if it was stored). */
+const present = (row: Row, usesPreaching = false) => ({
   id: row.id, title: row.title, date: row.date.toISOString().slice(0, 10), slot: row.slot,
   time: row.time, status: row.status, director: row.director?.person ?? null, songCount: row._count.setlist,
+  preaching: usesPreaching && row.preaching ? { topic: row.preaching.topic, preacher: row.preaching.preacher?.person ?? null } : null,
 })
 
 const personSelect = { id: true, name: true, phone: true, email: true, userId: true } as const
@@ -229,13 +236,14 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
   routes.get('/api/me/agenda', async (c) => {
     if (!db) return c.json({ error: 'Access unavailable' }, 503)
     try {
-      const memberships = await db.membership.findMany({ where: { user: { clerkSubject: c.get('clerkSubject') } }, select: { church: { select: { id: true, name: true } } } })
+      const memberships = await db.membership.findMany({ where: { user: { clerkSubject: c.get('clerkSubject') } }, select: { church: { select: { id: true, name: true, usesPreaching: true } } } })
       const names = new Map(memberships.map(row => [row.church.id, row.church.name]))
+      const preaching = new Map(memberships.map(row => [row.church.id, row.church.usesPreaching]))
       const rows = await db.service.findMany({
         where: { churchId: { in: [...names.keys()] }, date: { gte: new Date(`${todayInZone(now())}T00:00:00Z`) } },
         orderBy: [{ date: 'asc' }, { slot: 'asc' }], take: 60, select: { ...serviceSelect, churchId: true },
       })
-      return c.json(rows.map(row => ({ ...present(row), churchId: row.churchId, churchName: names.get(row.churchId) })))
+      return c.json(rows.map(row => ({ ...present(row, preaching.get(row.churchId)), churchId: row.churchId, churchName: names.get(row.churchId) })))
     } catch (error) {
       console.error(JSON.stringify({ event: 'agenda_failed', code: safeErrorCode(error) }))
       return c.json({ error: 'Access unavailable' }, 503)
@@ -250,7 +258,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       where: { churchId: church.churchId, date: { gte: new Date(Date.UTC(year, number - 1, 1)), lt: new Date(Date.UTC(year, number, 1)) } },
       orderBy: [{ date: 'asc' }, { slot: 'asc' }], select: serviceSelect,
     })
-    return c.json(rows.map(present))
+    return c.json(rows.map(row => present(row, church.usesPreaching)))
   }))
 
   routes.post('/api/services', guarded('service_creation_failed', async (c, db, church) => {
@@ -292,7 +300,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     if (result === 'person') return c.json({ error: 'Invalid request' }, 400)
     if (result === 'full') return c.json({ error: 'Date full' }, 409)
     if (result === 'closed') return c.json({ error: 'Date closed' }, 409)
-    return c.json(present(result), 201)
+    return c.json(present(result, church.usesPreaching), 201)
   }))
 
   // Correcting a service: title, date, hour, status and director. Dates are checked like a creation (not in the past,
@@ -347,7 +355,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     if (result === 'closed') return c.json({ error: 'Date closed' }, 409)
     if (result === 'full') return c.json({ error: 'Date full' }, 409)
     if (result === 'combination') return c.json({ error: 'Combination not allowed' }, 409)
-    return c.json(present(result))
+    return c.json(present(result, church.usesPreaching))
   }))
 
   // Deleting a service removes what hangs from it (setlist, assignments, preaching, its share links); people and songs stay.

@@ -72,8 +72,8 @@ function Form({ church }: { church: Church }) {
   const past = Boolean(date) && date < today
   const closed = Boolean(date) && !loading && isClosed(date)
   const full = Boolean(date) && !loading && !closed && slots.length === 0
-  // El nombre del servicio sale de la fecha y de quien dirige (o, sin dirección, de quien predica): no se escribe.
-  const title = date && slot ? serviceTitle({ date, slot: slot || undefined, who: (director ?? preacher)?.name }) : ''
+  // El nombre del servicio sale solo de la fecha: no se escribe, y quién dirige o predica se muestra aparte.
+  const title = date && slot ? serviceTitle({ date, slot: slot || undefined }) : ''
   const doubleDay = church.sundayDouble && Boolean(date) && weekdayOf(date) === 0
   const matches = (people.data ?? []).filter((person) => fold(person.name).includes(fold(query)))
   const preacherMatches = (preachers.data ?? []).filter((person) => fold(person.name).includes(fold(preacherQuery)))
@@ -226,7 +226,6 @@ function Form({ church }: { church: Church }) {
         {personFailure && <Notice tone="warn" icon="alert" role="alert">{personFailure}</Notice>}
 
         {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
-        {title && <p className="m-0 text-[0.8125rem] text-text-3">Se llamará «{title}».</p>}
         <Button type="submit" variant="primary" block loading={sending} disabled={full || past || closed}>Crear servicio</Button>
       </form>
 

@@ -213,7 +213,7 @@ function Batch({ church }: { church: Church }) {
       const result = await createBatch({
         month, directorIds: directors.map((person) => person.id),
         entries: included.map((entry) => ({
-          date: entry.date, title: serviceTitle({ date: entry.date, slot: entry.slot, who: everyone.get(review.assignment[entryKey(entry)]!)?.name }), time: timeOf(entry), directorId: review.assignment[entryKey(entry)]!,
+          date: entry.date, title: serviceTitle({ date: entry.date, slot: entry.slot }), time: timeOf(entry), directorId: review.assignment[entryKey(entry)]!,
           ...(usesPreaching && review.preachers[entryKey(entry)] ? { preacherId: review.preachers[entryKey(entry)]! } : {}),
           ...(entry.slot === 'SINGLE' ? {} : { slot: entry.slot }),
         })),

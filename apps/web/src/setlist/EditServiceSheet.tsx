@@ -22,7 +22,7 @@ export function updateFailure(error: unknown) {
   return 'No se pudo guardar. Inténtalo de nuevo.'
 }
 
-/** Corrige fecha, hora y dirección de un servicio; solo se envía lo que cambió. El nombre se regenera solo con la fecha y quien dirige. */
+/** Corrige fecha, hora y dirección de un servicio; solo se envía lo que cambió. El nombre es solo la fecha y se regenera al cambiarla. */
 export function EditServiceSheet({ church, service, directorId, onClose, onSaved, onDeleted }: {
   church: Pick<Church, 'sundayDouble'>; service: Current; directorId: string | undefined; onClose: () => void; onSaved: () => void; onDeleted: () => void
 }) {
@@ -38,11 +38,10 @@ export function EditServiceSheet({ church, service, directorId, onClose, onSaved
   const [sending, setSending] = useState(false)
 
   const doubleDay = church.sundayDouble && /^\d{4}-\d{2}-\d{2}$/.test(date) && weekdayOf(date) === 0
-  const chosen = (people.data ?? []).find((person) => person.id === (director || directorId))
   const slotNow = doubleDay ? slot : service.slot
-  const title = /^\d{4}-\d{2}-\d{2}$/.test(date) ? serviceTitle({ date, slot: slotNow, who: chosen?.name }) : service.title
+  const title = /^\d{4}-\d{2}-\d{2}$/.test(date) ? serviceTitle({ date, slot: slotNow }) : service.title
   const patch: ServicePatch = {
-    ...(date !== service.date || director !== (directorId ?? '') || slotNow !== service.slot ? (title !== service.title ? { title } : {}) : {}),
+    ...(date !== service.date || slotNow !== service.slot ? (title !== service.title ? { title } : {}) : {}),
     ...(date !== service.date ? { date } : {}),
     ...(time !== (service.time ?? '') ? { time: time || null } : {}),
     ...(doubleDay && (service.slot === 'SINGLE' || slot !== service.slot) ? { slot } : {}),
