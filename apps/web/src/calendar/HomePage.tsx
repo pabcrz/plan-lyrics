@@ -75,7 +75,7 @@ function Home({ church }: { church: Church }) {
   const united = several && (stored ?? true)
   const agenda = useAgenda(united)
   const switchTo = useSwitchChurch()
-  const colors = useChurchColors()
+  const colors = useChurchColors(churches.map((item) => item.id))
   const notice = useSwitchNotice()
   const pickChurch = (id: string) => {
     notice.announce()
@@ -115,12 +115,12 @@ function Home({ church }: { church: Church }) {
 
   return (
     <AppShell church={church} current="home" wide action={church.canEdit ? { label: 'Nuevo servicio', onAction: () => setCreating(true) } : undefined}>
-      <main className={cx('grid flex-1 content-start gap-3 p-4 lg:gap-x-6 lg:px-6', !united && 'lg:grid-cols-[minmax(0,1fr)_340px]')}>
+      <main className={cx('grid flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 p-4 lg:gap-x-6 lg:px-6', !united && 'lg:grid-cols-[minmax(0,1fr)_340px]')}>
         <div className="flex items-center gap-3 lg:col-start-1">
           <h1 className="m-0 flex-1 font-display text-2xl font-bold tracking-tight">Inicio</h1>
         </div>
         {several && (
-          <div className="grid gap-2 lg:col-start-1">
+          <div className="grid min-w-0 gap-2 lg:col-start-1">
             <ChurchFilter churches={churches} activeId={church.id} all={united} onAll={() => homeAll.set(true)} onPick={pickChurch} />
             {notice.shown && !united && <SwitchNotice name={church.name} onClose={notice.dismiss} />}
           </div>
@@ -135,7 +135,7 @@ function Home({ church }: { church: Church }) {
             agenda.isError ? <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
               : !agenda.data ? <p role="status" className="m-0 text-text-2">Cargando servicios…</p>
                 : agendaShown.length === 0 ? <p className="m-0 py-6 text-center text-text-2">No hay servicios esta semana ni la siguiente en tus iglesias.</p>
-                  : <ul className="m-0 grid list-none gap-3 p-0">{agendaShown.map((item: AgendaService) => <li key={item.id}><ServiceCard service={item} profile="full" church={{ id: item.churchId, name: item.churchName, color: colors.colorOf(item.churchId), open: () => switchTo(item.churchId) }} /></li>)}</ul>
+                  : <ul className="m-0 grid list-none gap-3 p-0">{agendaShown.map((item: AgendaService) => <li key={item.id}><ServiceCard service={item} profile="full" church={{ id: item.churchId, name: item.churchName, tone: colors.style(item.churchId), open: () => switchTo(item.churchId) }} /></li>)}</ul>
           ) : error ? (
             <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
           ) : loading ? (
@@ -168,25 +168,26 @@ function Home({ church }: { church: Church }) {
 }
 
 /** Día y mes en un bloque; el nombre completo del día va en el texto accesible de la tarjeta. */
-function DateTile({ date, muted = false }: { date: string; muted?: boolean }) {
+function DateTile({ date, muted = false, tone }: { date: string; muted?: boolean; tone?: React.CSSProperties }) {
+  // En «Todas» la fecha toma el tono de su iglesia (uno de los temas de la aplicación); en el resto, el acento de siempre.
+  const look = muted ? 'bg-surface-2 text-text-2' : tone ? 'tone bg-[var(--tone-bg)] text-[var(--tone-fg)]' : 'bg-accent-soft text-accent-soft-text'
   return (
-    <span aria-hidden="true" className={`grid h-16 w-14 flex-none content-center justify-items-center rounded-md leading-tight ${muted ? 'bg-surface-2 text-text-2' : 'bg-accent-soft text-accent-soft-text'}`}>
+    <span aria-hidden="true" style={tone} className={`grid h-16 w-14 flex-none content-center justify-items-center rounded-md leading-tight ${look}`}>
       <b className="font-display text-2xl">{Number(date.slice(8))}</b>
       <span className="text-xs font-semibold">{formatDay(date).split(' ').pop()}</span>
     </span>
   )
 }
 
-function ServiceCard({ service, profile, church }: { service: Service; profile: Profile; church?: { id: string; name: string; color: string; open: () => void } }) {
+function ServiceCard({ service, profile, church }: { service: Service; profile: Profile; church?: { id: string; name: string; tone: React.CSSProperties; open: () => void } }) {
   // Lo que se resalta depende de quién mira: administración ve todo, la alabanza ve quién dirige y el setlist, la predicación ve el tema y quién predica.
   const { headline, details } = serviceSummary(service, profile)
   return (
     <Link to={`/servicios/${service.id}`} onClick={church?.open} aria-label={`${headline}, ${formatLongDay(service.date)}${church ? `, ${church.name}` : ''}`}
-      style={church ? { borderLeftColor: church.color } : undefined}
-      className={cx('flex items-center gap-4 rounded-lg border border-line bg-surface p-4 text-text no-underline shadow-1 hover:border-line-strong hover:bg-surface-2', church && 'border-l-[6px]')}>
-      <DateTile date={service.date} />
+      className="flex items-center gap-4 rounded-lg border border-line bg-surface p-4 text-text no-underline shadow-1 hover:border-line-strong hover:bg-surface-2">
+      <DateTile date={service.date} tone={church?.tone} />
       <span className="grid min-w-0 flex-1 content-start gap-0.5">
-        {church && <span className="text-sm font-semibold" style={{ color: church.color }}>{church.name}</span>}
+        {church && <span className="tone text-sm font-semibold text-[var(--tone-ink)]" style={church.tone}>{church.name}</span>}
         <b className="font-display text-[1.0625rem] leading-snug [overflow-wrap:anywhere]">{headline}</b>
         {details.map((line) => <span key={line} className="text-sm text-text-2">{line}</span>)}
         {service.status === 'CANCELLED' && <StatusChip status="cancelled" className="mt-1.5 w-fit" />}

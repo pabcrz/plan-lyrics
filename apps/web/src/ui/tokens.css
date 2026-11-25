@@ -76,6 +76,23 @@
   --elev-3: 0 20px 44px -8px oklch(0 0 0 / 0.55);
 }
 
+/*
+ * Tono de una iglesia en la vista «Todas» del inicio: los mismos cálculos del tema (a-100, a-800, a-700; y sus pares del modo oscuro), con el
+ * --h/--c del tema elegido para esa iglesia puesto en el elemento. Así cada iglesia se distingue sin salirse de los cinco temas de la aplicación.
+ */
+.tone {
+  --tone-bg: oklch(0.93 calc(var(--c) * 0.3) var(--h));
+  --tone-fg: oklch(0.33 calc(var(--c) * 0.8) var(--h));
+  --tone-ink: oklch(0.42 var(--c) var(--h));
+  --tone-dot: oklch(0.6 var(--c) var(--h));
+}
+:root[data-mode='dark'] .tone {
+  --tone-bg: oklch(0.31 calc(var(--c) * 0.55) var(--h));
+  --tone-fg: oklch(0.87 calc(var(--c) * 0.55) var(--h));
+  --tone-ink: oklch(0.76 calc(var(--c) * 1.05) var(--h));
+  --tone-dot: oklch(0.76 calc(var(--c) * 1.05) var(--h));
+}
+
 /* Utilidades de Tailwind respaldadas por los tokens (siguen el tema y el modo). */
 @theme inline {
   --color-*: initial;

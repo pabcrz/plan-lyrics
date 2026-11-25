@@ -293,16 +293,31 @@ test('the last choice is remembered: a single church opens straight into its mon
   expect(screen.getByRole('button', { name: 'Todas' }).getAttribute('aria-pressed')).toBe('false')
 })
 
-test('each church gets a color of its own that the person can choose', async () => {
+test('each church takes the color of one of the app themes in «Todas», and the person can choose which', async () => {
   stubApi({ services: [], myChurches: two, agenda })
   mount(<HomePage />)
-  await screen.findByRole('link', { name: /Culto norte/ })
+  const card = await screen.findByRole('link', { name: /Culto norte/ })
+  // Sin elegir: cada iglesia empieza con un tema distinto (por el orden de sus ids: «c2» va antes que «church-a»).
+  const hueOf = (element: Element) => (element.querySelector('.tone') as HTMLElement).style.getPropertyValue('--h')
+  expect(hueOf(card)).toBe('235')
+  expect(hueOf(screen.getByRole('link', { name: /Culto central/ }))).toBe('178')
   fireEvent.click(screen.getByRole('button', { name: 'Colores de las iglesias' }))
   const sheet = within(await screen.findByRole('dialog', { name: 'Color de cada iglesia' }))
   fireEvent.click(within(sheet.getByRole('group', { name: 'Color de Iglesia de Cristo' })).getByRole('button', { name: 'Granate' }))
-  fireEvent.click(within(sheet.getByRole('group', { name: 'Color de Betel' })).getByRole('button', { name: 'Verde' }))
-  expect(JSON.parse(localStorage.getItem('plan-lyrics.churchColors')!)).toEqual({ c2: 15, 'church-a': 145 })
+  fireEvent.click(within(sheet.getByRole('group', { name: 'Color de Betel' })).getByRole('button', { name: 'Ocre' }))
+  expect(JSON.parse(localStorage.getItem('plan-lyrics.churchColors')!)).toEqual({ c2: 'granate', 'church-a': 'ocre' })
   expect(within(sheet.getByRole('group', { name: 'Color de Iglesia de Cristo' })).getByRole('button', { name: 'Granate' }).getAttribute('aria-pressed')).toBe('true')
+  expect(hueOf(card)).toBe('15')
+})
+
+test('the colors exist only in «Todas»: picking one church brings the usual look and no palette', async () => {
+  localStorage.setItem('plan-lyrics.homeAll', '0')
+  homeAll.refresh()
+  stubApi({ services, myChurches: two, agenda })
+  mount(<HomePage />)
+  await screen.findByText('Próximos servicios')
+  expect(screen.queryByRole('button', { name: 'Colores de las iglesias' })).toBeNull()
+  expect(document.querySelector('.tone')).toBeNull()
 })
 
 test('one church shows the rest of the month, and from its last week also the next one, with no cap', async () => {

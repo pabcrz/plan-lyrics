@@ -1,17 +1,20 @@
-import { renderHook, act } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { beforeEach, expect, test } from 'vitest'
-import { CHURCH_HUES, cssColor, useChurchColors, churchColorsStore } from './church-colors'
+import { CHURCH_TONES, churchColorsStore, useChurchColors } from './church-colors'
 
 beforeEach(() => { localStorage.clear(); churchColorsStore.set({}) })
 
-test('a church without a chosen color gets a stable one from the palette, and each church can be given its own', () => {
-  const { result } = renderHook(() => useChurchColors())
-  const first = result.current.hueOf('betel')
-  expect(CHURCH_HUES.map((item) => item.hue)).toContain(first)
-  expect(result.current.hueOf('betel')).toBe(first)
-  act(() => result.current.set('betel', 15))
-  act(() => result.current.set('cristo', 145))
-  expect(result.current.hueOf('betel')).toBe(15)
-  expect(result.current.colorOf('cristo')).toBe(cssColor(145))
-  expect(JSON.parse(localStorage.getItem('plan-lyrics.churchColors')!)).toEqual({ betel: 15, cristo: 145 })
+test('the colors are the themes of the app, and each church starts with a different one', () => {
+  expect(CHURCH_TONES.map((tone) => tone.id)).toEqual(['azul', 'salvia', 'indigo', 'ocre', 'granate'])
+  const { result } = renderHook(() => useChurchColors(['c3', 'c1', 'c2']))
+  expect(['c1', 'c2', 'c3'].map((id) => result.current.toneId(id))).toEqual(['azul', 'salvia', 'indigo'])
+})
+
+test('each church can be given its own tone, which is kept on the device', () => {
+  const { result } = renderHook(() => useChurchColors(['betel', 'cristo']))
+  act(() => result.current.set('betel', 'granate'))
+  act(() => result.current.set('cristo', 'ocre'))
+  expect(result.current.toneId('betel')).toBe('granate')
+  expect(result.current.style('cristo')).toEqual({ '--h': 62, '--c': 0.105 })
+  expect(JSON.parse(localStorage.getItem('plan-lyrics.churchColors')!)).toEqual({ betel: 'granate', cristo: 'ocre' })
 })
