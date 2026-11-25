@@ -11,11 +11,13 @@ import { MonthGrid, closedOn } from './MonthGrid'
 import { useAgenda, useApiFetch, useClosedDates, useMyChurches, useServices, useSwitchChurch, type AgendaService } from './api'
 import { formatDay, formatLongDay, monthOf, monthTitle, shiftMonth, todayIn } from './dates'
 import { serviceSummary, type Profile } from './service-summary'
+import { ChurchFilter, SwitchNotice, useSwitchNotice } from './ChurchFilter'
+import { useChurchColors } from './church-colors'
+import { homeAll } from './home-filter'
+import { allWindowEnd, churchWindowEnd } from './home-window'
 import { useViewProfile } from './profile'
 import type { Church, ClosedDate, Service } from './model'
 
-// Cuántos servicios próximos muestra el panel del mes en curso; el calendario llega a cualquier otro mes.
-const SHOWN = 6
 const DESKTOP = '(min-width: 1024px)'
 
 type Item = { kind: 'service'; date: string; service: Service } | { kind: 'closed'; date: string; closed: ClosedDate }
@@ -55,8 +57,9 @@ function Home({ church }: { church: Church }) {
     ...monthServices.services.map((service): Item => ({ kind: 'service', date: service.date, service })),
     ...monthClosed.closed.map((item): Item => ({ kind: 'closed', date: item.date, closed: item })),
   ].sort((a, b) => a.date.localeCompare(b.date))
-  // Mes en curso: lo que viene (y, a petición, lo que ya pasó de este mes). Otro mes: el mes completo.
-  const upcoming = all.filter((item) => (current ? item.date >= today : inMonth(item.date))).slice(0, current ? SHOWN : undefined)
+  // Mes en curso: lo que queda del mes (y la semana siguiente desde la última semana del mes); a petición, lo que ya pasó de este mes. Otro mes: el mes completo.
+  const windowEnd = churchWindowEnd(today)
+  const upcoming = all.filter((item) => (current ? item.date >= today && item.date <= windowEnd : inMonth(item.date)))
   // Con conexión, deja leíbles sin red el setlist y las letras de lo que viene.
   const api = useApiFetch()
   const queryClient = useQueryClient()
@@ -65,11 +68,22 @@ function Home({ church }: { church: Church }) {
   const past = current ? all.filter((item) => inMonth(item.date) && item.date < today) : []
   const items = showPast ? [...past, ...upcoming] : upcoming
   const count = gridServices.length
-  // Con dos o más iglesias, «Próximos servicios» reúne las de todas; el calendario sigue siendo el de la iglesia activa.
-  const several = (useMyChurches().data?.filter((item) => item.role).length ?? 0) >= 2
-  const agenda = useAgenda(several && current)
+  // Con dos o más iglesias el inicio tiene un filtro: «Todas» (esta semana y la siguiente de todas, en orden) o una iglesia, que pasa a ser la activa.
+  const churches = useMyChurches().data?.filter((item) => item.role) ?? []
+  const several = churches.length >= 2
+  const stored = homeAll.use()
+  const united = several && (stored ?? true)
+  const agenda = useAgenda(united)
   const switchTo = useSwitchChurch()
-  const united = several && current
+  const colors = useChurchColors()
+  const notice = useSwitchNotice()
+  const pickChurch = (id: string) => {
+    notice.announce()
+    if (id === church.id) homeAll.set(false)
+    else switchTo(id)
+  }
+  const weekEnd = allWindowEnd(today)
+  const agendaShown = (agenda.data ?? []).filter((item) => item.date <= weekEnd)
 
   const calendar = (
     <section aria-label="Calendario" className="rounded-lg border border-line bg-surface lg:sticky lg:top-4">
@@ -101,21 +115,27 @@ function Home({ church }: { church: Church }) {
 
   return (
     <AppShell church={church} current="home" wide action={church.canEdit ? { label: 'Nuevo servicio', onAction: () => setCreating(true) } : undefined}>
-      <main className="grid flex-1 content-start gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-6 lg:px-6">
+      <main className={cx('grid flex-1 content-start gap-3 p-4 lg:gap-x-6 lg:px-6', !united && 'lg:grid-cols-[minmax(0,1fr)_340px]')}>
         <div className="flex items-center gap-3 lg:col-start-1">
           <h1 className="m-0 flex-1 font-display text-2xl font-bold tracking-tight">Inicio</h1>
         </div>
-        <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1">{calendar}</div>
+        {several && (
+          <div className="grid gap-2 lg:col-start-1">
+            <ChurchFilter churches={churches} activeId={church.id} all={united} onAll={() => homeAll.set(true)} onPick={pickChurch} />
+            {notice.shown && !united && <SwitchNotice name={church.name} onClose={notice.dismiss} />}
+          </div>
+        )}
+        {!united && <div className="lg:col-start-2 lg:row-span-4 lg:row-start-1">{calendar}</div>}
         <div className="flex items-center gap-2 lg:col-start-1">
-          <h2 className="m-0 flex-1 text-base font-semibold text-text-2">{current ? 'Próximos servicios' : `Servicios de ${monthTitle(month).split(' ')[0].toLowerCase()}`}</h2>
-          {past.length > 0 && <Button variant="quiet" onClick={() => setShowPast(!showPast)}>{showPast ? 'Ocultar anteriores' : `Ver anteriores (${past.length})`}</Button>}
+          <h2 className="m-0 flex-1 text-base font-semibold text-text-2">{united ? 'Esta semana y la siguiente' : current ? 'Próximos servicios' : `Servicios de ${monthTitle(month).split(' ')[0].toLowerCase()}`}</h2>
+          {!united && past.length > 0 && <Button variant="quiet" onClick={() => setShowPast(!showPast)}>{showPast ? 'Ocultar anteriores' : `Ver anteriores (${past.length})`}</Button>}
         </div>
         <div className="lg:col-start-1">
           {united ? (
             agenda.isError ? <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
               : !agenda.data ? <p role="status" className="m-0 text-text-2">Cargando servicios…</p>
-                : agenda.data.length === 0 ? <p className="m-0 py-6 text-center text-text-2">No hay servicios próximos en tus iglesias.</p>
-                  : <ul className="m-0 grid list-none gap-3 p-0">{agenda.data.map((item: AgendaService) => <li key={item.id}><ServiceCard service={item} profile={profile} church={{ id: item.churchId, name: item.churchName, open: () => switchTo(item.churchId) }} /></li>)}</ul>
+                : agendaShown.length === 0 ? <p className="m-0 py-6 text-center text-text-2">No hay servicios esta semana ni la siguiente en tus iglesias.</p>
+                  : <ul className="m-0 grid list-none gap-3 p-0">{agendaShown.map((item: AgendaService) => <li key={item.id}><ServiceCard service={item} profile="full" church={{ id: item.churchId, name: item.churchName, color: colors.colorOf(item.churchId), open: () => switchTo(item.churchId) }} /></li>)}</ul>
           ) : error ? (
             <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
           ) : loading ? (
@@ -157,19 +177,16 @@ function DateTile({ date, muted = false }: { date: string; muted?: boolean }) {
   )
 }
 
-/** Tono propio de cada iglesia, estable por su id; el nombre siempre acompaña al color. */
-const hueOf = (id: string) => [...id].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 360, 7)
-
-function ServiceCard({ service, profile, church }: { service: Service; profile: Profile; church?: { id: string; name: string; open: () => void } }) {
+function ServiceCard({ service, profile, church }: { service: Service; profile: Profile; church?: { id: string; name: string; color: string; open: () => void } }) {
   // Lo que se resalta depende de quién mira: administración ve todo, la alabanza ve quién dirige y el setlist, la predicación ve el tema y quién predica.
   const { headline, details } = serviceSummary(service, profile)
   return (
     <Link to={`/servicios/${service.id}`} onClick={church?.open} aria-label={`${headline}, ${formatLongDay(service.date)}${church ? `, ${church.name}` : ''}`}
-      style={church ? { borderLeftColor: `oklch(0.62 0.09 ${hueOf(church.id)})` } : undefined}
+      style={church ? { borderLeftColor: church.color } : undefined}
       className={cx('flex items-center gap-4 rounded-lg border border-line bg-surface p-4 text-text no-underline shadow-1 hover:border-line-strong hover:bg-surface-2', church && 'border-l-[6px]')}>
       <DateTile date={service.date} />
       <span className="grid min-w-0 flex-1 content-start gap-0.5">
-        {church && <span className="text-sm font-semibold text-text-2">{church.name}</span>}
+        {church && <span className="text-sm font-semibold" style={{ color: church.color }}>{church.name}</span>}
         <b className="font-display text-[1.0625rem] leading-snug [overflow-wrap:anywhere]">{headline}</b>
         {details.map((line) => <span key={line} className="text-sm text-text-2">{line}</span>)}
         {service.status === 'CANCELLED' && <StatusChip status="cancelled" className="mt-1.5 w-fit" />}

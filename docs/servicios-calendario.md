@@ -70,3 +70,11 @@ El lote se crea en una sola operación atómica, así que lo armado (mes, días,
 - **Sin estados que gestionar.** Un servicio creado queda publicado (`POST /api/services` sin `status` es `PUBLISHED`); no hay selector de borrador, publicado ni completado: los viewers ven todos los servicios y «Completado» no se marca a mano. Solo queda visible «Cancelado» en servicios que ya lo estaban, con «Reactivar servicio» en su edición; para quitar un servicio se usa «Eliminar servicio».
 - El aviso «Lo interno no se publica» se muestra una sola vez a quien edita y no vuelve.
 
+## Inicio con varias iglesias
+
+- Con dos o más iglesias, el inicio tiene un **filtro**: **Todas** y una opción por iglesia. Se guarda la última elección en el dispositivo (la primera vez, «Todas»).
+- **Todas** reúne los servicios de todas las iglesias, en orden cronológico y con el nombre y el color de cada una: esta semana desde hoy y la siguiente completa (semanas de domingo a sábado). No muestra calendario.
+- **Una iglesia**: elegirla la convierte en la **iglesia activa de toda la aplicación** (inicio, canciones, predicaciones, personas, compartir, participaciones y ajustes); el nombre de la barra o del menú lateral cambia a esa iglesia. La primera vez se avisa una sola vez. «Todas» deja la última iglesia activa. El menú «Cambiar de iglesia» sigue funcionando y también deja la vista «Todas».
+- La lista de una iglesia muestra **lo que queda del mes**, sin tope; desde la última semana del mes (la que contiene su último día) suma la semana siguiente, y al entrar el mes nuevo muestra ese mes completo. Lo ya pasado sigue en «Ver anteriores» y el calendario llega a cualquier mes.
+- **Color por iglesia:** cada persona elige el de cada iglesia (botón de la paleta junto al filtro) entre 8 tonos; sin elegir, se asigna uno estable. Se guarda en el dispositivo, como la apariencia.
+
