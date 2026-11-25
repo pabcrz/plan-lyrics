@@ -24,6 +24,7 @@ export function failureText(error: unknown) {
   if (code === 'Setlist changed') return 'El setlist cambió mientras lo ordenabas. Se actualizó con la versión más reciente.'
   if (code === 'Song already in setlist') return 'Esa canción ya está en el setlist.'
   if (code === 'Setlist full') return 'El setlist llegó al máximo de 100 elementos.'
+  if (code === 'Song repeat rule') return 'Esa canción no puede repetirse todavía según la regla de la iglesia. Elige otra.'
   if (status === 404) return 'Ese elemento ya no existe. Se actualizó la lista.'
   return 'No se pudo guardar el cambio. Inténtalo de nuevo.'
 }
@@ -236,7 +237,7 @@ function SetlistSection({ setlist }: { setlist: Setlist }) {
         </div>
       )}
       {sheet?.kind === 'add' && (
-        <AddSheet entries={entries} canCreateSongs={canCreateSongs} onClose={() => setSheet(null)} createSong={actions.createSong}
+        <AddSheet serviceId={service.id} entries={entries} canCreateSongs={canCreateSongs} onClose={() => setSheet(null)} createSong={actions.createSong}
           onAddSong={(song) => addEntry({ songId: song.id }, song.title, true)} onAddMoment={(name) => addEntry({ moment: name }, name, false)} />
       )}
       {editing && (

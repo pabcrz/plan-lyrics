@@ -10,10 +10,12 @@ const text = (max: number) => z.string().transform(value => value.trim().replace
 // The author may be unknown: it is then stored as an empty string (and compared as such).
 export const newSongBody = z.strictObject({ title: text(120), author: z.string().transform(value => value.trim().replace(/\s+/g, ' ')).pipe(z.string().max(120)).default('') })
 export const songSearch = z.string().max(120)
-/** The library list: a search, an optional «missing» filter and an offset (pages of 50). */
+/** The library list: a search, the order (title or how much the church used it, either way), the service being planned and an offset (pages of 50). */
 export const songListQuery = z.object({
   q: songSearch,
-  filter: z.enum(['no-lyrics', 'no-chords']).optional(),
+  sort: z.enum(['title', 'uses']).optional(),
+  dir: z.enum(['asc', 'desc']).optional(),
+  serviceId: z.string().min(1).max(64).optional(),
   offset: z.coerce.number().int().min(0).max(100000).optional(),
 })
 

@@ -45,7 +45,7 @@ test('saves a name, a new day and the preaching switch, then confirms and discar
   fireEvent.click(save())
   expect(await screen.findByText('Cambios guardados')).toBeTruthy()
   expect(sent(calls)).toEqual({
-    name: 'Nueva Betel', sundayDouble: false, usesPreaching: true, usesRotation: true,
+    name: 'Nueva Betel', sundayDouble: false, usesPreaching: true, usesRotation: true, songRepeat: null,
     days: [
       { weekday: 0, slot: 'SINGLE', time: '10:00', title: 'Servicio dominical' },
       { weekday: 2, slot: 'SINGLE', time: '19:00', title: 'Servicio de martes' },
@@ -144,4 +144,53 @@ test('the rotation switch is saved with the settings and explains itself with an
   fireEvent.click(toggle)
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   await waitFor(() => expect(calls.some((call) => call.init?.method === 'PUT' && JSON.parse(String(call.init.body)).usesRotation === true)).toBe(true))
+})
+
+test('the repetition rule is turned on by weeks or by services and saved with the settings', async () => {
+  const calls = stubApi({})
+  page()
+  fireEvent.click(await screen.findByRole('switch', { name: 'Evitar repetir canciones' }))
+  const rule = within(screen.getByRole('region', { name: 'Repetición de canciones' }))
+  // Por semanas, con 2: la semana en que se canta y 1 bloqueada, y a la tercera ya se puede.
+  const weeks = within(rule.getByLabelText('Ejemplo de la regla'))
+  expect(weeks.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Semana 1la cantas', 'Semana 2no', 'Semana 3ya puedes'])
+  expect(weeks.getByText(/hasta la semana 2 no se ofrece; desde la semana 3 ya sí/)).toBeTruthy()
+  fireEvent.click(rule.getByRole('button', { name: 'Más' }))
+  fireEvent.click(rule.getByRole('button', { name: 'Cultos' }))
+  // Por cultos, con 3 y cultos de viernes y domingo: viernes la cantas, domingo, viernes y domingo no, y el viernes siguiente ya.
+  const services = within(rule.getByLabelText('Ejemplo de la regla'))
+  expect(services.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Domla cantas', 'Vieno', 'Domno', 'Vieno', 'Domya puedes'])
+  expect(services.getByText(/Si la cantas el domingo, los 3 cultos siguientes no la ofrecen; desde el domingo ya sí/)).toBeTruthy()
+  fireEvent.click(save())
+  expect(await screen.findByText('Cambios guardados')).toBeTruthy()
+  expect(sent(calls)).toMatchObject({ songRepeat: { unit: 'SERVICES', amount: 3 } })
+  fireEvent.click(screen.getByRole('switch', { name: 'Evitar repetir canciones' }))
+  fireEvent.click(save())
+  const puts = () => calls.filter((call) => call.init?.method === 'PUT')
+  await waitFor(() => expect(puts()).toHaveLength(2))
+  expect(JSON.parse(String(puts()[1]!.init?.body))).toMatchObject({ songRepeat: null })
+})
+
+test('the example uses the services the church has configured above, and follows them when they change', async () => {
+  stubApi({})
+  page()
+  fireEvent.click(await screen.findByRole('switch', { name: 'Evitar repetir canciones' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Cultos' }))
+  const names = () => within(screen.getByLabelText('Ejemplo de la regla')).getAllByRole('listitem').map((item) => item.querySelector('b')?.textContent)
+  // Domingo y viernes configurados, con 2: la que cantas, 2 bloqueados y el siguiente libre.
+  expect(names()).toEqual(['Dom', 'Vie', 'Dom', 'Vie'])
+  fireEvent.click(day('martes'))
+  expect(names()).toEqual(['Dom', 'Mar', 'Vie', 'Dom'])
+  fireEvent.click(day('domingo'))
+  expect(names()).toEqual(['Mar', 'Vie', 'Mar', 'Vie'])
+})
+
+test('with two Sunday services the example counts the morning and the afternoon one', async () => {
+  stubApi({ church: { ...church, sundayDouble: true, days: [{ weekday: 0, slot: 'MORNING', time: '09:00', title: 'Mañana' }, { weekday: 0, slot: 'AFTERNOON', time: '17:00', title: 'Tarde' }] } })
+  page()
+  fireEvent.click(await screen.findByRole('switch', { name: 'Evitar repetir canciones' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Cultos' }))
+  const names = within(screen.getByLabelText('Ejemplo de la regla')).getAllByRole('listitem').map((item) => item.querySelector('b')?.textContent)
+  expect(names).toEqual(['Dom mañana', 'Dom tarde', 'Dom mañana', 'Dom tarde'])
+  expect(screen.getByText(/Si la cantas el domingo por la mañana/)).toBeTruthy()
 })

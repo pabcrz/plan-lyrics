@@ -4,7 +4,8 @@ import { useApiFetch } from '../calendar/api'
 import type { Slot, Status } from '../calendar/model'
 
 /** `hasLyrics` y `hasChords` solo vienen en la lista de la biblioteca. */
-export type Song = { id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean }
+/** `lastUsed` y `uses`: último servicio cumplido de esta iglesia con la canción (YYYY-MM-DD) y cuántas veces. `blockedBy`: con la regla de repetición, la fecha del uso que impide ponerla en el servicio que se arma. */
+export type Song = { id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean; lastUsed?: string | null; uses?: number; blockedBy?: string | null }
 export type Entry = { id: string; kind: 'SONG' | 'MOMENT'; song: Song | null; moment: string | null; key: string | null; link: string | null }
 export type Setlist = {
   service: { id: string; title: string; date: string; slot: Slot; time: string | null; status: Status }
@@ -45,10 +46,10 @@ export function useSetlist(serviceId: string) {
 }
 
 /** Búsqueda en la biblioteca compartida (sin distinguir mayúsculas ni acentos); conserva la lista anterior mientras llega la nueva. */
-export function useSongs(query: string, enabled: boolean) {
+export function useSongs(query: string, enabled: boolean, serviceId?: string) {
   const api = useApiFetch()
   return useQuery({
-    queryKey: ['songs', query], queryFn: () => api<Song[]>(`/api/songs?q=${encodeURIComponent(query)}`),
+    queryKey: ['songs', query, serviceId ?? null], queryFn: () => api<Song[]>(`/api/songs?q=${encodeURIComponent(query)}${serviceId ? `&serviceId=${encodeURIComponent(serviceId)}` : ''}`),
     enabled, retry: false, placeholderData: keepPreviousData,
   })
 }

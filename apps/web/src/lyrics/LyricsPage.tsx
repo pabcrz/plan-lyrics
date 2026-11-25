@@ -157,6 +157,7 @@ export function LyricsPage() {
           ) : (
             <p className="m-0 text-center text-sm text-text-2">Solo quien edita la biblioteca puede cambiar la letra y los acordes.</p>
           )}
+          {stored.canEdit && <Button variant="quiet" block onClick={() => void navigate(`/canciones/${encodeURIComponent(songId)}/editar`)}>Editar título y autor</Button>}
         </div>
       )}
     </div>

@@ -10,9 +10,9 @@ vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 // Solo datos ficticios.
-const library: Array<{ id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean }> = [
-  { id: 's1', title: 'Canción de ejemplo', author: 'Autora Uno', hasLyrics: true, hasChords: true },
-  { id: 's2', title: 'Himno ficticio', author: 'Autor Dos', hasLyrics: true, hasChords: false },
+const library: Array<{ id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean; lastUsed?: string | null; uses?: number }> = [
+  { id: 's1', title: 'Canción de ejemplo', author: 'Autora Uno', hasLyrics: true, hasChords: true, lastUsed: '2026-01-04', uses: 3 },
+  { id: 's2', title: 'Himno ficticio', author: 'Autor Dos', hasLyrics: true, hasChords: false, lastUsed: null, uses: 0 },
 ]
 
 function stub(canCreate: boolean, post?: () => Response, write?: (method: string) => Response) {
@@ -84,10 +84,9 @@ test('a duplicate song is explained, and without access the form is read-only', 
   expect(await screen.findByText('Solo lectura')).toBeTruthy()
 })
 
-test('an editor renames a song from the list; a reader sees no edit button', async () => {
+test('an editor renames a song from its edit panel, and the list rows carry no edit button', async () => {
   const calls = stub(true)
-  app('/canciones')
-  fireEvent.click(await screen.findByRole('button', { name: 'Editar Canción de ejemplo, Autora Uno' }))
+  app('/canciones/s1/editar')
   fireEvent.change(await screen.findByLabelText('Autor'), { target: { value: 'Autora Uno Bis' } })
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   expect(await screen.findByText('Himno ficticio')).toBeTruthy()
@@ -102,8 +101,7 @@ test('an editor renames a song from the list; a reader sees no edit button', asy
 test('deleting a song asks first and explains when it is in use', async () => {
   const used = new Response(JSON.stringify({ error: 'Song in use' }), { status: 409 })
   const calls = stub(true, undefined, (method) => (method === 'DELETE' && calls.filter((call) => call === 'DELETE /api/songs/s1').length === 1 ? used : new Response(null, { status: 204 })))
-  app('/canciones')
-  fireEvent.click(await screen.findByRole('button', { name: 'Editar Canción de ejemplo, Autora Uno' }))
+  app('/canciones/s1/editar')
   fireEvent.click(await screen.findByRole('button', { name: 'Eliminar canción' }))
   fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Eliminar canción' }))
   expect(await screen.findByText('No se puede eliminar: tiene letra o está en un setlist.')).toBeTruthy()
@@ -121,7 +119,7 @@ test('on desktop an editor picks a song and edits it beside the list, keeping th
   fireEvent.click(await screen.findByText('Canción de ejemplo'))
   expect((await screen.findByLabelText('Título') as HTMLInputElement).value).toBe('Canción de ejemplo')
   expect((screen.getByLabelText('Buscar canciones') as HTMLInputElement).value).toBe('ejemplo')
-  expect(screen.getByRole('button', { name: /^Canción de ejemplo\s*Autora Uno$/ }).getAttribute('aria-current')).toBe('true')
+  expect(screen.getByRole('button', { name: /^Canción de ejemplo\s*Autora Uno/ }).getAttribute('aria-current')).toBe('true')
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   await waitFor(() => expect(calls).toContain('PATCH /api/songs/s1'))
   expect(await screen.findByText('Elige una canción')).toBeTruthy()
@@ -144,17 +142,21 @@ test('an empty library invites an editor to add the first song, and tells a read
   library.push(...kept)
 })
 
-test('the library filters by what is missing and says it on each song', async () => {
+test('the library is ordered by use, either way, and each song says how long ago it was used', async () => {
   const calls = stub(false)
   app('/canciones')
   await screen.findByText('Canción de ejemplo')
-  expect(screen.getByText(/Autor Dos · Sin acordes/)).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Sin acordes' }))
-  await waitFor(() => expect(screen.queryByText('Canción de ejemplo')).toBeNull())
-  expect(screen.getByRole('button', { name: 'Sin acordes' }).getAttribute('aria-pressed')).toBe('true')
-  expect(calls.some((call) => call.includes('filter=no-chords'))).toBe(true)
-  fireEvent.click(screen.getByRole('button', { name: 'Sin letra' }))
-  expect(await screen.findByText('Todas las canciones tienen letra.')).toBeTruthy()
+  expect(calls.some((call) => call.includes('sort=title') && call.includes('dir=asc'))).toBe(true)
+  expect(screen.getByRole('button', { name: 'A–Z' }).getAttribute('aria-pressed')).toBe('true')
+  fireEvent.click(screen.getByRole('button', { name: 'Más usadas' }))
+  await waitFor(() => expect(calls.some((call) => call.includes('sort=uses') && call.includes('dir=desc'))).toBe(true))
+  fireEvent.click(screen.getByRole('button', { name: 'Menos usadas' }))
+  await waitFor(() => expect(calls.some((call) => call.includes('sort=uses') && call.includes('dir=asc'))).toBe(true))
+  fireEvent.click(screen.getByRole('button', { name: 'Invertir orden' }))
+  await waitFor(() => expect(calls.at(-1)).toContain('dir=desc'))
+  expect(screen.getByRole('button', { name: 'Invertir orden' }).getAttribute('aria-pressed')).toBe('true')
+  // Sorted by use the row also says how many times.
+  expect(screen.getAllByText(/^\d+ veces?$/).length).toBeGreaterThan(0)
 })
 
 test('a library with more than a page offers «Cargar más» until it runs out', async () => {
@@ -170,4 +172,15 @@ test('a library with more than a page offers «Cargar más» until it runs out',
   } finally {
     library.splice(0, library.length, ...kept)
   }
+})
+
+test('each song shows title, author and how long ago this church used it, and nothing else', async () => {
+  stub(false)
+  app('/canciones')
+  const used = (await screen.findByText('Canción de ejemplo')).closest('li')!
+  expect(within(used).getByText('Autora Uno')).toBeTruthy()
+  expect(within(used).getByText(/^hace \d+ meses$/)).toBeTruthy()
+  expect(within(screen.getByText('Himno ficticio').closest('li')!).getByText('Sin usar')).toBeTruthy()
+  expect(screen.queryByText(/Programada|Sin letra|Sin acordes/)).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Sin letra' })).toBeNull()
 })

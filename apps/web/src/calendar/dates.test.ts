@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { formatDay, formatDaySlot, monthCells, monthTitle, shiftMonth, todayIn, weekdayOf } from './dates'
+import { formatDay, formatDaySlot, monthCells, monthTitle, shiftMonth, todayIn, agoText, weekdayOf } from './dates'
 
 describe('dates', () => {
   test('today is the Mexico City calendar day, not the UTC one', () => {
@@ -30,5 +30,20 @@ describe('dates', () => {
     expect(formatDaySlot('2026-11-15', 'MORNING')).toBe('dom 15 nov · mañana')
     expect(formatDaySlot('2026-11-15', 'AFTERNOON')).toBe('dom 15 nov · tarde')
     expect(formatDaySlot('2026-11-13', 'SINGLE')).toBe('vie 13 nov')
+  })
+})
+
+describe('agoText', () => {
+  const today = '2026-11-25'
+  test('says how long ago a song was used, by date', () => {
+    expect(agoText('2026-11-25', today)).toBe('hoy')
+    expect(agoText('2026-11-24', today)).toBe('ayer')
+    expect(agoText('2026-11-15', today)).toBe('hace 10 días')
+    expect(agoText('2026-10-04', today)).toBe('hace 7 semanas')
+    expect(agoText('2026-05-03', today)).toBe('hace 7 meses')
+  })
+  test('a song never used says so', () => {
+    expect(agoText(null, today)).toBe('Sin usar')
+    expect(agoText(undefined, today)).toBe('Sin usar')
   })
 })

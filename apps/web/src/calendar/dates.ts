@@ -53,3 +53,14 @@ export const formatDaySlot = (date: string, slot: string) => `${formatDay(date)}
 
 /** «viernes 13 de noviembre». */
 export const formatLongDay = (date: string) => format(date, { weekday: 'long', day: 'numeric', month: 'long' })
+
+/** «hoy», «ayer», «hace 9 días», «hace 2 semanas», «hace 7 meses»; sin uso, «Sin usar». Cuenta por fecha del servicio, no por hora. */
+export function agoText(lastUsed: string | null | undefined, today: string = todayIn()): string {
+  if (!lastUsed) return 'Sin usar'
+  const days = Math.round((atNoon(today).getTime() - atNoon(lastUsed).getTime()) / 86_400_000)
+  if (days <= 0) return 'hoy'
+  if (days === 1) return 'ayer'
+  if (days < 14) return `hace ${days} días`
+  if (days < 60) return `hace ${Math.round(days / 7)} semanas`
+  return `hace ${Math.round(days / 30)} meses`
+}

@@ -5,12 +5,14 @@ import { ApiError } from '../calendar/api'
 import { ChordLine, linesOf } from '../lyrics/ChordParts'
 import { keysOfMode, parseKey } from '../lyrics/chords'
 import { useLyrics, useTransposedLyrics } from '../lyrics/lyrics-api'
-import { entryLabel, referenceOrigin, songLabel, useSongs, type Entry, type Song } from './setlist-api'
+import { entryLabel, referenceOrigin, useSongs, type Entry, type Song } from './setlist-api'
+import { SongRowBody, rowLabel } from '../songs/SongRow'
 
 const MOMENTS = ['Oración', 'Ofrenda', 'Anuncios', 'Lectura bíblica', 'Predicación', 'Santa cena']
 
 /** Hoja «Agregar al setlist»: una canción de la biblioteca o un momento del servicio. */
-export function AddSheet({ entries, canCreateSongs, onClose, createSong, onAddSong, onAddMoment }: {
+export function AddSheet({ serviceId, entries, canCreateSongs, onClose, createSong, onAddSong, onAddMoment }: {
+  serviceId: string
   entries: Entry[]
   canCreateSongs: boolean
   onClose: () => void
@@ -24,7 +26,7 @@ export function AddSheet({ entries, canCreateSongs, onClose, createSong, onAddSo
       <div className="grid gap-3">
         <Segmented label="Qué agregar" value={mode} onChange={setMode} options={[{ value: 'song', label: 'Canción' }, { value: 'moment', label: 'Momento' }]} />
         {mode === 'song'
-          ? <SongTab entries={entries} canCreateSongs={canCreateSongs} createSong={createSong} onAdd={onAddSong} />
+          ? <SongTab serviceId={serviceId} entries={entries} canCreateSongs={canCreateSongs} createSong={createSong} onAdd={onAddSong} />
           : <MomentTab onAdd={onAddMoment} />}
         <Button variant="quiet" block onClick={onClose}>Cerrar</Button>
       </div>
@@ -32,8 +34,8 @@ export function AddSheet({ entries, canCreateSongs, onClose, createSong, onAddSo
   )
 }
 
-function SongTab({ entries, canCreateSongs, createSong, onAdd }: {
-  entries: Entry[]; canCreateSongs: boolean
+function SongTab({ serviceId, entries, canCreateSongs, createSong, onAdd }: {
+  serviceId: string; entries: Entry[]; canCreateSongs: boolean
   createSong: (song: { title: string; author: string }) => Promise<Song>
   onAdd: (song: Song) => Promise<boolean>
 }) {
@@ -45,7 +47,7 @@ function SongTab({ entries, canCreateSongs, createSong, onAdd }: {
     const timer = setTimeout(() => setTerm(text.trim()), 200)
     return () => clearTimeout(timer)
   }, [text])
-  const songs = useSongs(term, !creating)
+  const songs = useSongs(term, !creating, serviceId)
   const used = new Set(entries.flatMap((entry) => (entry.song ? [entry.song.id] : [])))
 
   async function add(song: Song) {
@@ -86,11 +88,14 @@ function SongTab({ entries, canCreateSongs, createSong, onAdd }: {
         <ul className="m-0 max-h-[260px] list-none overflow-y-auto rounded-md border border-line p-0">
           {rows.map((song) => {
             const already = used.has(song.id)
+            // Estricto: lo que la regla de repetición de la iglesia no permite aquí no se puede elegir (la API tampoco lo acepta).
+            const blocked = !already && Boolean(song.blockedBy)
             return (
               <li key={song.id} className="border-b border-line last:border-b-0">
-                <button type="button" disabled={already || sending} onClick={() => void add(song)} aria-label={already ? `${songLabel(song)}. Ya está en el setlist` : `Agregar ${songLabel(song)}`}
-                  className="flex min-h-14 w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-3 text-left hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-55">
-                  <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-3">{song.author || 'Sin autor'}</small></span>
+                <button type="button" disabled={already || blocked || sending} onClick={() => void add(song)}
+                  aria-label={already ? `${rowLabel(song)}. Ya está en el setlist` : blocked ? `${rowLabel(song)}. No disponible: la regla de repetición de la iglesia no lo permite` : `Agregar ${rowLabel(song)}`}
+                  className="flex min-h-14 w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-3 py-2 text-left hover:bg-surface-2 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-3 disabled:hover:bg-surface-2">
+                  <SongRowBody song={song} blocked={blocked} />
                   {already && <span className="text-xs font-medium text-text-3">Ya está</span>}
                 </button>
               </li>

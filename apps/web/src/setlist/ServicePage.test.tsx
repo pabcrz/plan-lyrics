@@ -27,7 +27,7 @@ const initial = () => [
 ]
 
 type Lyr = { key: string | null; sections: Array<{ kind: string; label: string | null; text: string; chordPro: string | null; repeat: number }> }
-type Options = { services?: unknown[]; lyrics?: Record<string, Lyr>; moved?: Record<string, Lyr & { semitones: number }>; canEdit?: boolean; canCreateSongs?: boolean; entries?: Entry[]; status?: number; staleOnce?: boolean; createSong?: { status: number; body?: unknown } }
+type Options = { blocked?: Record<string, string>; blockedWrite?: boolean; services?: unknown[]; lyrics?: Record<string, Lyr>; moved?: Record<string, Lyr & { semitones: number }>; canEdit?: boolean; canCreateSongs?: boolean; entries?: Entry[]; status?: number; staleOnce?: boolean; createSong?: { status: number; body?: unknown } }
 
 /** Servidor ficticio en memoria con las mismas reglas que la API: versión, orden y respuestas completas. */
 function stubSetlist(options: Options = {}) {
@@ -58,13 +58,14 @@ function stubSetlist(options: Options = {}) {
         state.library.push(created)
         return reply(201, created)
       }
-      const words = fold(decodeURIComponent(url.split('q=')[1] ?? '')).split(' ').filter(Boolean)
-      return reply(200, state.library.filter((item) => words.every((word) => fold(`${item.title} ${item.author}`).includes(word))))
+      const words = fold(decodeURIComponent(url.split('q=')[1] ?? '')).split('&')[0]!.split(' ').filter(Boolean)
+      return reply(200, state.library.filter((item) => words.every((word) => fold(`${item.title} ${item.author}`).includes(word))).map((item) => ({ ...item, ...(options.blocked?.[item.id] ? { blockedBy: options.blocked[item.id] } : {}) })))
     }
     if (options.status) return reply(options.status, { error: 'x' })
     const entryId = /\/entries\/([^/]+)$/.exec(url)?.[1]
     if (url.endsWith('/setlist') && method === 'GET') return reply(200, snapshot())
     if (url.endsWith('/entries') && method === 'POST') {
+      if (options.blockedWrite) return reply(409, { error: 'Song repeat rule' })
       const created: Entry = body && 'songId' in body
         ? song(`e${state.next++}`, state.library.find((item) => item.id === body.songId)!, { key: (body.key as string | null) ?? null, link: (body.link as string | null) ?? null })
         : moment(`e${state.next++}`, String(body?.moment))
@@ -167,13 +168,13 @@ test('adds a song from the library by title or author, marking the ones already 
   page()
   fireEvent.click(await screen.findByRole('button', { name: 'Agregar' }))
   const sheet = await screen.findByRole('dialog', { name: 'Agregar al setlist' })
-  expect(await within(sheet).findByRole('button', { name: 'Agregar Tema inventado, Autora Tres' })).toBeTruthy()
+  expect(await within(sheet).findByRole('button', { name: /^Agregar Tema inventado, Autora Tres/ })).toBeTruthy()
   // Dos canciones con el mismo título se distinguen por su autor.
-  expect(within(sheet).getByRole('button', { name: 'Canción de ejemplo, Autora Uno. Ya está en el setlist' }).hasAttribute('disabled')).toBe(true)
-  expect(within(sheet).getByRole('button', { name: 'Agregar Canción de ejemplo, Autor Dos' }).hasAttribute('disabled')).toBe(false)
+  expect(within(sheet).getByRole('button', { name: /^Canción de ejemplo, Autora Uno.*Ya está en el setlist$/ }).hasAttribute('disabled')).toBe(true)
+  expect(within(sheet).getByRole('button', { name: /^Agregar Canción de ejemplo, Autor Dos/ }).hasAttribute('disabled')).toBe(false)
   fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Buscar canciones' }), { target: { value: 'CANCION dos' } })
   await waitFor(() => expect(within(sheet).queryByRole('button', { name: /Tema inventado/ })).toBeNull())
-  fireEvent.click(within(sheet).getByRole('button', { name: 'Agregar Canción de ejemplo, Autor Dos' }))
+  fireEvent.click(within(sheet).getByRole('button', { name: /^Agregar Canción de ejemplo, Autor Dos/ }))
   await waitFor(() => expect(titles()).toEqual(['Canción de ejemplo', 'Ofrenda', 'Himno ficticio', 'Canción de ejemplo']))
   expect(server.writes()).toEqual([{ method: 'POST', url: '/api/services/s1/setlist/entries', body: { songId: 'l2' } }])
   expect(screen.queryByRole('dialog')).toBeNull()
@@ -452,4 +453,27 @@ test('a service created with only its preaching says «Sin director» and lets e
   page()
   expect(await screen.findByText('Sin director')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Asignar director' })).toBeNull()
+})
+
+test('with the strict repetition rule the picker shows what cannot go in this service as unavailable, with the reason', async () => {
+  const server = stubSetlist({ blocked: { l2: '2026-11-08' } })
+  page()
+  fireEvent.click(await screen.findByRole('button', { name: 'Agregar' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Agregar al setlist' })
+  const blocked = await within(sheet).findByRole('button', { name: /No disponible: la regla de repetición/ }) as HTMLButtonElement
+  expect(blocked.disabled).toBe(true)
+  expect(within(blocked).getByText(/No disponible: usada el dom 8 nov/)).toBeTruthy()
+  fireEvent.click(blocked)
+  expect(server.writes()).toEqual([])
+  // The picker asks about this very service, so the server can apply the rule to it.
+  expect(server.calls.some((call) => call.url.startsWith('/api/songs?') && call.url.includes('serviceId=s1'))).toBe(true)
+})
+
+test('the server refusing a song by the repetition rule is explained', async () => {
+  stubSetlist({ blockedWrite: true })
+  page()
+  fireEvent.click(await screen.findByRole('button', { name: 'Agregar' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Agregar al setlist' })
+  fireEvent.click(await within(sheet).findByRole('button', { name: /^Agregar Tema inventado/ }))
+  expect((await screen.findByRole('alert')).textContent).toContain('no puede repetirse todavía')
 })
