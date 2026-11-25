@@ -9,7 +9,7 @@ export function SongRowBody({ song, count = false, blocked = false }: { song: So
     <>
       <span className="min-w-0 flex-1">
         <b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b>
-        <small className="block text-[0.8125rem] text-text-2">{song.author || 'Sin autor'}</small>
+        {song.author && <small className="block text-[0.8125rem] text-text-2">{song.author}</small>}
         {blocked && song.blockedBy && (
           <small className="mt-1 flex items-center gap-1 text-[0.8125rem] font-medium text-text-2"><Icon name="lock" width={14} height={14} />No disponible: usada el {formatDay(song.blockedBy)}</small>
         )}

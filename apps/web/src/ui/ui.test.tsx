@@ -186,12 +186,37 @@ describe('Sheet', () => {
     expect(opener).toHaveFocus()
   })
 
-  test('clicking the scrim closes, clicking inside does not', () => {
+  test('touching outside closes (a touch, not only a mouse), touching inside does not', () => {
     const onClose = vi.fn()
     render(<Sheet open onClose={onClose} title="Hoja"><button>Dentro</button></Sheet>)
-    fireEvent.mouseDown(screen.getByRole('button', { name: 'Dentro' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Dentro' }))
     expect(onClose).not.toHaveBeenCalled()
-    fireEvent.mouseDown(screen.getByRole('dialog').parentElement!)
+    fireEvent.pointerDown(screen.getByRole('dialog').parentElement!)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  test('the little bar on top is a control: tapping it closes the sheet', () => {
+    const onClose = vi.fn()
+    render(<Sheet open onClose={onClose} title="Hoja"><button>Dentro</button></Sheet>)
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar hoja' }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  test('dragging the bar down far enough closes, a short drag springs back without closing', () => {
+    const onClose = vi.fn()
+    render(<Sheet open onClose={onClose} title="Hoja"><button>Dentro</button></Sheet>)
+    const bar = screen.getByRole('button', { name: 'Cerrar hoja' })
+    const dialog = screen.getByRole('dialog')
+    fireEvent.pointerDown(bar, { clientY: 100, pointerId: 1 })
+    fireEvent.pointerMove(bar, { clientY: 140, pointerId: 1 })
+    expect(dialog.style.transform).toBe('translateY(40px)')
+    fireEvent.pointerUp(bar, { clientY: 140, pointerId: 1 })
+    fireEvent.click(bar)
+    expect(onClose).not.toHaveBeenCalled()
+    expect(dialog.style.transform).toBe('')
+    fireEvent.pointerDown(bar, { clientY: 100, pointerId: 1 })
+    fireEvent.pointerMove(bar, { clientY: 230, pointerId: 1 })
+    fireEvent.pointerUp(bar, { clientY: 230, pointerId: 1 })
     expect(onClose).toHaveBeenCalledOnce()
   })
 })

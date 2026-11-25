@@ -211,7 +211,7 @@ function Settings({ church }: { church: Church }) {
           description={form.usesRotation ? 'Cada rol puede rotar a sus personas entre servicios, en orden y de forma cíclica.' : 'Sin rotación: los servicios nuevos solo llevan a los habituales de cada rol. Lo ya configurado se conserva.'} />
         <RotationExample />
 
-        <SongRepeatSetting value={form.songRepeat} onChange={(songRepeat) => change((prev) => ({ ...prev, songRepeat }))} />
+        <SongRepeatSetting value={form.songRepeat} weekdays={form.selected} onChange={(songRepeat) => change((prev) => ({ ...prev, songRepeat }))} />
 
         <details className="rounded-lg border border-line bg-surface">
           <summary className="min-h-touch-lg cursor-pointer px-3 py-3 font-semibold">Roles musicales y combinaciones</summary>
@@ -254,12 +254,63 @@ function RotationExample() {
 
 const UNIT_OPTIONS = [{ value: 'WEEKS', label: 'Semanas' }, { value: 'SERVICES', label: 'Cultos' }] as const
 
+type Step = { name: string; state: 'sung' | 'blocked' | 'free'; note: string }
+const SHOWN = 4
+
+/** Los pasos del ejemplo, uno por culto o por semana: la canción cantada, los que quedan bloqueados y el primero libre. Con números grandes se resumen. */
+function exampleSteps(rule: SongRepeat, weekdays: number[]): { steps: Array<Step | { skipped: number }>; summary: string } {
+  const days = weekdays.length > 0 ? [...weekdays].sort() : [0]
+  const start = Math.max(0, days.indexOf(5)) // empieza en viernes si hay culto ese día; si no, en el primer día
+  const dayOf = (index: number) => DAY_NAMES[days[(start + index) % days.length]!]!
+  const name = (index: number) => dayOf(index).slice(0, 3).replace(/^./, (letter) => letter.toUpperCase())
+  const word = rule.unit === 'WEEKS' ? 'semana' : 'culto'
+  const label = (index: number) => (rule.unit === 'WEEKS' ? `Semana ${index + 1}` : index === 0 ? name(0) : `${name(index)}`)
+  const blocked = rule.unit === 'WEEKS' ? rule.amount - 1 : rule.amount
+  const sequence: Step[] = [
+    { name: label(0), state: 'sung', note: 'la cantas' },
+    ...Array.from({ length: blocked }, (_, i): Step => ({ name: label(i + 1), state: 'blocked', note: 'no' })),
+    { name: label(blocked + 1), state: 'free', note: 'ya puedes' },
+  ]
+  const hidden = blocked - (SHOWN - 1)
+  const steps: Array<Step | { skipped: number }> = blocked > SHOWN ? [...sequence.slice(0, SHOWN), { skipped: hidden }, sequence[sequence.length - 1]!] : sequence
+  const free = rule.unit === 'WEEKS' ? `la semana ${blocked + 2}` : `el ${dayOf(blocked + 1)}`
+  const summary = rule.unit === 'WEEKS'
+    ? `Si la cantas en la semana 1, ${rule.amount === 1 ? 'esa misma semana no se repite' : `hasta la semana ${rule.amount} no se ofrece`}; desde ${free} ya sí. Se cuenta por fecha, no por hora.`
+    : `Si la cantas el ${dayOf(0)}, ${rule.amount === 1 ? 'el culto siguiente no la ofrece' : `los ${rule.amount} cultos siguientes no la ofrecen`}; desde ${free} ya sí.`
+  return { steps, summary }
+}
+
+/** Dibujo del ejemplo: una fila de cultos o semanas con la canción cantada, lo bloqueado y cuándo ya se puede. Cada paso lleva texto e ícono, no solo color. */
+function RepeatExample({ rule, weekdays }: { rule: SongRepeat; weekdays: number[] }) {
+  const { steps, summary } = exampleSteps(rule, weekdays)
+  const chip = {
+    sung: 'border-accent bg-accent text-on-accent',
+    blocked: 'border-dashed border-line-strong bg-surface-2 text-text-3',
+    free: 'border-accent bg-accent-soft text-accent-soft-text',
+  } as const
+  return (
+    <div className="grid gap-2 rounded-md bg-surface-2 p-3" aria-label="Ejemplo de la regla">
+      <p className="m-0 text-[0.8125rem] font-semibold text-text-2">Ejemplo</p>
+      <ol className="m-0 flex list-none flex-wrap items-stretch gap-1.5 p-0">
+        {steps.map((step, index) => 'skipped' in step ? (
+          <li key={`skip-${index}`} className="grid min-w-9 place-items-center text-xs font-medium text-text-3" aria-label={`${step.skipped} más, también bloqueados`}>+{step.skipped}</li>
+        ) : (
+          <li key={`${step.name}-${index}`} className={`grid min-w-14 justify-items-center gap-0.5 rounded-md border px-2 py-1.5 text-center ${chip[step.state]}`}>
+            <Icon name={step.state === 'sung' ? 'music' : step.state === 'blocked' ? 'lock' : 'check'} width={16} height={16} />
+            <b className="text-sm leading-tight font-semibold">{step.name}</b>
+            <small className="text-xs leading-tight">{step.note}</small>
+          </li>
+        ))}
+      </ol>
+      <p className="m-0 text-[0.8125rem] text-text-2">{summary}</p>
+      <p className="m-0 text-[0.8125rem] text-text-3">También cuenta hacia adelante: si ya está programada en un servicio cercano, tampoco se ofrece para este.</p>
+    </div>
+  )
+}
+
 /** Regla estricta de repetición: una canción usada hace menos de N semanas, o dentro de los N cultos anteriores o siguientes, no se puede elegir. */
-function SongRepeatSetting({ value, onChange }: { value: SongRepeat | null; onChange: (value: SongRepeat | null) => void }) {
+function SongRepeatSetting({ value, weekdays, onChange }: { value: SongRepeat | null; weekdays: number[]; onChange: (value: SongRepeat | null) => void }) {
   const set = (patch: Partial<SongRepeat>) => value && onChange({ ...value, ...patch })
-  const explain = !value ? '' : value.unit === 'WEEKS'
-    ? `Una canción no se puede elegir si se canta en otro servicio a menos de ${value.amount} ${value.amount === 1 ? 'semana' : 'semanas'}, antes o después. Cuenta la fecha del servicio, no la hora.`
-    : `Una canción no se puede elegir si se canta en alguno de los ${value.amount} ${value.amount === 1 ? 'culto' : 'cultos'} anteriores o siguientes. Con 2: si se canta el viernes, el domingo y el viernes siguientes no la ofrecen y el domingo después sí.`
   return (
     <section className="grid gap-3 rounded-lg border border-line bg-surface p-3" aria-label="Repetición de canciones">
       <Switch checked={value !== null} onCheckedChange={(on) => onChange(on ? { unit: 'WEEKS', amount: 2 } : null)} label="Evitar repetir canciones"
@@ -267,13 +318,16 @@ function SongRepeatSetting({ value, onChange }: { value: SongRepeat | null; onCh
       {value && (
         <>
           <Segmented<SongRepeat['unit']> label="Contar en" value={value.unit} onChange={(unit) => set({ unit })} options={UNIT_OPTIONS} />
+          <p className="m-0 text-[0.8125rem] text-text-3">
+            {value.unit === 'WEEKS' ? 'Semanas: se cuenta el calendario, sin importar cuántos cultos haya en ellas.' : 'Cultos: se cuentan los servicios que haya, sin importar cuántos días pasen.'}
+          </p>
           <div className="flex items-center gap-3">
-            <span className="flex-1 text-[0.9375rem] font-semibold">Mínimo entre usos</span>
+            <span className="flex-1 text-[0.9375rem] font-semibold">Mínimo entre usos <small className="font-normal text-text-3">({value.unit === 'WEEKS' ? value.amount === 1 ? 'semana' : 'semanas' : value.amount === 1 ? 'culto' : 'cultos'})</small></span>
             <Button variant="secondary" icon aria-label="Menos" disabled={value.amount <= 1} onClick={() => set({ amount: value.amount - 1 })}><Icon name="minus" /></Button>
             <output aria-label="Mínimo entre usos" className="w-8 text-center font-display text-lg font-bold [font-variant-numeric:tabular-nums]">{value.amount}</output>
             <Button variant="secondary" icon aria-label="Más" disabled={value.amount >= 26} onClick={() => set({ amount: value.amount + 1 })}><Icon name="plus" /></Button>
           </div>
-          <p className="m-0 text-[0.8125rem] text-text-3">{explain}</p>
+          <RepeatExample rule={value} weekdays={weekdays} />
         </>
       )}
     </section>

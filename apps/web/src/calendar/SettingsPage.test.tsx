@@ -151,10 +151,16 @@ test('the repetition rule is turned on by weeks or by services and saved with th
   page()
   fireEvent.click(await screen.findByRole('switch', { name: 'Evitar repetir canciones' }))
   const rule = within(screen.getByRole('region', { name: 'Repetición de canciones' }))
-  expect(rule.getByText(/a menos de 2 semanas, antes o después/)).toBeTruthy()
+  // Por semanas, con 2: la semana en que se canta y 1 bloqueada, y a la tercera ya se puede.
+  const weeks = within(rule.getByLabelText('Ejemplo de la regla'))
+  expect(weeks.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Semana 1la cantas', 'Semana 2no', 'Semana 3ya puedes'])
+  expect(weeks.getByText(/hasta la semana 2 no se ofrece; desde la semana 3 ya sí/)).toBeTruthy()
   fireEvent.click(rule.getByRole('button', { name: 'Más' }))
   fireEvent.click(rule.getByRole('button', { name: 'Cultos' }))
-  expect(rule.getByText(/alguno de los 3 cultos anteriores o siguientes/)).toBeTruthy()
+  // Por cultos, con 3 y cultos de viernes y domingo: viernes la cantas, domingo, viernes y domingo no, y el viernes siguiente ya.
+  const services = within(rule.getByLabelText('Ejemplo de la regla'))
+  expect(services.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Viela cantas', 'Domno', 'Vieno', 'Domno', 'Vieya puedes'])
+  expect(services.getByText(/Si la cantas el viernes, los 3 cultos siguientes no la ofrecen; desde el viernes ya sí/)).toBeTruthy()
   fireEvent.click(save())
   expect(await screen.findByText('Cambios guardados')).toBeTruthy()
   expect(sent(calls)).toMatchObject({ songRepeat: { unit: 'SERVICES', amount: 3 } })
