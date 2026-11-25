@@ -263,7 +263,6 @@ function exampleSteps(rule: SongRepeat, weekdays: number[]): { steps: Array<Step
   const start = Math.max(0, days.indexOf(5)) // empieza en viernes si hay culto ese día; si no, en el primer día
   const dayOf = (index: number) => DAY_NAMES[days[(start + index) % days.length]!]!
   const name = (index: number) => dayOf(index).slice(0, 3).replace(/^./, (letter) => letter.toUpperCase())
-  const word = rule.unit === 'WEEKS' ? 'semana' : 'culto'
   const label = (index: number) => (rule.unit === 'WEEKS' ? `Semana ${index + 1}` : index === 0 ? name(0) : `${name(index)}`)
   const blocked = rule.unit === 'WEEKS' ? rule.amount - 1 : rule.amount
   const sequence: Step[] = [
