@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from './generated/prisma/client.ts'
 import { safeErrorCode } from './errors.js'
 import { nameKey } from './people-rules.js'
 import { guarded } from './active-guard.js'
+import { todayInZone } from './service-rules.js'
 import { newSongBody, songListQuery } from './setlist-rules.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 
@@ -19,7 +20,7 @@ export async function canEditLibrary(db: PrismaClient, subject: string) {
   return Boolean(user && (user.libraryEditor || user.ownership || user.memberships.some(({ role }) => role === 'ADMIN' || role === 'EDITOR')))
 }
 
-export function songRoutes(config: SessionConfig, db?: PrismaClient) {
+export function songRoutes(config: SessionConfig, db?: PrismaClient, now: () => Date = () => new Date()) {
   const routes = new Hono<SessionEnvironment>()
   for (const path of ['/api/songs', '/api/songs/*']) {
     routes.use(path, requireSession(config))
@@ -28,7 +29,7 @@ export function songRoutes(config: SessionConfig, db?: PrismaClient) {
 
   // Any member reads the shared library (it belongs to no church). Search ignores case and accents,
   // and every word must appear in the title or the author.
-  routes.get('/api/songs', guarded(db, 'songs_list_failed', async (c, db) => {
+  routes.get('/api/songs', guarded(db, 'songs_list_failed', async (c, db, church) => {
     const query = songListQuery.safeParse({ q: c.req.query('q') ?? '', filter: c.req.query('filter'), offset: c.req.query('offset') })
     if (!query.success) return c.json({ error: 'Invalid request' }, 400)
     const words = nameKey(query.data.q).split(' ').filter(Boolean).slice(0, 8)
@@ -42,7 +43,21 @@ export function songRoutes(config: SessionConfig, db?: PrismaClient) {
       orderBy: [{ titleKey: 'asc' }, { authorKey: 'asc' }], skip: query.data.offset, take: PAGE_SIZE,
       select: { ...songSelect, lyrics: { select: { _count: { select: { sections: true } }, sections: { where: { chordPro: { not: null } }, select: { id: true }, take: 1 } } } },
     })
-    return c.json(rows.map(({ lyrics, ...song }) => ({ ...song, hasLyrics: (lyrics?._count.sections ?? 0) > 0, hasChords: (lyrics?.sections.length ?? 0) > 0 })))
+    // Use is by the date of the service, not the hour: a song sung on Sunday counts from that Sunday on. Only this church's
+    // services that are not cancelled count; `lastUsed` is the latest date up to today and `nextUse` the earliest one after it.
+    const today = todayInZone(now())
+    const used = rows.length === 0 ? [] : await db.setlistEntry.findMany({
+      where: { songId: { in: rows.map(row => row.id) }, service: { churchId: church.churchId, status: { not: 'CANCELLED' } } },
+      select: { songId: true, service: { select: { date: true } } },
+    })
+    const usage = new Map<string, { lastUsed: string | null; nextUse: string | null }>()
+    for (const { songId, service } of used) {
+      const date = service.date.toISOString().slice(0, 10)
+      const entry = usage.get(songId!) ?? { lastUsed: null, nextUse: null }
+      if (date <= today) { if (!entry.lastUsed || date > entry.lastUsed) entry.lastUsed = date } else if (!entry.nextUse || date < entry.nextUse) entry.nextUse = date
+      usage.set(songId!, entry)
+    }
+    return c.json(rows.map(({ lyrics, ...song }) => ({ ...song, hasLyrics: (lyrics?._count.sections ?? 0) > 0, hasChords: (lyrics?.sections.length ?? 0) > 0, ...(usage.get(song.id) ?? { lastUsed: null, nextUse: null }) })))
   }))
 
   // Lets the library screen show «Nueva» only to who can create songs (the POST below still decides).

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation } from 'react-router'
 import { Button, Icon, Notice, Segmented, Sheet, TextField, inputClass } from '../ui'
 import { ApiError } from '../calendar/api'
+import { usageText } from '../calendar/dates'
 import { ChordLine, linesOf } from '../lyrics/ChordParts'
 import { keysOfMode, parseKey } from '../lyrics/chords'
 import { useLyrics, useTransposedLyrics } from '../lyrics/lyrics-api'
@@ -90,7 +91,7 @@ function SongTab({ entries, canCreateSongs, createSong, onAdd }: {
               <li key={song.id} className="border-b border-line last:border-b-0">
                 <button type="button" disabled={already || sending} onClick={() => void add(song)} aria-label={already ? `${songLabel(song)}. Ya está en el setlist` : `Agregar ${songLabel(song)}`}
                   className="flex min-h-14 w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-3 text-left hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-55">
-                  <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-3">{song.author || 'Sin autor'}</small></span>
+                  <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-3">{song.author || 'Sin autor'}</small>{usageText(song) && <small className="block text-[0.8125rem] text-text-2">{usageText(song)}</small>}</span>
                   {already && <span className="text-xs font-medium text-text-3">Ya está</span>}
                 </button>
               </li>

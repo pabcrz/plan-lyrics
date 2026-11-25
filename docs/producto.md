@@ -136,7 +136,7 @@ Preservar la relación entre letra y acordes, permitir transposición respetando
 - Adaptaciones opcionales de iglesia y servicio heredan de la base. Los cambios heredados siguen vigentes incluso en contenido publicado; los overrides explícitos se conservan. No se exigen snapshots ni clones obligatorios.
 - La edición editorial global es distinta de la administración local de iglesia.
 - Un setlist público de servicio y sus letras podrán consultarse sin iniciar sesión. La vista pública no expondrá datos personales, listas de miembros, tonalidades internas, asignaciones privadas, BPM, acordes ni notas internas; la única excepción es el nombre y tema del predicador, si la iglesia lo activa (ver [Compartir servicios](#compartir-servicios)).
-- La rotación futura de canciones por iglesia se basa en uso confirmado de la canción, no de una versión concreta. Es distinta del generador de turnos de personas. Política de registro de uso/cancelación, zona horaria y cadencia aún por decidir.
+- La rotación futura de canciones por iglesia se basa en uso confirmado de la canción, no de una versión concreta. Es distinta del generador de turnos de personas. **Decidido (etapa 1, solo informativo):** el uso se toma de los servicios existentes, sin paso de confirmación: cuenta cualquier servicio **no cancelado** de la iglesia, **por fecha del servicio y no por hora** (en hora de Ciudad de México): una canción cantada el domingo cuenta como usada desde ese domingo, aunque el servicio sea más tarde. `GET /api/songs` devuelve por canción `lastUsed` (último servicio hasta hoy, inclusive) y `nextUse` (el primero programado después de hoy), solo de la iglesia activa, y la lista de Canciones y el selector del setlist los muestran («Última vez: dom 15 nov (hace 10 días) · Programada el dom 6 dic»). Sigue pendiente la regla de cadencia (por ejemplo, avisar si se repite antes de N semanas).
 - Exportaciones TXT son futuras. La importación de TXT con acordes encima es opcional y no confirmada.
 
 ## Fuera de las primeras etapas
@@ -169,7 +169,7 @@ Son criterios futuros; no se ha implementado ni probado la infraestructura.
 - Concretar resolución de coincidencias entre asignaciones habituales o rotaciones que propongan a una persona en una combinación de roles no permitida en el mismo servicio, sin duplicar su asignación. Las combinaciones permitidas por iglesia y el canto junto al instrumento ya están acordados. Precisar la elección de las franjas dominicales en las rotaciones (en el lote ya se muestran ambas), servicios creados fuera de orden, cancelaciones y efecto de cambiar el orden sobre servicios ya generados. El inicio manual, la continuidad cíclica y la distinción entre reemplazo de una fecha e intercambio explícito ya están acordados.
 - Confirmar la propuesta de varios bloques de alabanza, cada uno con su setlist, dentro de un único servicio para ocasiones como bautizos. No confundir ese caso con dos cultos independientes ni adelantar la entrega de setlists.
 - Completar capacidades no especificadas. ¿Quién otorga el acceso de editor de biblioteca?
-- ¿Cómo se confirma el uso real de una canción y cómo afectan cancelaciones, zonas horarias y cadencias a la rotación?
+- ¿Qué cadencia mínima entre usos de una canción debe avisar cada iglesia (el último uso ya se muestra)?
 - ¿Qué reglas tendrá la publicación y revocación del enlace público?
 - ¿Qué alcance tendrá la importación de TXT con acordes encima?
 

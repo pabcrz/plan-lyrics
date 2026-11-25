@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { formatDay, formatDaySlot, monthCells, monthTitle, shiftMonth, todayIn, weekdayOf } from './dates'
+import { formatDay, formatDaySlot, monthCells, monthTitle, shiftMonth, todayIn, usageText, weekdayOf } from './dates'
 
 describe('dates', () => {
   test('today is the Mexico City calendar day, not the UTC one', () => {
@@ -30,5 +30,21 @@ describe('dates', () => {
     expect(formatDaySlot('2026-11-15', 'MORNING')).toBe('dom 15 nov · mañana')
     expect(formatDaySlot('2026-11-15', 'AFTERNOON')).toBe('dom 15 nov · tarde')
     expect(formatDaySlot('2026-11-13', 'SINGLE')).toBe('vie 13 nov')
+  })
+})
+
+describe('usageText', () => {
+  const today = '2026-11-25'
+  test('says when a song was last used, by date, and what is already scheduled', () => {
+    expect(usageText({ lastUsed: '2026-11-25', nextUse: null }, today)).toBe('Última vez: mié 25 nov (hoy)')
+    expect(usageText({ lastUsed: '2026-11-24', nextUse: null }, today)).toBe('Última vez: mar 24 nov (ayer)')
+    expect(usageText({ lastUsed: '2026-11-15', nextUse: '2026-12-06' }, today)).toBe('Última vez: dom 15 nov (hace 10 días) · Programada el dom 6 dic')
+    expect(usageText({ lastUsed: '2026-10-04', nextUse: null }, today)).toBe('Última vez: dom 4 oct (hace 7 semanas)')
+    expect(usageText({ lastUsed: '2026-05-03', nextUse: null }, today)).toBe('Última vez: dom 3 may (hace 7 meses)')
+  })
+  test('names a song that this church never used, and stays silent when the server sent nothing', () => {
+    expect(usageText({ lastUsed: null, nextUse: null }, today)).toBe('Sin usar en esta iglesia')
+    expect(usageText({ lastUsed: null, nextUse: '2026-11-29' }, today)).toBe('Sin usar en esta iglesia · Programada el dom 29 nov')
+    expect(usageText({}, today)).toBeNull()
   })
 })

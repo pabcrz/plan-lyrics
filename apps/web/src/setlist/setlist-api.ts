@@ -4,7 +4,8 @@ import { useApiFetch } from '../calendar/api'
 import type { Slot, Status } from '../calendar/model'
 
 /** `hasLyrics` y `hasChords` solo vienen en la lista de la biblioteca. */
-export type Song = { id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean }
+/** `lastUsed` y `nextUse`: fechas (YYYY-MM-DD) del último servicio ya cumplido y del próximo programado de esta iglesia con la canción. */
+export type Song = { id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean; lastUsed?: string | null; nextUse?: string | null }
 export type Entry = { id: string; kind: 'SONG' | 'MOMENT'; song: Song | null; moment: string | null; key: string | null; link: string | null }
 export type Setlist = {
   service: { id: string; title: string; date: string; slot: Slot; time: string | null; status: Status }

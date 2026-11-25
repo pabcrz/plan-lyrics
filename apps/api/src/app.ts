@@ -114,7 +114,7 @@ export function createApp(config: SessionConfig = {}, database?: PrismaClient, n
   app.route('/', roleRoutes(config, database, now))
   app.route('/', participationRoutes(config, database, now))
   app.route('/', preachingRoutes(config, database, now))
-  app.route('/', songRoutes(config, database))
+  app.route('/', songRoutes(config, database, now))
   app.route('/', lyricsRoutes(config, database))
   app.route('/', setlistRoutes(config, database))
   app.route('/', shareLinkRoutes(config, database, now, options.shareSecret))

@@ -264,3 +264,30 @@ test('the database refuses an entry that is both a song and a moment, or a momen
   await db.setlistEntry.create({ data: { serviceId: service.id, position: 0, songId: song.id } })
   await expect(db.song.delete({ where: { id: song.id } })).rejects.toThrow()
 })
+
+test('the library shows when each song was last sung and when it comes next, by service date and for the church of the caller only', async () => {
+  // Wednesday 25 Nov 2026, 20:00 in Mexico City: a service of this same day counts as already used, whatever its hour.
+  const clock = new Date('2026-11-26T02:00:00Z')
+  const dated = createApp(fixture.config, db, () => clock)
+  const song = (title: string) => db.song.create({ data: { title, author: 'Autora Uno', titleKey: nameKey(title), authorKey: nameKey(title) } })
+  const [a, b, c] = await Promise.all([song('Cántico uno ficticio'), song('Cántico dos ficticio'), song('Cántico tres ficticio')])
+  const service = (id: string, churchId: string, directorId: string, date: string, status: 'PUBLISHED' | 'CANCELLED' | 'DRAFT' = 'PUBLISHED') =>
+    db.service.create({ data: { id, churchId, title: id, date: new Date(`${date}T00:00:00Z`), slot: 'SINGLE', status, directorId } })
+  await service('uso-viejo', 'church-a', 'person-a', '2026-11-08')
+  await service('uso-hoy', 'church-a', 'person-a', '2026-11-25', 'DRAFT')
+  await service('uso-futuro', 'church-a', 'person-a', '2026-12-06')
+  await service('uso-cancelado', 'church-a', 'person-a', '2026-11-22', 'CANCELLED')
+  await service('uso-otra-iglesia', 'church-b', 'person-b', '2026-11-22')
+  const add = (serviceId: string, songId: string, position = 0) => db.setlistEntry.create({ data: { serviceId, songId, position } })
+  await add('uso-viejo', a.id)
+  await add('uso-hoy', a.id)
+  await add('uso-futuro', a.id)
+  await add('uso-cancelado', b.id)
+  await add('uso-otra-iglesia', b.id)
+  await add('uso-futuro', c.id, 1)
+  const list = async (subject: string) => {
+    const rows = (await (await dated.request('/api/songs?q=cantico', { headers: { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}` } })).json()) as Array<{ title: string; lastUsed: string | null; nextUse: string | null }>
+    return Object.fromEntries(rows.map(row => [row.title, [row.lastUsed, row.nextUse]]))
+  }
+  expect(await list('member')).toEqual({ 'Cántico uno ficticio': ['2026-11-25', '2026-12-06'], 'Cántico dos ficticio': [null, null], 'Cántico tres ficticio': [null, '2026-12-06'] })
+})

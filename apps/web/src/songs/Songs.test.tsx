@@ -10,9 +10,9 @@ vi.mock('@clerk/react', () => ({ useAuth: () => ({ getToken: async () => 'token-
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 // Solo datos ficticios.
-const library: Array<{ id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean }> = [
-  { id: 's1', title: 'Canción de ejemplo', author: 'Autora Uno', hasLyrics: true, hasChords: true },
-  { id: 's2', title: 'Himno ficticio', author: 'Autor Dos', hasLyrics: true, hasChords: false },
+const library: Array<{ id: string; title: string; author: string; hasLyrics?: boolean; hasChords?: boolean; lastUsed?: string | null; nextUse?: string | null }> = [
+  { id: 's1', title: 'Canción de ejemplo', author: 'Autora Uno', hasLyrics: true, hasChords: true, lastUsed: '2026-01-04', nextUse: '2099-01-04' },
+  { id: 's2', title: 'Himno ficticio', author: 'Autor Dos', hasLyrics: true, hasChords: false, lastUsed: null, nextUse: null },
 ]
 
 function stub(canCreate: boolean, post?: () => Response, write?: (method: string) => Response) {
@@ -121,7 +121,7 @@ test('on desktop an editor picks a song and edits it beside the list, keeping th
   fireEvent.click(await screen.findByText('Canción de ejemplo'))
   expect((await screen.findByLabelText('Título') as HTMLInputElement).value).toBe('Canción de ejemplo')
   expect((screen.getByLabelText('Buscar canciones') as HTMLInputElement).value).toBe('ejemplo')
-  expect(screen.getByRole('button', { name: /^Canción de ejemplo\s*Autora Uno$/ }).getAttribute('aria-current')).toBe('true')
+  expect(screen.getByRole('button', { name: /^Canción de ejemplo\s*Autora Uno/ }).getAttribute('aria-current')).toBe('true')
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   await waitFor(() => expect(calls).toContain('PATCH /api/songs/s1'))
   expect(await screen.findByText('Elige una canción')).toBeTruthy()
@@ -170,4 +170,12 @@ test('a library with more than a page offers «Cargar más» until it runs out',
   } finally {
     library.splice(0, library.length, ...kept)
   }
+})
+
+test('each song says when this church last used it and what is already scheduled', async () => {
+  stub(false)
+  app('/canciones')
+  const used = (await screen.findByText('Canción de ejemplo')).closest('li')!
+  expect(used.textContent).toMatch(/Última vez: dom 4 ene \(hace \d+ meses\) · Programada el dom 4 ene/)
+  expect(within(screen.getByText('Himno ficticio').closest('li')!).getByText('Sin usar en esta iglesia')).toBeTruthy()
 })
