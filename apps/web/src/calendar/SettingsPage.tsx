@@ -43,6 +43,12 @@ function toSettings(form: Form): ChurchSettings {
   return { name: form.name.trim(), sundayDouble: form.sundayDouble, usesPreaching: form.usesPreaching, usesRotation: form.usesRotation, songRepeat: form.songRepeat, days }
 }
 
+/** Los cultos configurados (días elegidos y, el domingo, mañana y tarde si hay dos), en orden de semana. */
+const exampleServices = (form: Form): ExampleService[] => [...form.selected].sort().flatMap((weekday) => slotsOf(weekday, form.sundayDouble).map((slot) => ({
+  short: `${DAYS[weekday]}${slot === 'MORNING' ? ' mañana' : slot === 'AFTERNOON' ? ' tarde' : ''}`,
+  full: `${DAY_NAMES[weekday]}${slotText[slot]}`,
+})))
+
 const slotOrder: Record<Slot, number> = { SINGLE: 0, MORNING: 1, AFTERNOON: 2 }
 /** Forma comparable de lo guardado: mismo orden y mismos campos que `toSettings`. */
 const comparable = (settings: ChurchSettings): ChurchSettings => ({
@@ -211,7 +217,7 @@ function Settings({ church }: { church: Church }) {
           description={form.usesRotation ? 'Cada rol puede rotar a sus personas entre servicios, en orden y de forma cíclica.' : 'Sin rotación: los servicios nuevos solo llevan a los habituales de cada rol. Lo ya configurado se conserva.'} />
         <RotationExample />
 
-        <SongRepeatSetting value={form.songRepeat} weekdays={form.selected} onChange={(songRepeat) => change((prev) => ({ ...prev, songRepeat }))} />
+        <SongRepeatSetting value={form.songRepeat} services={exampleServices(form)} onChange={(songRepeat) => change((prev) => ({ ...prev, songRepeat }))} />
 
         <details className="rounded-lg border border-line bg-surface">
           <summary className="min-h-touch-lg cursor-pointer px-3 py-3 font-semibold">Roles musicales y combinaciones</summary>
@@ -254,15 +260,17 @@ function RotationExample() {
 
 const UNIT_OPTIONS = [{ value: 'WEEKS', label: 'Semanas' }, { value: 'SERVICES', label: 'Cultos' }] as const
 
+/** Un culto de la semana tal como lo tiene configurado la iglesia: nombre corto para el dibujo y largo para la frase. */
+type ExampleService = { short: string; full: string }
 type Step = { name: string; state: 'sung' | 'blocked' | 'free'; note: string }
 const SHOWN = 4
 
 /** Los pasos del ejemplo, uno por culto o por semana: la canción cantada, los que quedan bloqueados y el primero libre. Con números grandes se resumen. */
-function exampleSteps(rule: SongRepeat, weekdays: number[]): { steps: Array<Step | { skipped: number }>; summary: string } {
-  const days = weekdays.length > 0 ? [...weekdays].sort() : [0]
-  const start = Math.max(0, days.indexOf(5)) // empieza en viernes si hay culto ese día; si no, en el primer día
-  const dayOf = (index: number) => DAY_NAMES[days[(start + index) % days.length]!]!
-  const name = (index: number) => dayOf(index).slice(0, 3).replace(/^./, (letter) => letter.toUpperCase())
+function exampleSteps(rule: SongRepeat, services: ExampleService[]): { steps: Array<Step | { skipped: number }>; summary: string } {
+  // Los cultos del ejemplo son los que la iglesia tiene configurados arriba, en el orden de la semana, y se repiten semana tras semana.
+  const week = services.length > 0 ? services : [{ short: 'Dom', full: 'domingo' }]
+  const dayOf = (index: number) => week[index % week.length]!.full
+  const name = (index: number) => week[index % week.length]!.short
   const label = (index: number) => (rule.unit === 'WEEKS' ? `Semana ${index + 1}` : index === 0 ? name(0) : `${name(index)}`)
   const blocked = rule.unit === 'WEEKS' ? rule.amount - 1 : rule.amount
   const sequence: Step[] = [
@@ -274,14 +282,14 @@ function exampleSteps(rule: SongRepeat, weekdays: number[]): { steps: Array<Step
   const steps: Array<Step | { skipped: number }> = blocked > SHOWN ? [...sequence.slice(0, SHOWN), { skipped: hidden }, sequence[sequence.length - 1]!] : sequence
   const free = rule.unit === 'WEEKS' ? `la semana ${blocked + 2}` : `el ${dayOf(blocked + 1)}`
   const summary = rule.unit === 'WEEKS'
-    ? `Si la cantas en la semana 1, ${rule.amount === 1 ? 'esa misma semana no se repite' : `hasta la semana ${rule.amount} no se ofrece`}; desde ${free} ya sí. Se cuenta por fecha, no por hora.`
+    ? `Si la cantas el ${dayOf(0)} de la semana 1, ${rule.amount === 1 ? 'esa misma semana no se repite' : `hasta la semana ${rule.amount} no se ofrece`}; desde ${free} ya sí. Se cuenta por fecha, no por hora.`
     : `Si la cantas el ${dayOf(0)}, ${rule.amount === 1 ? 'el culto siguiente no la ofrece' : `los ${rule.amount} cultos siguientes no la ofrecen`}; desde ${free} ya sí.`
   return { steps, summary }
 }
 
 /** Dibujo del ejemplo: una fila de cultos o semanas con la canción cantada, lo bloqueado y cuándo ya se puede. Cada paso lleva texto e ícono, no solo color. */
-function RepeatExample({ rule, weekdays }: { rule: SongRepeat; weekdays: number[] }) {
-  const { steps, summary } = exampleSteps(rule, weekdays)
+function RepeatExample({ rule, services }: { rule: SongRepeat; services: ExampleService[] }) {
+  const { steps, summary } = exampleSteps(rule, services)
   const chip = {
     sung: 'border-accent bg-accent text-on-accent',
     blocked: 'border-dashed border-line-strong bg-surface-2 text-text-3',
@@ -308,7 +316,7 @@ function RepeatExample({ rule, weekdays }: { rule: SongRepeat; weekdays: number[
 }
 
 /** Regla estricta de repetición: una canción usada hace menos de N semanas, o dentro de los N cultos anteriores o siguientes, no se puede elegir. */
-function SongRepeatSetting({ value, weekdays, onChange }: { value: SongRepeat | null; weekdays: number[]; onChange: (value: SongRepeat | null) => void }) {
+function SongRepeatSetting({ value, services, onChange }: { value: SongRepeat | null; services: ExampleService[]; onChange: (value: SongRepeat | null) => void }) {
   const set = (patch: Partial<SongRepeat>) => value && onChange({ ...value, ...patch })
   return (
     <section className="grid gap-3 rounded-lg border border-line bg-surface p-3" aria-label="Repetición de canciones">
@@ -326,7 +334,7 @@ function SongRepeatSetting({ value, weekdays, onChange }: { value: SongRepeat | 
             <output aria-label="Mínimo entre usos" className="w-8 text-center font-display text-lg font-bold [font-variant-numeric:tabular-nums]">{value.amount}</output>
             <Button variant="secondary" icon aria-label="Más" disabled={value.amount >= 26} onClick={() => set({ amount: value.amount + 1 })}><Icon name="plus" /></Button>
           </div>
-          <RepeatExample rule={value} weekdays={weekdays} />
+          <RepeatExample rule={value} services={services} />
         </>
       )}
     </section>
