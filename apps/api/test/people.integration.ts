@@ -37,8 +37,8 @@ test('lists only the active church people, alphabetically, with the account stat
   try {
     const listed = await (await call('member', 'GET', '/api/people')).json()
     expect(listed).toEqual([
-      { id: 'person-a', name: 'Director person-a', hasAccount: true, isYou: false, roleIds: [], canDirect: true, canPreach: true },
-      { id: 'person-no-account', name: 'Fixture Participant', hasAccount: false, isYou: false, roleIds: [], canDirect: true, canPreach: true },
+      { id: 'person-a', name: 'Director person-a', hasAccount: true, isYou: false, roleIds: [], canDirect: true, canPreach: true, canPlay: false },
+      { id: 'person-no-account', name: 'Fixture Participant', hasAccount: false, isYou: false, roleIds: [], canDirect: true, canPreach: true, canPlay: false },
     ])
     expect((await call('b-editor', 'GET', '/api/people').then(r => r.json())).map((p: { id: string }) => p.id)).toEqual(['person-b', 'person-no-account'])
   } finally { await db.person.update({ where: { id: 'person-a' }, data: { userId: null } }) }
@@ -87,7 +87,7 @@ test('reads one person with account state, upcoming services and sharing, hiding
   await db.service.create({ data: { churchId: 'church-a', directorId: 'person-no-account', title: 'Culto', date: new Date('2026-11-20T00:00:00Z') } })
   await db.service.create({ data: { churchId: 'church-a', directorId: 'person-no-account', title: 'Pasado', date: new Date('2026-11-06T00:00:00Z') } })
   const shared = await (await call('member', 'GET', '/api/people/person-no-account')).json()
-  expect(shared).toEqual({ id: 'person-no-account', name: 'Fixture Participant', phone: null, email: null, roleIds: [], canDirect: true, canPreach: true, hasAccount: false, isYou: false, sharedWithOtherChurches: true, upcomingServices: 1 })
+  expect(shared).toEqual({ id: 'person-no-account', name: 'Fixture Participant', phone: null, email: null, roleIds: [], canDirect: true, canPreach: true, canPlay: false, hasAccount: false, isYou: false, sharedWithOtherChurches: true, upcomingServices: 1 })
   const own = await (await call('member', 'GET', '/api/people/person-a')).json()
   expect(own).toMatchObject({ sharedWithOtherChurches: false, upcomingServices: 0 })
   expect((await call('member', 'GET', '/api/people/person-b')).status).toBe(404)
@@ -182,4 +182,36 @@ test('a preacher is chosen only among people who preach, but one already saved m
     await db.churchPerson.update({ where: { churchId_personId: { churchId: 'church-a', personId: 'person-a' } }, data: { canPreach: false } })
     expect((await save('person-a')).status).toBe(200)
   } finally { await db.church.update({ where: { id: 'church-a' }, data: { usesPreaching: false } }) }
+})
+
+test('only the worship group holds musical roles: the group is chosen per church, the filter lists it, and leaving it takes the roles away', async () => {
+  const role = await db.musicalRole.create({ data: { id: 'rol-grupo', churchId: 'church-a', name: 'Rol de prueba grupo', nameKey: 'rol de prueba grupo' } })
+  try {
+    const roles = (ids: string[]) => call('admin', 'PUT', '/api/people/person-a/roles', { roleIds: ids })
+    // Not in the group: no roles (taking them all away is always fine).
+    const refused = await roles([role.id])
+    expect(refused.status).toBe(409)
+    expect(await refused.json()).toEqual({ error: 'Not in worship group' })
+    expect((await roles([])).status).toBe(200)
+    // The group is a flag of the person in THIS church; editors set it like the other jobs.
+    expect(await (await call('editor', 'PATCH', '/api/people/person-a', { canPlay: true })).json()).toMatchObject({ canPlay: true })
+    expect((await roles([role.id])).status).toBe(200)
+    const listed = async (query = '') => ((await (await call('member', 'GET', `/api/people${query}`)).json()) as Array<{ id: string; canPlay: boolean }>)
+    expect((await listed('?role=play')).map(person => person.id)).toEqual(['person-a'])
+    expect((await listed()).find(person => person.id === 'person-a')).toMatchObject({ canPlay: true, roleIds: [role.id] })
+    expect((await call('member', 'GET', '/api/people?role=otro')).status).toBe(400)
+    // Still habitual in the role: leaving the group is refused and nothing changes.
+    await db.rolePlan.create({ data: { roleId: role.id, churchId: 'church-a', habitualIds: ['person-a'] } })
+    const blocked = await call('editor', 'PATCH', '/api/people/person-a', { canPlay: false })
+    expect(blocked.status).toBe(409)
+    expect(await blocked.json()).toEqual({ error: 'In use' })
+    expect((await listed('?role=play')).map(person => person.id)).toEqual(['person-a'])
+    await db.rolePlan.delete({ where: { roleId: role.id } })
+    // Free to leave: the roles go with it.
+    expect(await (await call('editor', 'PATCH', '/api/people/person-a', { canPlay: false })).json()).toMatchObject({ canPlay: false, roleIds: [] })
+    expect((await listed('?role=play'))).toEqual([])
+  } finally {
+    await db.musicalRole.deleteMany({ where: { id: 'rol-grupo' } })
+    await db.churchPerson.updateMany({ where: { churchId: 'church-a', personId: 'person-a' }, data: { canPlay: false, roleIds: [] } })
+  }
 })

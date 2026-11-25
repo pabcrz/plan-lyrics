@@ -266,3 +266,14 @@ test('only the administrator manages the team; everyone else just sees how many 
   expect(await screen.findByText('1 persona en el equipo de batería.')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Administrar equipo' })).toBeNull()
 })
+
+test('the team of a role only offers people of the worship group', async () => {
+  stubApi({ participations: [role('r-drums', 'Batería')], directory: [detail({ ...ana, roleIds: ['r-drums'], canPlay: true }), detail({ ...luis, roleIds: [], canPlay: true }), detail({ ...pedro, roleIds: [], canPlay: false })] })
+  pages('/participaciones/r-drums')
+  fireEvent.click(await screen.findByRole('button', { name: 'Administrar equipo' }))
+  const sheet = within(await screen.findByRole('dialog', { name: 'Equipo de batería' }))
+  fireEvent.click(sheet.getByRole('button', { name: 'Agregar al equipo' }))
+  expect(sheet.getByText(/Solo aparecen quienes están en el grupo de alabanza/)).toBeTruthy()
+  expect(sheet.getByRole('button', { name: /Luis Herrera/ })).toBeTruthy()
+  expect(sheet.queryByRole('button', { name: /Pedro Castillo/ })).toBeNull()
+})

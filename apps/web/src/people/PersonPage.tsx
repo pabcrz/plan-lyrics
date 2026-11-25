@@ -183,7 +183,9 @@ function Record({ church, person }: { church: Church; person: PersonDetail }) {
 
         <JobsSection church={church} person={person} />
 
-        <RolesSection church={church} person={person} />
+        {person.canPlay
+          ? <RolesSection key={String(person.canPlay)} church={church} person={person} />
+          : church.canEdit && <Notice icon="info" title="Sin roles de alabanza">Para asignarle roles como batería, guitarra o voces, actívala en el «Grupo de alabanza» de arriba. Si solo dirige o predica, no los necesita.</Notice>}
 
         <AccessSection church={church} person={person} unsavedEmail={email.trim() !== saved.email} onEditEmail={goToEmail} />
 
@@ -266,7 +268,7 @@ function RolesSection({ church, person }: { church: Church; person: PersonDetail
 /** Para qué trabajos aparece la persona en los selectores (dirección y predicación); quien edita los cambia al instante. */
 function JobsSection({ church, person }: { church: Church; person: PersonDetail }) {
   const { update } = usePersonActions()
-  const [jobs, setJobs] = useState<RoleFlags>({ canDirect: person.canDirect, canPreach: person.canPreach })
+  const [jobs, setJobs] = useState<RoleFlags>({ canDirect: person.canDirect, canPreach: person.canPreach, canPlay: person.canPlay })
   const [failure, setFailure] = useState('')
   /** Cada interruptor se guarda al cambiarlo; si el servidor lo rechaza, vuelve a como estaba. */
   async function change(next: RoleFlags) {
@@ -275,16 +277,18 @@ function JobsSection({ church, person }: { church: Church; person: PersonDetail 
     setFailure('')
     try {
       await update(person.id, next)
-    } catch {
+    } catch (caught) {
       setJobs(previous)
-      setFailure('No se pudo cambiar el rol. Inténtalo de nuevo.')
+      setFailure(caught instanceof ApiError && caught.code === 'In use'
+        ? 'Sigue como habitual o en una rotación de un rol: quítala primero de ahí, en Participaciones, y luego sácala del grupo de alabanza.'
+        : 'No se pudo cambiar el grupo. Inténtalo de nuevo.')
     }
   }
   return (
     <section className="grid gap-2" aria-labelledby="jobs">
-      <h2 id="jobs" className="m-0 font-display text-lg font-bold">Dirección y predicación</h2>
+      <h2 id="jobs" className="m-0 font-display text-lg font-bold">Grupos en {church.name}</h2>
       {church.canEdit ? <PersonRoles value={jobs} onChange={(next) => void change(next)} showPreach={church.usesPreaching} />
-        : <p className="m-0 text-[0.9375rem]"><span className="text-text-3">Roles: </span><b>{rolesText(jobs, church.usesPreaching) || 'Ninguno'}</b></p>}
+        : <p className="m-0 text-[0.9375rem]"><span className="text-text-3">Grupos: </span><b>{rolesText(jobs, church.usesPreaching) || 'Ninguno'}</b></p>}
       {failure && <Notice tone="warn" icon="alert" role="alert">{failure}</Notice>}
     </section>
   )

@@ -33,7 +33,7 @@ function Form({ church }: { church: Church }) {
   const [name, setName] = useState((useLocation().state as { name?: string } | null)?.name ?? '')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
-  const [jobs, setJobs] = useState<RoleFlags>({ canDirect: true, canPreach: false })
+  const [jobs, setJobs] = useState<RoleFlags>({ canDirect: false, canPreach: false, canPlay: false })
   const [phoneProblem, setPhoneError] = useState('')
   const [existing, setExisting] = useState<{ id: string; name: string } | null>(null)
   const [failure, setFailure] = useState('')

@@ -156,6 +156,8 @@ model ChurchPerson {
   // Who the pickers offer for each job; a person may have both, either or (until chosen) neither.
   canDirect Boolean @default(false)
   canPreach Boolean @default(false)
+  // Member of this church's worship group: only then may the person hold musical roles (roleIds).
+  canPlay Boolean @default(false)
   // Musical roles (MusicalRole ids, not foreign keys) this person may hold in this church; only an administrator changes them.
   roleIds String[] @default([])
   // Removed from this church's directory: hidden from lists and pickers, kept for past services.

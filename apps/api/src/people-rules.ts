@@ -22,9 +22,9 @@ export const personRolesBody = z.strictObject({ roleIds: z.array(z.string().trim
 
 // La iglesia nunca forma parte del cuerpo: siempre es la iglesia activa de quien llama.
 // `canDirect` and `canPreach` say which jobs the pickers offer this person for; both are off unless asked for.
-const roles = { canDirect: z.boolean().optional(), canPreach: z.boolean().optional() }
+const roles = { canDirect: z.boolean().optional(), canPreach: z.boolean().optional(), canPlay: z.boolean().optional() }
 export const newPersonBody = z.strictObject({ name, phone: phone.optional(), email: email.optional(), ...roles })
 // Información personal general y los dos roles de esta iglesia; roles musicales, turnos y cuentas no se editan por aquí.
 export const personPatch = z.strictObject({ name: name.optional(), phone: phone.nullable().optional(), email: email.nullable().optional(), ...roles })
   .refine(body => Object.values(body).some(value => value !== undefined))
-export const peopleRoleQuery = z.enum(['direct', 'preach'])
+export const peopleRoleQuery = z.enum(['direct', 'preach', 'play'])
