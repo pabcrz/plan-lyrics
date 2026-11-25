@@ -40,16 +40,22 @@ export function useDeleteSong() {
   }, [api, client])
 }
 
-export type LibraryFilter = 'all' | 'no-lyrics' | 'no-chords'
+/** Orden de la lista: alfabético, lo más usado o lo menos usado por esta iglesia; `inverted` lo voltea. */
+export type LibraryOrder = 'title' | 'most' | 'least'
 /** Canciones por página; una página llena indica que puede haber más. */
 export const PAGE = 50
 
-/** La biblioteca por páginas, con búsqueda y filtro de lo que falta; conserva la lista anterior mientras llega la nueva. */
-export function useLibrary(term: string, filter: LibraryFilter) {
+/** La biblioteca por páginas, con búsqueda y orden; conserva la lista anterior mientras llega la nueva. */
+export function useLibrary(term: string, order: LibraryOrder, inverted: boolean) {
   const api = useApiFetch()
   const query = useInfiniteQuery({
-    queryKey: ['songs', 'library', term, filter],
-    queryFn: ({ pageParam }) => api<Song[]>(`/api/songs?q=${encodeURIComponent(term)}${filter === 'all' ? '' : `&filter=${filter}`}&offset=${pageParam}`),
+    queryKey: ['songs', 'library', term, order, inverted],
+    queryFn: ({ pageParam }) => {
+      // «Más usadas» baja por número de usos; «Menos usadas» sube; invertir voltea cualquiera de los tres.
+      const base = order === 'most' ? 'desc' : 'asc'
+      const dir = inverted ? (base === 'asc' ? 'desc' : 'asc') : base
+      return api<Song[]>(`/api/songs?q=${encodeURIComponent(term)}&sort=${order === 'title' ? 'title' : 'uses'}&dir=${dir}&offset=${pageParam}`)
+    },
     initialPageParam: 0,
     getNextPageParam: (last, all) => (last.length === PAGE ? all.length * PAGE : undefined),
     retry: false,

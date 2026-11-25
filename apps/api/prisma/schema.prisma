@@ -9,6 +9,12 @@ datasource db {
   provider = "postgresql"
 }
 
+// How a church counts the gap before a song may be sung again: calendar weeks or services.
+enum SongRepeatUnit {
+  WEEKS
+  SERVICES
+}
+
 enum ServiceStatus {
   DRAFT
   PUBLISHED
@@ -104,6 +110,9 @@ model Church {
   usesPreaching Boolean @default(false)
   // Opt-in per church: when off no rotation is applied (new services, previews); each role keeps its saved rotation.
   usesRotation Boolean @default(false)
+  // Opt-in per church (both null = off): a song cannot be sung again until this many weeks or services have passed, before or after.
+  songRepeatUnit SongRepeatUnit?
+  songRepeatAmount Int?
   // Opt-in per church: the congregation view then shows each service's preacher and topic (never notes or passages).
   congregationShowsPreacher Boolean @default(false)
   // Set once the default musical roles and restriction were created; deleting every role never re-seeds them.

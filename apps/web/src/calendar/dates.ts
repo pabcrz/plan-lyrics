@@ -54,12 +54,13 @@ export const formatDaySlot = (date: string, slot: string) => `${formatDay(date)}
 /** «viernes 13 de noviembre». */
 export const formatLongDay = (date: string) => format(date, { weekday: 'long', day: 'numeric', month: 'long' })
 
-/** «Última vez: 15 nov (hace 10 días)» y, si la hay, «Programada el 6 dic»; sin uso, «Sin usar en esta iglesia». Cuenta por fecha del servicio, no por hora. */
-export function usageText(song: { lastUsed?: string | null; nextUse?: string | null }, today: string = todayIn()): string | null {
-  if (song.lastUsed === undefined && song.nextUse === undefined) return null
-  const days = song.lastUsed ? Math.round((atNoon(today).getTime() - atNoon(song.lastUsed).getTime()) / 86_400_000) : null
-  const ago = days === null ? null : days === 0 ? 'hoy' : days === 1 ? 'ayer' : days < 14 ? `hace ${days} días` : days < 60 ? `hace ${Math.round(days / 7)} semanas` : `hace ${Math.round(days / 30)} meses`
-  const parts = [song.lastUsed ? `Última vez: ${formatDay(song.lastUsed)} (${ago})` : 'Sin usar en esta iglesia']
-  if (song.nextUse) parts.push(`Programada el ${formatDay(song.nextUse)}`)
-  return parts.join(' · ')
+/** «hoy», «ayer», «hace 9 días», «hace 2 semanas», «hace 7 meses»; sin uso, «Sin usar». Cuenta por fecha del servicio, no por hora. */
+export function agoText(lastUsed: string | null | undefined, today: string = todayIn()): string {
+  if (!lastUsed) return 'Sin usar'
+  const days = Math.round((atNoon(today).getTime() - atNoon(lastUsed).getTime()) / 86_400_000)
+  if (days <= 0) return 'hoy'
+  if (days === 1) return 'ayer'
+  if (days < 14) return `hace ${days} días`
+  if (days < 60) return `hace ${Math.round(days / 7)} semanas`
+  return `hace ${Math.round(days / 30)} meses`
 }

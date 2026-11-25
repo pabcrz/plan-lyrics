@@ -265,29 +265,79 @@ test('the database refuses an entry that is both a song and a moment, or a momen
   await expect(db.song.delete({ where: { id: song.id } })).rejects.toThrow()
 })
 
-test('the library shows when each song was last sung and when it comes next, by service date and for the church of the caller only', async () => {
-  // Wednesday 25 Nov 2026, 20:00 in Mexico City: a service of this same day counts as already used, whatever its hour.
-  const clock = new Date('2026-11-26T02:00:00Z')
-  const dated = createApp(fixture.config, db, () => clock)
-  const song = (title: string) => db.song.create({ data: { title, author: 'Autora Uno', titleKey: nameKey(title), authorKey: nameKey(title) } })
+// Wednesday 25 Nov 2026, 20:00 in Mexico City: a service of this same day already counts as used, whatever its hour.
+const datedApp = createApp(fixture.config, db, () => new Date('2026-11-26T02:00:00Z'))
+const asMember = (path: string, subject = 'member', method = 'GET', body?: unknown) => datedApp.request(path, {
+  method, headers: { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, body: body === undefined ? undefined : JSON.stringify(body),
+})
+const song = (title: string) => db.song.create({ data: { title, author: 'Autora Uno', titleKey: nameKey(title), authorKey: nameKey(title) } })
+const service = (id: string, churchId: string, directorId: string, date: string, status: 'PUBLISHED' | 'CANCELLED' | 'DRAFT' = 'PUBLISHED') =>
+  db.service.create({ data: { id, churchId, title: id, date: new Date(`${date}T00:00:00Z`), slot: 'SINGLE', status, directorId } })
+const add = (serviceId: string, songId: string, position = 0) => db.setlistEntry.create({ data: { serviceId, songId, position } })
+
+test('the library says when and how often this church sang each song, by service date, ignoring cancelled services and other churches', async () => {
   const [a, b, c] = await Promise.all([song('Cántico uno ficticio'), song('Cántico dos ficticio'), song('Cántico tres ficticio')])
-  const service = (id: string, churchId: string, directorId: string, date: string, status: 'PUBLISHED' | 'CANCELLED' | 'DRAFT' = 'PUBLISHED') =>
-    db.service.create({ data: { id, churchId, title: id, date: new Date(`${date}T00:00:00Z`), slot: 'SINGLE', status, directorId } })
   await service('uso-viejo', 'church-a', 'person-a', '2026-11-08')
   await service('uso-hoy', 'church-a', 'person-a', '2026-11-25', 'DRAFT')
   await service('uso-futuro', 'church-a', 'person-a', '2026-12-06')
   await service('uso-cancelado', 'church-a', 'person-a', '2026-11-22', 'CANCELLED')
   await service('uso-otra-iglesia', 'church-b', 'person-b', '2026-11-22')
-  const add = (serviceId: string, songId: string, position = 0) => db.setlistEntry.create({ data: { serviceId, songId, position } })
   await add('uso-viejo', a.id)
   await add('uso-hoy', a.id)
   await add('uso-futuro', a.id)
   await add('uso-cancelado', b.id)
   await add('uso-otra-iglesia', b.id)
   await add('uso-futuro', c.id, 1)
-  const list = async (subject: string) => {
-    const rows = (await (await dated.request('/api/songs?q=cantico', { headers: { Authorization: `Bearer ${fixture.token(`fixture-${subject}`)}` } })).json()) as Array<{ title: string; lastUsed: string | null; nextUse: string | null }>
-    return Object.fromEntries(rows.map(row => [row.title, [row.lastUsed, row.nextUse]]))
-  }
-  expect(await list('member')).toEqual({ 'Cántico uno ficticio': ['2026-11-25', '2026-12-06'], 'Cántico dos ficticio': [null, null], 'Cántico tres ficticio': [null, '2026-12-06'] })
+  const rows = (await (await asMember('/api/songs?q=cantico')).json()) as Array<{ title: string; lastUsed: string | null; uses: number }>
+  expect(Object.fromEntries(rows.map(row => [row.title, [row.lastUsed, row.uses]]))).toEqual({ 'Cántico uno ficticio': ['2026-11-25', 2], 'Cántico dos ficticio': [null, 0], 'Cántico tres ficticio': [null, 0] })
+  // Ordered by use, either way; ties by title.
+  const order = async (dir: string) => ((await (await asMember(`/api/songs?q=cantico&sort=uses&dir=${dir}`)).json()) as Array<{ title: string }>).map(row => row.title)
+  expect(await order('desc')).toEqual(['Cántico uno ficticio', 'Cántico dos ficticio', 'Cántico tres ficticio'])
+  expect(await order('asc')).toEqual(['Cántico dos ficticio', 'Cántico tres ficticio', 'Cántico uno ficticio'])
+  expect(((await (await asMember('/api/songs?q=cantico&dir=desc')).json()) as Array<{ title: string }>).map(row => row.title)).toEqual(['Cántico uno ficticio', 'Cántico tres ficticio', 'Cántico dos ficticio'])
+})
+
+test('with the strict rule on, the picker marks what the service cannot take and the API refuses it', async () => {
+  const [a, b] = await Promise.all([song('Cántico uno ficticio'), song('Cántico dos ficticio')])
+  // Fridays 6, 13 and 20 Nov and Sundays 8 and 15 Nov, one service each; the song A was sung on Friday 6.
+  const dates = [['f6', '2026-11-06'], ['s8', '2026-11-08'], ['f13', '2026-11-13'], ['s15', '2026-11-15'], ['f20', '2026-11-20']] as const
+  for (const [id, date] of dates) await service(id, 'church-a', 'person-a', date)
+  await add('f6', a.id)
+  const blockedFor = async (serviceId: string) => ((await (await asMember(`/api/songs?q=cantico&serviceId=${serviceId}`)).json()) as Array<{ title: string; blockedBy?: string | null }>)
+    .filter(row => row.blockedBy).map(row => `${row.title}:${row.blockedBy}`)
+  // Rule off: nothing is blocked and the API accepts it.
+  expect(await blockedFor('s8')).toEqual([])
+  expect((await asMember('/api/services/s8/setlist/entries', 'editor', 'POST', { songId: a.id })).status).toBe(201)
+  await db.setlistEntry.deleteMany({ where: { serviceId: 's8' } })
+
+  await db.church.update({ where: { id: 'church-a' }, data: { songRepeatUnit: 'SERVICES', songRepeatAmount: 2 } })
+  expect(await blockedFor('s8')).toEqual(['Cántico uno ficticio:2026-11-06'])
+  expect(await blockedFor('f13')).toEqual(['Cántico uno ficticio:2026-11-06'])
+  expect(await blockedFor('s15')).toEqual([])
+  const refused = await asMember('/api/services/f13/setlist/entries', 'editor', 'POST', { songId: a.id })
+  expect(refused.status).toBe(409)
+  expect(await refused.json()).toEqual({ error: 'Song repeat rule' })
+  expect((await asMember('/api/services/f13/setlist/entries', 'editor', 'POST', { songId: b.id })).status).toBe(201)
+  expect((await asMember('/api/services/s15/setlist/entries', 'editor', 'POST', { songId: a.id })).status).toBe(201)
+
+  // By weeks (a calendar rule, whatever the number of services): 2 weeks after Friday 6 Nov is Friday 20.
+  await db.setlistEntry.deleteMany({ where: { serviceId: { in: ['s15', 'f13'] } } })
+  await db.church.update({ where: { id: 'church-a' }, data: { songRepeatUnit: 'WEEKS', songRepeatAmount: 2 } })
+  expect(await blockedFor('s15')).toEqual(['Cántico uno ficticio:2026-11-06'])
+  expect(await blockedFor('f20')).toEqual([])
+  await db.church.update({ where: { id: 'church-a' }, data: { songRepeatUnit: null, songRepeatAmount: null } })
+})
+
+test('an administrator turns the rule on and off from the church settings', async () => {
+  const current = (await (await asMember('/api/active-church', 'admin')).json()) as { name: string; sundayDouble: boolean; usesPreaching: boolean; days: unknown[]; songRepeat: unknown }
+  expect(current.songRepeat).toBeNull()
+  const body = { name: current.name, sundayDouble: current.sundayDouble, usesPreaching: current.usesPreaching, days: current.days }
+  const saved = await asMember('/api/active-church', 'admin', 'PUT', { ...body, songRepeat: { unit: 'WEEKS', amount: 3 } })
+  expect(saved.status).toBe(200)
+  expect((await saved.json() as { songRepeat: unknown }).songRepeat).toEqual({ unit: 'WEEKS', amount: 3 })
+  expect((await asMember('/api/active-church', 'admin', 'PUT', { ...body, songRepeat: { unit: 'DAYS', amount: 3 } })).status).toBe(400)
+  expect((await asMember('/api/active-church', 'admin', 'PUT', { ...body, songRepeat: { unit: 'WEEKS', amount: 0 } })).status).toBe(400)
+  // Left out, it stays; null turns it off.
+  expect((await (await asMember('/api/active-church', 'admin', 'PUT', body)).json() as { songRepeat: unknown }).songRepeat).toEqual({ unit: 'WEEKS', amount: 3 })
+  expect((await (await asMember('/api/active-church', 'admin', 'PUT', { ...body, songRepeat: null })).json() as { songRepeat: unknown }).songRepeat).toBeNull()
 })

@@ -45,7 +45,7 @@ test('saves a name, a new day and the preaching switch, then confirms and discar
   fireEvent.click(save())
   expect(await screen.findByText('Cambios guardados')).toBeTruthy()
   expect(sent(calls)).toEqual({
-    name: 'Nueva Betel', sundayDouble: false, usesPreaching: true, usesRotation: true,
+    name: 'Nueva Betel', sundayDouble: false, usesPreaching: true, usesRotation: true, songRepeat: null,
     days: [
       { weekday: 0, slot: 'SINGLE', time: '10:00', title: 'Servicio dominical' },
       { weekday: 2, slot: 'SINGLE', time: '19:00', title: 'Servicio de martes' },
@@ -144,4 +144,23 @@ test('the rotation switch is saved with the settings and explains itself with an
   fireEvent.click(toggle)
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
   await waitFor(() => expect(calls.some((call) => call.init?.method === 'PUT' && JSON.parse(String(call.init.body)).usesRotation === true)).toBe(true))
+})
+
+test('the repetition rule is turned on by weeks or by services and saved with the settings', async () => {
+  const calls = stubApi({})
+  page()
+  fireEvent.click(await screen.findByRole('switch', { name: 'Evitar repetir canciones' }))
+  const rule = within(screen.getByRole('region', { name: 'Repetición de canciones' }))
+  expect(rule.getByText(/a menos de 2 semanas, antes o después/)).toBeTruthy()
+  fireEvent.click(rule.getByRole('button', { name: 'Más' }))
+  fireEvent.click(rule.getByRole('button', { name: 'Cultos' }))
+  expect(rule.getByText(/alguno de los 3 cultos anteriores o siguientes/)).toBeTruthy()
+  fireEvent.click(save())
+  expect(await screen.findByText('Cambios guardados')).toBeTruthy()
+  expect(sent(calls)).toMatchObject({ songRepeat: { unit: 'SERVICES', amount: 3 } })
+  fireEvent.click(screen.getByRole('switch', { name: 'Evitar repetir canciones' }))
+  fireEvent.click(save())
+  const puts = () => calls.filter((call) => call.init?.method === 'PUT')
+  await waitFor(() => expect(puts()).toHaveLength(2))
+  expect(JSON.parse(String(puts()[1]!.init?.body))).toMatchObject({ songRepeat: null })
 })

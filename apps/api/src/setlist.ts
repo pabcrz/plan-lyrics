@@ -4,6 +4,7 @@ import { safeErrorCode } from './errors.js'
 import { guarded } from './active-guard.js'
 import { MAX_ENTRIES, POSITION_OFFSET, addEntryBody, entryPatch, orderBody, placeAt, sameIds } from './setlist-rules.js'
 import { canEditLibrary } from './songs.js'
+import { blockedSongs } from './song-rules.js'
 import type { Active } from './services.js'
 import { requireSession, type SessionConfig, type SessionEnvironment } from './session.js'
 
@@ -75,6 +76,8 @@ export function setlistRoutes(config: SessionConfig, db?: PrismaClient) {
       if ('songId' in fields) {
         if (!await tx.song.findUnique({ where: { id: fields.songId }, select: { id: true } })) return 'song' as const
         if (await tx.setlistEntry.findFirst({ where: { serviceId, songId: fields.songId }, select: { id: true } })) return 'duplicate' as const
+        // Strict: the church's repetition rule is not a suggestion, so the API refuses what the picker already shows as unavailable.
+        if ((await blockedSongs(tx, church, serviceId, [fields.songId])).size > 0) return 'rule' as const
         data = { songId: fields.songId, key: fields.key ?? null, link: fields.link ?? null }
       } else data = { moment: fields.moment }
       const created = await tx.setlistEntry.create({ data: { serviceId, position: ids.length, ...data }, select: { id: true } })
@@ -85,6 +88,7 @@ export function setlistRoutes(config: SessionConfig, db?: PrismaClient) {
     if (result === 'missing') return c.json({ error: 'Not found' }, 404)
     if (result === 'song') return c.json({ error: 'Invalid request' }, 400)
     if (result === 'duplicate') return c.json({ error: 'Song already in setlist' }, 409)
+    if (result === 'rule') return c.json({ error: 'Song repeat rule' }, 409)
     if (result === 'full') return c.json({ error: 'Setlist full' }, 409)
     return respond(c, db, church, serviceId, 201)
   }))

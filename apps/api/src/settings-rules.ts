@@ -9,6 +9,8 @@ const settingsBody = z.strictObject({
   usesPreaching: z.boolean(),
   // Optional: left out, the saved value stays. When off, no rotation is applied to new services or previews.
   usesRotation: z.boolean().optional(),
+  // Optional: left out, the saved value stays; `null` turns the rule off. The gap before a song may be sung again.
+  songRepeat: z.strictObject({ unit: z.enum(['WEEKS', 'SERVICES']), amount: z.number().int().min(1).max(26) }).nullable().optional(),
   // Optional: left out, the saved value stays. When on, the congregation view shows each service's preacher and topic.
   congregationShowsPreacher: z.boolean().optional(),
   days: z.array(z.strictObject({

@@ -4,13 +4,11 @@ import { Button, Icon, Notice, inputClass } from '../ui'
 import { cx } from '../ui/cx'
 import { AppShell } from '../calendar/AppShell'
 import { ChurchGate } from '../calendar/ChurchGate'
-import { usageText } from '../calendar/dates'
 import type { Church } from '../calendar/model'
-import { songLabel } from '../setlist/setlist-api'
-import { lyricsPath, useLibrary, useLibraryAccess, type LibraryFilter } from './songs-api'
+import { lyricsPath, useLibrary, useLibraryAccess, type LibraryOrder } from './songs-api'
+import { SongRowBody } from './SongRow'
 
-const FILTERS: ReadonlyArray<{ value: LibraryFilter; label: string }> = [{ value: 'all', label: 'Todas' }, { value: 'no-lyrics', label: 'Sin letra' }, { value: 'no-chords', label: 'Sin acordes' }]
-const allHave = { all: '', 'no-lyrics': 'Todas las canciones tienen letra.', 'no-chords': 'Todas las canciones tienen acordes.' } as const
+const ORDERS: ReadonlyArray<{ value: LibraryOrder; label: string }> = [{ value: 'title', label: 'A–Z' }, { value: 'most', label: 'Más usadas' }, { value: 'least', label: 'Menos usadas' }]
 const DESKTOP = '(min-width: 1024px)'
 
 /** Escritorio ≥1024 px (la misma frontera que `lg:` de Tailwind); sin `matchMedia` (pruebas) cuenta como móvil. */
@@ -45,8 +43,9 @@ function Library({ church }: { church: Church }) {
     const timer = setTimeout(() => setTerm(text.trim()), 200)
     return () => clearTimeout(timer)
   }, [text])
-  const [filter, setFilter] = useState<LibraryFilter>('all')
-  const songs = useLibrary(term, filter)
+  const [order, setOrder] = useState<LibraryOrder>('title')
+  const [inverted, setInverted] = useState(false)
+  const songs = useLibrary(term, order, inverted)
   const access = useLibraryAccess()
   const canCreate = Boolean(access.data?.canCreate)
   const rows = songs.rows
@@ -66,13 +65,17 @@ function Library({ church }: { church: Church }) {
               <input type="search" autoComplete="off" placeholder="Buscar por título o autor" aria-label="Buscar canciones"
                 value={text} onChange={(event) => setText(event.target.value)} className={`${inputClass} pl-10`} />
             </div>
-            <div role="group" aria-label="Filtrar por lo que falta" className="flex flex-wrap gap-2">
-              {FILTERS.map((item) => (
-                <button key={item.value} type="button" aria-pressed={filter === item.value} onClick={() => setFilter(item.value)}
-                  className={cx('min-h-11 cursor-pointer rounded-full border px-4 text-sm font-medium', filter === item.value ? 'border-accent bg-accent text-on-accent' : 'border-line-strong bg-surface text-text hover:bg-surface-2')}>
+            <div role="group" aria-label="Ordenar canciones" className="flex items-center gap-1.5">
+              {ORDERS.map((item) => (
+                <button key={item.value} type="button" aria-pressed={order === item.value} onClick={() => setOrder(item.value)}
+                  className={cx('min-h-11 cursor-pointer rounded-full border px-3.5 text-sm font-medium whitespace-nowrap', order === item.value ? 'border-accent bg-accent text-on-accent' : 'border-line-strong bg-surface text-text hover:bg-surface-2')}>
                   {item.label}
                 </button>
               ))}
+              <button type="button" aria-pressed={inverted} aria-label="Invertir orden" title="Invertir orden" onClick={() => setInverted(!inverted)}
+                className={cx('ml-auto grid size-11 flex-none cursor-pointer place-items-center rounded-full border', inverted ? 'border-accent bg-accent-soft text-accent-soft-text' : 'border-line-strong bg-surface text-text hover:bg-surface-2')}>
+                <Icon name="down" width={18} height={18} className={cx('transition-transform duration-(--t-base) motion-reduce:transition-none', inverted && 'rotate-180')} />
+              </button>
             </div>
             {songs.isPending && <p role="status">Cargando canciones…</p>}
             {songs.isError && (
@@ -93,12 +96,9 @@ function Library({ church }: { church: Church }) {
                     {/* Escritorio con permiso: elegir abre el panel de edición, que ofrece la letra; en móvil abre la letra. */}
                     <button type="button" aria-current={editing === song.id ? 'true' : undefined} onClick={() => (desktop && canCreate ? edit(song) : void navigate(lyricsPath(song.id)))}
                       className="flex min-h-16 min-w-0 flex-1 cursor-pointer items-center gap-3 border-0 bg-transparent px-4 text-left hover:bg-surface-2">
-                      <span className="min-w-0 flex-1"><b className="block text-[0.9375rem] leading-tight [overflow-wrap:anywhere]">{song.title}</b><small className="text-[0.8125rem] text-text-2">{song.author || 'Sin autor'}{song.hasLyrics === false ? ' · Sin letra' : song.hasChords === false ? ' · Sin acordes' : ''}</small>{usageText(song)?.split(' · ').map((line) => <small key={line} className="block text-[0.8125rem] text-text-2">{line}</small>)}</span>
+                      <SongRowBody song={song} count={order !== 'title'} />
                       {!canCreate && <Icon name="right" className="text-text-3" />}
                     </button>
-                    {canCreate && (
-                      <span className="lg:hidden"><Button variant="quiet" aria-label={`Editar ${songLabel(song)}`} onClick={() => edit(song)}><Icon name="edit" width={16} height={16} />Editar</Button></span>
-                    )}
                   </li>
                 ))}
               </ul>
@@ -106,8 +106,8 @@ function Library({ church }: { church: Church }) {
             {songs.hasNextPage && <Button variant="secondary" block loading={songs.isFetchingNextPage} onClick={() => void songs.fetchNextPage()}>Cargar más</Button>}
             {songs.data && rows.length === 0 && (
               <div className="grid justify-items-center gap-2 py-6 text-center">
-                <h2 className="m-0 font-display text-lg font-bold">{term ? 'Sin resultados' : filter !== 'all' ? 'Nada pendiente' : 'Aún no hay canciones'}</h2>
-                <p className="m-0 text-text-2">{term ? 'Prueba con otro título o autor.' : filter !== 'all' ? allHave[filter] : canCreate ? 'Agrega la primera con «Nueva».' : 'La biblioteca la edita quien tenga ese acceso.'}</p>
+                <h2 className="m-0 font-display text-lg font-bold">{term ? 'Sin resultados' : 'Aún no hay canciones'}</h2>
+                <p className="m-0 text-text-2">{term ? 'Prueba con otro título o autor.' : canCreate ? 'Agrega la primera con «Nueva».' : 'La biblioteca la edita quien tenga ese acceso.'}</p>
                 {term && canCreate && <Button variant="secondary" onClick={add}>Agregar «{term}»</Button>}
               </div>
             )}

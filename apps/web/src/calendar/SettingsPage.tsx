@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Button, Field, Icon, Notice, Sheet, Switch, TextField, TimeWheel, Toast, format12h, from24h, inputClass, to24h, type Time12 } from '../ui'
+import { Button, Field, Icon, Notice, Segmented, Sheet, Switch, TextField, TimeWheel, Toast, format12h, from24h, inputClass, to24h, type Time12 } from '../ui'
 import { AccessLink, AccountsLink } from '../access/AccessLinks'
 import { ChurchGate, PageHeader, TopBar } from './ChurchGate'
 import { ApiError, useSaveChurch } from './api'
-import type { Church, ChurchSettings, Slot } from './model'
+import type { Church, ChurchSettings, Slot, SongRepeat } from './model'
 import { RolesSettings } from './RolesSettings'
 
 /** Entrada a las participaciones habituales y la rotación de cada rol (las configura quien edita servicios). */
@@ -21,14 +21,14 @@ const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const DAY_NAMES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
 const slotText = { SINGLE: '', MORNING: ' por la mañana', AFTERNOON: ' por la tarde' } as const
 type Entry = { time: string; title: string }
-type Form = { name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; selected: number[]; entries: Record<string, Entry> }
+type Form = { name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; songRepeat: SongRepeat | null; selected: number[]; entries: Record<string, Entry> }
 
 const keyOf = (weekday: number, slot: Slot) => `${weekday}.${slot}`
 const slotsOf = (weekday: number, double: boolean): Slot[] => (weekday === 0 && double ? ['MORNING', 'AFTERNOON'] : ['SINGLE'])
 
 function toForm(church: ChurchSettings): Form {
   return {
-    name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation,
+    name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, songRepeat: church.songRepeat ?? null,
     selected: [...new Set(church.days.map((day) => day.weekday))].sort(),
     entries: Object.fromEntries(church.days.map((day) => [keyOf(day.weekday, day.slot), { time: day.time, title: day.title }])),
   }
@@ -40,13 +40,13 @@ function toSettings(form: Form): ChurchSettings {
     const entry = form.entries[keyOf(weekday, slot)] ?? { time: '19:00', title: '' }
     return { weekday, slot, time: entry.time, title: entry.title.trim() }
   }))
-  return { name: form.name.trim(), sundayDouble: form.sundayDouble, usesPreaching: form.usesPreaching, usesRotation: form.usesRotation, days }
+  return { name: form.name.trim(), sundayDouble: form.sundayDouble, usesPreaching: form.usesPreaching, usesRotation: form.usesRotation, songRepeat: form.songRepeat, days }
 }
 
 const slotOrder: Record<Slot, number> = { SINGLE: 0, MORNING: 1, AFTERNOON: 2 }
 /** Forma comparable de lo guardado: mismo orden y mismos campos que `toSettings`. */
 const comparable = (settings: ChurchSettings): ChurchSettings => ({
-  name: settings.name, sundayDouble: settings.sundayDouble, usesPreaching: settings.usesPreaching, usesRotation: settings.usesRotation,
+  name: settings.name, sundayDouble: settings.sundayDouble, usesPreaching: settings.usesPreaching, usesRotation: settings.usesRotation, songRepeat: settings.songRepeat ?? null,
   days: settings.days.map(({ weekday, slot, time, title }) => ({ weekday, slot, time, title })).sort((a, b) => a.weekday - b.weekday || slotOrder[a.slot] - slotOrder[b.slot]),
 })
 
@@ -211,6 +211,8 @@ function Settings({ church }: { church: Church }) {
           description={form.usesRotation ? 'Cada rol puede rotar a sus personas entre servicios, en orden y de forma cíclica.' : 'Sin rotación: los servicios nuevos solo llevan a los habituales de cada rol. Lo ya configurado se conserva.'} />
         <RotationExample />
 
+        <SongRepeatSetting value={form.songRepeat} onChange={(songRepeat) => change((prev) => ({ ...prev, songRepeat }))} />
+
         <details className="rounded-lg border border-line bg-surface">
           <summary className="min-h-touch-lg cursor-pointer px-3 py-3 font-semibold">Roles musicales y combinaciones</summary>
           <div className="grid gap-5 px-3 pb-4"><RolesSettings editable /></div>
@@ -247,5 +249,33 @@ function RotationExample() {
       </ol>
       <p className="m-0 text-[0.8125rem] text-text-3">Se activa aquí y se configura en cada rol. Puedes apagarla cuando quieras: los servicios que ya existen no cambian.</p>
     </div>
+  )
+}
+
+const UNIT_OPTIONS = [{ value: 'WEEKS', label: 'Semanas' }, { value: 'SERVICES', label: 'Cultos' }] as const
+
+/** Regla estricta de repetición: una canción usada hace menos de N semanas, o dentro de los N cultos anteriores o siguientes, no se puede elegir. */
+function SongRepeatSetting({ value, onChange }: { value: SongRepeat | null; onChange: (value: SongRepeat | null) => void }) {
+  const set = (patch: Partial<SongRepeat>) => value && onChange({ ...value, ...patch })
+  const explain = !value ? '' : value.unit === 'WEEKS'
+    ? `Una canción no se puede elegir si se canta en otro servicio a menos de ${value.amount} ${value.amount === 1 ? 'semana' : 'semanas'}, antes o después. Cuenta la fecha del servicio, no la hora.`
+    : `Una canción no se puede elegir si se canta en alguno de los ${value.amount} ${value.amount === 1 ? 'culto' : 'cultos'} anteriores o siguientes. Con 2: si se canta el viernes, el domingo y el viernes siguientes no la ofrecen y el domingo después sí.`
+  return (
+    <section className="grid gap-3 rounded-lg border border-line bg-surface p-3" aria-label="Repetición de canciones">
+      <Switch checked={value !== null} onCheckedChange={(on) => onChange(on ? { unit: 'WEEKS', amount: 2 } : null)} label="Evitar repetir canciones"
+        description={value ? 'Al armar un setlist, las canciones que no cumplen la regla aparecen deshabilitadas y la API tampoco las acepta.' : 'Sin regla: cualquier canción se puede elegir; solo se muestra cuándo se usó por última vez.'} />
+      {value && (
+        <>
+          <Segmented<SongRepeat['unit']> label="Contar en" value={value.unit} onChange={(unit) => set({ unit })} options={UNIT_OPTIONS} />
+          <div className="flex items-center gap-3">
+            <span className="flex-1 text-[0.9375rem] font-semibold">Mínimo entre usos</span>
+            <Button variant="secondary" icon aria-label="Menos" disabled={value.amount <= 1} onClick={() => set({ amount: value.amount - 1 })}><Icon name="minus" /></Button>
+            <output aria-label="Mínimo entre usos" className="w-8 text-center font-display text-lg font-bold [font-variant-numeric:tabular-nums]">{value.amount}</output>
+            <Button variant="secondary" icon aria-label="Más" disabled={value.amount >= 26} onClick={() => set({ amount: value.amount + 1 })}><Icon name="plus" /></Button>
+          </div>
+          <p className="m-0 text-[0.8125rem] text-text-3">{explain}</p>
+        </>
+      )}
+    </section>
   )
 }

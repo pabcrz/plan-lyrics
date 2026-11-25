@@ -12,17 +12,21 @@ import { requireSession, type SessionConfig, type SessionEnvironment } from './s
 
 export const timeZone = 'America/Mexico_City'
 
-export type Active = { support?: boolean; churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean }
+export type Active = { support?: boolean; churchId: string; name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; songRepeat: { unit: 'WEEKS' | 'SERVICES'; amount: number } | null; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean }
 
 /**
  * The active church is one of the caller's memberships. With several, the client picks it with `X-Church-Id`; the
  * header only narrows, so a church the caller does not belong to simply does not exist (`none`). Without the header,
  * exactly one membership is active and several are `ambiguous`.
  */
+/** The church's repetition rule, or `null` when it is off. */
+const repeatRule = (church: { songRepeatUnit: 'WEEKS' | 'SERVICES' | null; songRepeatAmount: number | null }) =>
+  church.songRepeatUnit && church.songRepeatAmount ? { unit: church.songRepeatUnit, amount: church.songRepeatAmount } : null
+
 export async function activeChurch(db: PrismaClient, subject: string, requestedId?: string): Promise<Active | 'none' | 'ambiguous'> {
   const memberships = await db.membership.findMany({
     where: { user: { clerkSubject: subject }, ...(requestedId ? { churchId: requestedId } : {}) },
-    select: { role: true, church: { select: { id: true, name: true, sundayDouble: true, usesPreaching: true, usesRotation: true, congregationShowsPreacher: true } } },
+    select: { role: true, church: { select: { id: true, name: true, sundayDouble: true, usesPreaching: true, usesRotation: true, songRepeatUnit: true, songRepeatAmount: true, congregationShowsPreacher: true } } },
   })
   if (memberships.length === 0) return requestedId ? supportChurch(db, subject, requestedId) : 'none'
   if (memberships.length > 1) return 'ambiguous'
@@ -30,7 +34,7 @@ export async function activeChurch(db: PrismaClient, subject: string, requestedI
   // Church settings: the church administrator or the platform owner (who still needs an active church).
   const owner = role === 'ADMIN' ? null : await db.platformOwner.findFirst({ where: { user: { clerkSubject: subject } }, select: { id: true } })
   return {
-    churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, congregationShowsPreacher: church.congregationShowsPreacher,
+    churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, songRepeat: repeatRule(church), congregationShowsPreacher: church.congregationShowsPreacher,
     canEdit: role === 'ADMIN' || role === 'EDITOR', canConfigure: role === 'ADMIN' || Boolean(owner),
   }
 }
@@ -38,9 +42,9 @@ export async function activeChurch(db: PrismaClient, subject: string, requestedI
 /** Support mode: the platform owner enters a church they do not belong to, with the powers of its administrator. */
 async function supportChurch(db: PrismaClient, subject: string, id: string): Promise<Active | 'none'> {
   const owner = await db.platformOwner.findFirst({ where: { user: { clerkSubject: subject } }, select: { id: true } })
-  const church = owner ? await db.church.findUnique({ where: { id }, select: { id: true, name: true, sundayDouble: true, usesPreaching: true, usesRotation: true, congregationShowsPreacher: true } }) : null
+  const church = owner ? await db.church.findUnique({ where: { id }, select: { id: true, name: true, sundayDouble: true, usesPreaching: true, usesRotation: true, songRepeatUnit: true, songRepeatAmount: true, congregationShowsPreacher: true } }) : null
   if (!church) return 'none'
-  return { support: true, churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, congregationShowsPreacher: church.congregationShowsPreacher, canEdit: true, canConfigure: true }
+  return { support: true, churchId: church.id, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, songRepeat: repeatRule(church), congregationShowsPreacher: church.congregationShowsPreacher, canEdit: true, canConfigure: true }
 }
 
 const serviceSelect = {
@@ -100,7 +104,7 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
       select: { weekday: true, slot: true, time: true, title: true },
     })
     return {
-      id: church.churchId, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, congregationShowsPreacher: church.congregationShowsPreacher,
+      id: church.churchId, name: church.name, sundayDouble: church.sundayDouble, usesPreaching: church.usesPreaching, usesRotation: church.usesRotation, songRepeat: church.songRepeat, congregationShowsPreacher: church.congregationShowsPreacher,
       canEdit: church.canEdit, canConfigure: church.canConfigure, ...(church.support ? { support: true } : {}), timeZone, days,
     }
   }
@@ -112,7 +116,8 @@ export function serviceRoutes(config: SessionConfig, db?: PrismaClient, now: () 
     if (!church.canConfigure) return c.json({ error: 'Forbidden' }, 403)
     const body = checkSettings(await c.req.json().catch(() => undefined))
     if ('issues' in body) return c.json({ error: 'Invalid request', issues: body.issues }, 400)
-    const { days, ...fields } = body.data
+    const { days, songRepeat, ...rest } = body.data
+    const fields = { ...rest, ...(songRepeat !== undefined ? { songRepeatUnit: songRepeat?.unit ?? null, songRepeatAmount: songRepeat?.amount ?? null } : {}) }
     await db.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM "Church" WHERE id = ${church.churchId} FOR UPDATE`
       await tx.church.update({ where: { id: church.churchId }, data: fields })

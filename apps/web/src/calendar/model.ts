@@ -5,11 +5,14 @@ export type Status = 'DRAFT' | 'PUBLISHED' | 'COMPLETED' | 'CANCELLED'
 export type HabitualDay = { weekday: number; slot: Slot; time: string; title: string }
 export type Church = {
   id: string; name: string; sundayDouble: boolean; usesPreaching: boolean; usesRotation: boolean; congregationShowsPreacher: boolean; canEdit: boolean; canConfigure: boolean
+  /** Regla estricta de repetición de canciones: cuántas semanas o cultos deben pasar antes de repetir una; `null` si está apagada. */
+  songRepeat?: SongRepeat | null
   /** El superadministrador entró a una iglesia a la que no pertenece. */
   support?: boolean
   timeZone: string; days: HabitualDay[]
 }
-export type ChurchSettings = Pick<Church, 'name' | 'sundayDouble' | 'usesPreaching' | 'usesRotation' | 'days'>
+export type SongRepeat = { unit: 'WEEKS' | 'SERVICES'; amount: number }
+export type ChurchSettings = Pick<Church, 'name' | 'sundayDouble' | 'usesPreaching' | 'usesRotation' | 'days'> & { songRepeat?: SongRepeat | null }
 export type Service = {
   id: string; title: string; date: string; slot: Slot; time: string | null; status: Status
   /** Un servicio puede tener solo predicación: la dirección se asigna después. */
