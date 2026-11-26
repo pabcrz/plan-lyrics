@@ -1,5 +1,6 @@
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { Route, Routes, useLocation, useParams } from 'react-router'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { church, mount } from '../calendar/test-utils'
 import { fold } from '../ui'
@@ -496,4 +497,16 @@ test('the «lo interno no se publica» notice shows once to whoever edits, and n
   await screen.findByText('Servicio dominical')
   expect(screen.queryByText('Lo interno no se publica')).toBeNull()
   localStorage.clear()
+})
+
+test('a service the active church no longer has shows only the notice, not the setlist kept from before', async () => {
+  stubSetlist()
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/servicios/s1']}><Routes><Route path="/servicios/:serviceId" element={<ServicePage />} /></Routes></MemoryRouter></QueryClientProvider>)
+  await screen.findByRole('list', { name: 'Setlist' })
+  stubSetlist({ status: 404 })
+  void client.invalidateQueries({ queryKey: ['setlist'] })
+  await screen.findByText('No encontramos este servicio')
+  expect(screen.queryByRole('list', { name: 'Setlist' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Editar servicio' })).toBeNull()
 })

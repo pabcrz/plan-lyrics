@@ -16,7 +16,8 @@ initAppearance()
 watchInstall()
 registerServiceWorker()
 
-const client = new QueryClient()
+// Lo precargado para leer sin conexión no se descarta a los 5 minutos por no estar en pantalla.
+const client = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } })
 restoreCache(client)
 persistCache(client)
 // Página interna del sistema visual: solo existe en desarrollo.

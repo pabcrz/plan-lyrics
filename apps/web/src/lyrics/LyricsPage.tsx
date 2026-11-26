@@ -105,7 +105,7 @@ export function LyricsPage() {
       <PageHeader title="Letra" backLabel="Volver" back={back} />
       <main className="flex-1 pb-4">
         {query.isPending && <p role="status" className="m-0 p-4 text-text-2">Cargando la letra…</p>}
-        {query.isError && <div className="grid gap-4 p-4"><LyricsLoadFailure error={query.error} onRetry={() => void query.refetch()} /></div>}
+        {query.isError && !stored && <div className="grid gap-4 p-4"><LyricsLoadFailure error={query.error} onRetry={() => void query.refetch()} /></div>}
         {lyrics && stored && (
           <>
             <LyricsHeader title={title ?? lyrics.title} lyrics={lyrics} />

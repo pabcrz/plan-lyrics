@@ -12,7 +12,7 @@ const clerk = vi.hoisted(() => ({
 
 type Children = { children: ReactNode }
 vi.mock('@clerk/react', () => ({
-  useAuth: () => ({ getToken: async () => 'token-ficticio' }),
+  useAuth: () => ({ getToken: async () => 'token-ficticio', isLoaded: clerk.state === 'ready', isSignedIn: clerk.state === 'ready' && clerk.signedIn }),
   useUser: () => ({ user: { id: 'user-ficticio' } }),
   ClerkProvider: ({ children, ...props }: Children) => {
     clerk.provider(props)
@@ -71,19 +71,20 @@ test('a secret key is rejected without reflection or initializing the SDK', () =
 test('loading does not claim a session or offer account controls', () => {
   clerk.state = 'loading'
   mount(publicKey)
-  expect(screen.getByText('Cargando autenticación…')).toBeTruthy()
-  expect(screen.queryByRole('button', { name: /Iniciar sesión|Cuenta/ })).toBeNull()
+  expect((screen.getByRole('button', { name: 'Iniciar sesión' }) as HTMLButtonElement).disabled).toBe(true)
+  expect(screen.queryByRole('button', { name: /Cuenta/ })).toBeNull()
 })
 
 test('SDK failure is visible without granting access', () => {
   clerk.state = 'failed'
   mount(publicKey)
-  expect(screen.getByRole('alert').textContent).toBe('No se pudo cargar Clerk. Recargá la página para reintentar.')
+  expect(screen.getByRole('alert').textContent).toBe('No se pudo preparar el inicio de sesión. Revisa tu conexión.')
+  expect(screen.getByRole('button', { name: 'Reintentar' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: /Iniciar sesión|Cuenta/ })).toBeNull()
 })
 
-test('without Clerk but with saved data the product opens read-only instead of the failure', async () => {
-  clerk.state = 'failed'
+test.each(['loading', 'failed'])('with saved data the product opens at once while Clerk is %s', async (state) => {
+  clerk.state = state
   const { restoreCache, forgetCache } = await import('./offline-cache')
   localStorage.setItem('plan-lyrics.cache', JSON.stringify({ v: 1, owner: 'user-ficticio', church: null, queries: [{ key: ['church'], data: { id: 'c1', name: 'Betel', canEdit: false, canConfigure: false, usesPreaching: false, days: [] } }] }))
   const client = new QueryClient()
@@ -91,7 +92,7 @@ test('without Clerk but with saved data the product opens read-only instead of t
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'x' }), { status: 503 })))
   render(<QueryClientProvider client={client}><MemoryRouter><ClerkApp publishableKey={publicKey} /></MemoryRouter></QueryClientProvider>)
   expect((await screen.findAllByText('Betel')).length).toBeGreaterThan(0)
-  expect(screen.queryByText('No se pudo cargar Clerk. Recargá la página para reintentar.')).toBeNull()
+  expect(screen.queryByRole('button', { name: /Iniciar sesión|Reintentar/ })).toBeNull()
   forgetCache()
 })
 

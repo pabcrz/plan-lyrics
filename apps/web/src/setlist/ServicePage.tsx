@@ -42,7 +42,8 @@ function Screen({ church }: { church: Church }) {
   // La dirección y lo demás del servicio vienen de la lista del mes (no hay lectura de un servicio suelto).
   const service = useServices(month ? [month] : []).services.find((item) => item.id === serviceId)
   const missing = query.error instanceof ApiError && query.error.status === 404
-  const setlist = query.data
+  // Si la iglesia activa ya no tiene el servicio, no se muestra lo guardado de antes.
+  const setlist = missing ? undefined : query.data
   const [editing, setEditing] = useState(false)
   const [saved, setSaved] = useState(false)
   const back = setlist && monthOf(setlist.service.date) !== monthOf(todayIn()) ? `/?mes=${monthOf(setlist.service.date)}` : '/'
@@ -53,7 +54,7 @@ function Screen({ church }: { church: Church }) {
         <Link to={back} className="flex min-h-11 w-fit items-center gap-1 font-semibold text-accent no-underline hover:underline lg:hidden"><Icon name="right" className="-scale-x-100" />Inicio</Link>
         {query.isPending && <p role="status" className="m-0 text-text-2">Cargando el servicio…</p>}
         {missing && <Notice title="No encontramos este servicio">No existe en tu iglesia o ya no está disponible.</Notice>}
-        {query.isError && !missing && (
+        {query.isError && !missing && !setlist && (
           <>
             <Notice tone="warn" icon="alert" role="alert" title="No se pudo cargar el servicio">Revisa tu conexión e inténtalo de nuevo.</Notice>
             <Button variant="secondary" onClick={() => void query.refetch()}>Reintentar</Button>
