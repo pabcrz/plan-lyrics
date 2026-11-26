@@ -97,7 +97,8 @@ test('upcoming services of every church are saved, each asked with its own churc
   }
   const upcoming = Array.from({ length: 8 }, (_, at) => ({ id: `s${at}`, church: at % 2 ? 'c2' : 'c1' }))
   await saveUpcoming(new QueryClient(), api, upcoming)
-  expect(asked.filter(([path]) => path.endsWith('/setlist'))).toHaveLength(8)
+  // Como máximo tres cultos: cada petición cuenta en el consumo del servidor.
+  expect(asked.filter(([path]) => path.endsWith('/setlist')).map(([path]) => path)).toEqual(['/api/services/s0/setlist', '/api/services/s1/setlist', '/api/services/s2/setlist'])
   expect(asked).toContainEqual(['/api/services/s1/setlist', 'c2'])
 })
 
@@ -131,7 +132,42 @@ test('participations, preaching and the service key transposition are saved too'
     return { key: 'G', sections: [{ chordPro: '[G]x' }] } as T
   }
   const client = new QueryClient()
-  await saveUpcoming(client, api, [{ id: 's1', church: 'c1' }])
+  await saveUpcoming(client, api, [{ id: 's1', church: 'c1', preaching: true }])
   expect(asked).toEqual(expect.arrayContaining(['/api/services/s1/assignments', '/api/services/s1/preaching', '/api/songs/song/lyrics?toKey=A']))
   expect(client.getQueryData(['lyrics', 'song', 'view', 'toKey=A'])).toBeDefined()
+})
+
+test('what was saved less than six hours ago is not asked again, and preaching only where there is one', async () => {
+  const asked: string[] = []
+  const api = async <T,>(path: string) => {
+    asked.push(path)
+    return (path.endsWith('/setlist') ? { entries: [{ song: { id: 'song' } }] } : { sections: [] }) as T
+  }
+  const client = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } })
+  await saveUpcoming(client, api, [{ id: 's1' }])
+  expect(asked).toEqual(['/api/services/s1/setlist', '/api/services/s1/assignments', '/api/songs/song/lyrics'])
+  asked.length = 0
+  vi.advanceTimersByTime(5 * 3_600_000)
+  await saveUpcoming(client, api, [{ id: 's1' }])
+  expect(asked).toEqual([])
+  vi.advanceTimersByTime(2 * 3_600_000)
+  await saveUpcoming(client, api, [{ id: 's1' }])
+  expect(asked).toHaveLength(3)
+})
+
+test('on request the copy is downloaded again at once, and says whether it worked', async () => {
+  const asked: string[] = []
+  let fail = false
+  const api = async <T,>(path: string) => {
+    asked.push(path)
+    if (fail && path.endsWith('/lyrics')) throw new Error('offline')
+    return (path.endsWith('/setlist') ? { entries: [{ song: { id: 'song' } }] } : { sections: [] }) as T
+  }
+  const client = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity, retry: false } } })
+  expect(await saveUpcoming(client, api, [{ id: 's1' }])).toBe(true)
+  asked.length = 0
+  expect(await saveUpcoming(client, api, [{ id: 's1' }], { force: true })).toBe(true)
+  expect(asked).toEqual(['/api/services/s1/setlist', '/api/services/s1/assignments', '/api/songs/song/lyrics'])
+  fail = true
+  expect(await saveUpcoming(client, api, [{ id: 's1' }], { force: true })).toBe(false)
 })

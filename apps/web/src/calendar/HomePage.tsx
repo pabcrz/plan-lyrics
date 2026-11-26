@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { saveUpcoming } from '../offline-cache'
+import { useOnline } from '../pwa'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { Button, Icon, Notice, Sheet, StatusChip, Toast } from '../ui'
 import { cx } from '../ui/cx'
@@ -20,6 +21,7 @@ import { useViewProfile } from './profile'
 import type { Church, ClosedDate, Service } from './model'
 
 const DESKTOP = '(min-width: 1024px)'
+type OfflineList = Array<{ id: string; church: string; preaching: boolean }>
 
 type Item = { kind: 'service'; date: string; service: Service } | { kind: 'closed'; date: string; closed: ClosedDate }
 
@@ -65,7 +67,8 @@ function Home({ church }: { church: Church }) {
   const items = showPast ? [...past, ...upcoming] : upcoming
   const count = gridServices.length
   // Con dos o más iglesias el inicio tiene un filtro: «Todas» (esta semana y la siguiente de todas, en orden) o una iglesia, que pasa a ser la activa.
-  const churches = useMyChurches().data?.filter((item) => item.role) ?? []
+  const myChurches = useMyChurches().data
+  const churches = myChurches?.filter((item) => item.role) ?? []
   const several = churches.length >= 2
   const stored = homeAll.use()
   const united = several && (stored ?? true)
@@ -80,16 +83,23 @@ function Home({ church }: { church: Church }) {
   }
   const weekEnd = allWindowEnd(today)
   const agendaShown = (agenda.data ?? []).filter((item) => item.date <= weekEnd)
-  // Con conexión, deja leíbles sin red el setlist y las letras de lo que viene, de todas las iglesias.
+  // Con conexión, deja leíbles sin red los próximos cultos (de todas las iglesias). Espera a saber cuáles son para no pedir de más.
   const api = useApiFetch()
   const queryClient = useQueryClient()
-  const offline = new Map<string, string>()
-  for (const item of several ? agendaShown : []) if (item.status !== 'CANCELLED') offline.set(item.id, item.churchId)
-  for (const item of upcoming) if (item.kind === 'service' && item.service.status !== 'CANCELLED' && !offline.has(item.service.id)) offline.set(item.service.id, church.id)
-  const offlineList = [...offline].map(([id, owner]) => `${id} ${owner}`).join(',')
+  const ready = Boolean(myChurches) && (several ? Boolean(agenda.data) : current)
+  const next = several
+    ? agendaShown.map((item) => ({ service: item, church: item.churchId }))
+    : upcoming.flatMap((item) => (item.kind === 'service' ? [{ service: item.service, church: church.id }] : []))
+  const offlineList = JSON.stringify(ready ? next.filter(({ service }) => service.status !== 'CANCELLED').map(({ service, church }) => ({ id: service.id, church, preaching: Boolean(service.preaching) })) : [])
   useEffect(() => {
-    if (offlineList && navigator.onLine) void saveUpcoming(queryClient, api, offlineList.split(',').map((pair) => { const [id = '', owner] = pair.split(' '); return { id, church: owner } }))
+    if (navigator.onLine) void saveUpcoming(queryClient, api, JSON.parse(offlineList) as OfflineList)
   }, [offlineList, api, queryClient])
+  const online = useOnline()
+  const [copy, setCopy] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const refreshCopy = async () => {
+    setCopy('saving')
+    setCopy(await saveUpcoming(queryClient, api, JSON.parse(offlineList) as OfflineList, { force: true }) ? 'saved' : 'failed')
+  }
 
   const calendar = (
     <section aria-label="Calendario" className="rounded-lg border border-line bg-surface lg:sticky lg:top-4">
@@ -137,6 +147,12 @@ function Home({ church }: { church: Church }) {
           <h2 className="m-0 flex-1 text-base font-semibold text-text-2">{united ? 'Esta semana y la siguiente' : current ? 'Próximos servicios' : `Servicios de ${monthTitle(month).split(' ')[0].toLowerCase()}`}</h2>
           {!united && past.length > 0 && <Button variant="quiet" onClick={() => setShowPast(!showPast)}>{showPast ? 'Ocultar anteriores' : `Ver anteriores (${past.length})`}</Button>}
         </div>
+        {online && offlineList !== '[]' && (
+          <div className="flex flex-wrap items-center gap-x-3 lg:col-start-1">
+            <Button variant="quiet" loading={copy === 'saving'} onClick={() => void refreshCopy()}>Actualizar copia sin conexión</Button>
+            <p role="status" className="m-0 text-[0.8125rem] text-text-2">{copy === 'saved' ? 'Copia actualizada.' : copy === 'failed' ? 'No se pudo actualizar la copia. Inténtalo de nuevo.' : ''}</p>
+          </div>
+        )}
         <div className="lg:col-start-1">
           {united ? (
             agenda.isError && !agenda.data ? <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
