@@ -9,7 +9,7 @@ import { useChurch } from './api'
 import { InstallBar } from '../InstallBar'
 import { StatusBars } from '../StatusBars'
 import { ChurchName } from './ChurchGate'
-import { ChurchAccentSync, ChurchBadge } from './church-identity'
+import { ChurchAccentSync, ChurchAppearanceSheet, ChurchBadge } from './church-identity'
 import { clearActiveChurch } from './active-church'
 
 /** Sección del menú a la que pertenece una ruta; las pantallas de crear servicio cuelgan de Inicio y las de configuración, de «Más». */
@@ -29,6 +29,7 @@ export function ShellLayout() {
   const church = useChurch().data
   const { pathname } = useLocation()
   const [creating, setCreating] = useState(false)
+  const [looking, setLooking] = useState(false)
   const navigate = useNavigate()
   const client = useQueryClient()
   function leaveSupport() {
@@ -71,7 +72,11 @@ export function ShellLayout() {
               return <Link key={entry.path} to={entry.path} aria-current={active ? 'page' : undefined} className={item(active)}>{entry.label}</Link>
             })}
           </nav>
-          <div className="mt-auto flex items-center gap-3 border-t border-line px-2 pt-3 text-sm text-text-2"><UserButton />Cuenta</div>
+          <div className="mt-auto flex items-center gap-3 border-t border-line px-2 pt-3 text-sm text-text-2">
+            <UserButton /><span className="flex-1">Cuenta</span>
+            <Button variant="quiet" icon aria-label="Apariencia" title="Apariencia" onClick={() => setLooking(true)}><Icon name="palette" /></Button>
+          </div>
+          <ChurchAppearanceSheet open={looking} onClose={() => setLooking(false)} />
           <NewSheet open={creating} onClose={() => setCreating(false)} />
         </aside>
       )}
