@@ -81,23 +81,33 @@ export function forgetCache() {
   owner = null
 }
 
-/** Deja listos para leer sin conexión los próximos servicios: setlist, letras (también en el tono del servicio), participaciones y predicación. */
-export async function saveUpcoming(client: QueryClient, api: <T>(path: string, init?: { church?: string }) => Promise<T>, services: ReadonlyArray<{ id: string; church?: string }>) {
-  // shortcut: tope de 12 servicios; subirlo si alguien tiene más en dos semanas.
-  for (const { id, church } of services.slice(0, 12)) {
-    const setlist = await client.fetchQuery({ queryKey: setlistKey(id), queryFn: () => api<Setlist>(`/api/services/${encodeURIComponent(id)}/setlist`, { church }), staleTime: 60_000 }).catch(() => null)
+/** Cada petición cuenta en el consumo del servidor: pocos cultos y sin repetir lo guardado hace poco. */
+const MAX_SAVED = 3
+const FRESH = 6 * 3_600_000
+
+/**
+ * Deja listos para leer sin conexión los próximos cultos: setlist, letras (también en el tono del servicio), participaciones y predicación.
+ * Con `force` (a petición de la persona) se vuelve a pedir aunque sea reciente. Devuelve `false` si faltó algún setlist o alguna letra.
+ */
+export async function saveUpcoming(client: QueryClient, api: <T>(path: string, init?: { church?: string }) => Promise<T>, services: ReadonlyArray<{ id: string; church?: string; preaching?: boolean }>, { force = false } = {}) {
+  const staleTime = force ? 0 : FRESH
+  let complete = true
+  const missed = () => { complete = false; return null }
+  for (const { id, church, preaching } of services.slice(0, MAX_SAVED)) {
+    const setlist = await client.fetchQuery({ queryKey: setlistKey(id), queryFn: () => api<Setlist>(`/api/services/${encodeURIComponent(id)}/setlist`, { church }), staleTime }).catch(missed)
     const base = `/api/services/${encodeURIComponent(id)}`
-    await client.prefetchQuery({ queryKey: ['assignments', id], queryFn: () => api(`${base}/assignments`, { church }), staleTime: 60_000 })
-    await client.prefetchQuery({ queryKey: ['preaching', id], queryFn: () => api(`${base}/preaching`, { church }), staleTime: 60_000 })
+    await client.prefetchQuery({ queryKey: ['assignments', id], queryFn: () => api(`${base}/assignments`, { church }), staleTime })
+    if (preaching) await client.prefetchQuery({ queryKey: ['preaching', id], queryFn: () => api(`${base}/preaching`, { church }), staleTime })
     for (const entry of setlist?.entries ?? []) {
       const song = entry.song?.id
       if (!song) continue
-      await client.prefetchQuery({ queryKey: lyricsKey(song), queryFn: () => api<Lyrics>(lyricsPath(song), { church }), staleTime: 300_000 })
+      await client.fetchQuery({ queryKey: lyricsKey(song), queryFn: () => api<Lyrics>(lyricsPath(song), { church }), staleTime }).catch(missed)
       const lyrics = client.getQueryData<Lyrics>(lyricsKey(song))
       if (entry.key && lyrics?.key && semitonesBetween(lyrics.key, entry.key) && lyrics.sections.some((section) => section.chordPro)) {
         const query = transpositionQuery({ toKey: entry.key })
-        await client.prefetchQuery({ queryKey: [...lyricsKey(song), 'view', query], queryFn: () => api<Lyrics>(`${lyricsPath(song)}?${query}`, { church }), staleTime: 300_000 })
+        await client.fetchQuery({ queryKey: [...lyricsKey(song), 'view', query], queryFn: () => api<Lyrics>(`${lyricsPath(song)}?${query}`, { church }), staleTime }).catch(missed)
       }
     }
   }
+  return complete
 }

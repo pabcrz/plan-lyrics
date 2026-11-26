@@ -377,3 +377,13 @@ test('without network, picking another church changes nothing and does not claim
   expect(screen.queryByText(/Ahora trabajas en/)).toBeNull()
   vi.restoreAllMocks()
 })
+
+test('the offline copy can be refreshed on demand, and the result is said', async () => {
+  const calls = stubApi({ services })
+  mount(<HomePage />)
+  const button = await screen.findByRole('button', { name: 'Actualizar copia sin conexión' })
+  const before = calls.filter((call) => call.url.endsWith('/setlist')).length
+  fireEvent.click(button)
+  expect(await screen.findByText(/No se pudo actualizar la copia|Copia actualizada/)).toBeTruthy()
+  expect(calls.filter((call) => call.url.endsWith('/setlist')).length).toBeGreaterThan(before)
+})
