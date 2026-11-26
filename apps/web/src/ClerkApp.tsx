@@ -32,6 +32,21 @@ function ForgetCache() {
   return null
 }
 
+/** Abierta con lo guardado y sin sesión: solo recargar la recupera, y se hace sola cuando vuelve la red. */
+function Reconnect() {
+  useEffect(() => {
+    const reload = () => window.location.reload()
+    window.addEventListener('online', reload)
+    return () => window.removeEventListener('online', reload)
+  }, [])
+  return (
+    <div role="status" className="flex items-center gap-3 border-b border-line bg-surface-2 px-4 py-2 text-sm text-text-2">
+      <span className="min-w-0 flex-1">Solo lectura: no se pudo conectar tu sesión.</span>
+      <button type="button" className="min-h-11 cursor-pointer border-0 bg-transparent font-semibold text-accent underline" onClick={() => window.location.reload()}>Recargar</button>
+    </div>
+  )
+}
+
 /**
  * Una sola posición para el producto: con datos guardados se abre sin esperar a Clerk y no se vuelve a montar cuando este responde.
  */
@@ -40,6 +55,7 @@ function Entry() {
   const saved = hasOfflineData()
   return (
     <>
+      {saved && <ClerkFailed><Reconnect /></ClerkFailed>}
       {(isSignedIn || (!isLoaded && saved)) && <ProductRoutes />}
       <Show when="signed-in"><CacheOwner /></Show>
       {!saved && <>

@@ -5,6 +5,7 @@ import { useAuth } from '@clerk/react'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Church, ChurchSettings, ClosedDate, Person, PersonDetail, Service, Status, Slot } from './model'
 import { apiUrl } from '../api-url'
+import { blockSwitch } from '../pwa'
 
 export class ApiError extends Error {
   constructor(readonly status: number, readonly code = '', readonly issues: string[] = [], readonly existing?: { id: string; name: string }, readonly services?: number, readonly affected: Array<{ position: number; kind: string; label: string | null }> = []) {
@@ -80,20 +81,24 @@ export function useMyChurches() {
   return useQuery({ queryKey: ['my-churches'], queryFn: () => api<MyChurch[]>('/api/me/churches'), retry: false, staleTime: 60_000 })
 }
 
-const ACCOUNT_WIDE = ['my-churches', 'agenda', 'setlist', 'lyrics']
+/** Lo que no depende de la iglesia activa: la cuenta (iglesias, agenda) y lo que va por id de servicio o de canción. */
+const ACCOUNT_WIDE = ['my-churches', 'agenda']
+const byId = ({ queryKey }: { queryKey: readonly unknown[] }) =>
+  ['setlist', 'lyrics', 'assignments'].includes(queryKey[0] as string) || (queryKey[0] === 'preaching' && queryKey[1] !== 'plan')
 
 /** Cambia la iglesia activa de este dispositivo y vuelve a pedir todo lo demás con ella. */
 export function useSwitchChurch() {
   const client = useQueryClient()
   return useCallback((id: string) => {
     // Sin red, cambiar de iglesia borraría lo guardado sin poder pedir lo nuevo.
-    if (!navigator.onLine) return
+    if (!navigator.onLine) { blockSwitch(); return false }
     setActiveChurch(id)
     // Elegir una iglesia (desde el menú o el filtro del inicio) deja de ser la vista «Todas».
     homeAll.set(false)
-    // Setlists y letras van por id y la agenda es de la cuenta: se conservan para leerlos sin conexión.
-    void client.resetQueries({ predicate: (query) => !ACCOUNT_WIDE.includes(query.queryKey[0] as string) })
-    void client.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'setlist' || query.queryKey[0] === 'lyrics' })
+    // Se conserva para leerlo sin conexión; lo que va por id se vuelve a pedir.
+    void client.resetQueries({ predicate: (query) => !ACCOUNT_WIDE.includes(query.queryKey[0] as string) && !byId(query) })
+    void client.invalidateQueries({ predicate: byId })
+    return true
   }, [client])
 }
 

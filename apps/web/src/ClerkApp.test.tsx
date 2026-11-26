@@ -92,7 +92,7 @@ test.each(['loading', 'failed'])('with saved data the product opens at once whil
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'x' }), { status: 503 })))
   render(<QueryClientProvider client={client}><MemoryRouter><ClerkApp publishableKey={publicKey} /></MemoryRouter></QueryClientProvider>)
   expect((await screen.findAllByText('Betel')).length).toBeGreaterThan(0)
-  expect(screen.queryByRole('button', { name: /Iniciar sesión|Reintentar/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Iniciar sesión' })).toBeNull()
   forgetCache()
 })
 
@@ -111,4 +111,41 @@ test('signed-in view hands over to the product screens, with the Clerk account',
   expect(await screen.findByText('Sin iglesia asignada')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Cuenta de Clerk' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Iniciar sesión' })).toBeNull()
+})
+
+test.each([true, false])('when Clerk answers after opening with saved data (signed in: %s) the product stays or closes', async (signedIn) => {
+  clerk.state = 'loading'
+  const { restoreCache, hasOfflineData } = await import('./offline-cache')
+  localStorage.setItem('plan-lyrics.cache', JSON.stringify({ v: 1, owner: 'user-ficticio', church: null, queries: [{ key: ['church'], data: { id: 'c1', name: 'Betel', canEdit: false, canConfigure: false, usesPreaching: false, days: [] } }] }))
+  const client = new QueryClient()
+  restoreCache(client)
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'x' }), { status: 503 })))
+  const tree = () => <QueryClientProvider client={client}><MemoryRouter><ClerkApp publishableKey={publicKey} /></MemoryRouter></QueryClientProvider>
+  const view = render(tree())
+  const main = (await screen.findAllByRole('main'))[0]
+  clerk.state = 'ready'
+  clerk.signedIn = signedIn
+  view.rerender(tree())
+  if (signedIn) expect(screen.getAllByRole('main')[0]).toBe(main)
+  else {
+    expect(await screen.findByRole('button', { name: 'Iniciar sesión' })).toBeTruthy()
+    expect(hasOfflineData()).toBe(false)
+    expect(localStorage.getItem('plan-lyrics.cache')).toBeNull()
+  }
+})
+
+test('opened without Clerk, it offers to reload and reloads by itself when the network returns', async () => {
+  clerk.state = 'failed'
+  const { restoreCache, forgetCache } = await import('./offline-cache')
+  localStorage.setItem('plan-lyrics.cache', JSON.stringify({ v: 1, owner: 'user-ficticio', church: null, queries: [{ key: ['church'], data: { id: 'c1', name: 'Betel', canEdit: false, canConfigure: false, usesPreaching: false, days: [] } }] }))
+  const client = new QueryClient()
+  restoreCache(client)
+  const reload = vi.fn()
+  vi.stubGlobal('location', { ...window.location, reload })
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'x' }), { status: 503 })))
+  render(<QueryClientProvider client={client}><MemoryRouter><ClerkApp publishableKey={publicKey} /></MemoryRouter></QueryClientProvider>)
+  expect(await screen.findByRole('button', { name: 'Recargar' })).toBeTruthy()
+  window.dispatchEvent(new Event('online'))
+  expect(reload).toHaveBeenCalledOnce()
+  forgetCache()
 })

@@ -74,9 +74,9 @@ function Home({ church }: { church: Church }) {
   const colors = useChurchColors(churches.map((item) => item.id))
   const notice = useSwitchNotice()
   const pickChurch = (id: string) => {
-    notice.announce()
     if (id === church.id) homeAll.set(false)
-    else switchTo(id)
+    else if (!switchTo(id)) return
+    notice.announce()
   }
   const weekEnd = allWindowEnd(today)
   const agendaShown = (agenda.data ?? []).filter((item) => item.date <= weekEnd)
@@ -142,7 +142,7 @@ function Home({ church }: { church: Church }) {
             agenda.isError && !agenda.data ? <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
               : !agenda.data ? <p role="status" className="m-0 text-text-2">Cargando servicios…</p>
                 : agendaShown.length === 0 ? <p className="m-0 py-6 text-center text-text-2">No hay servicios esta semana ni la siguiente en tus iglesias.</p>
-                  : <ul className="m-0 grid list-none gap-3 p-0">{agendaShown.map((item: AgendaService) => <li key={item.id}><ServiceCard service={item} profile="full" church={{ id: item.churchId, name: item.churchName, tone: colors.style(item.churchId), open: () => switchTo(item.churchId) }} /></li>)}</ul>
+                  : <ul className="m-0 grid list-none gap-3 p-0">{agendaShown.map((item: AgendaService) => <li key={item.id}><ServiceCard service={item} profile="full" church={{ id: item.churchId, name: item.churchName, tone: colors.style(item.churchId), open: () => { if (navigator.onLine) switchTo(item.churchId) } }} /></li>)}</ul>
           ) : error ? (
             <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
           ) : loading ? (
