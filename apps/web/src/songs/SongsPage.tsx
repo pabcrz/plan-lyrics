@@ -78,7 +78,7 @@ function Library({ church }: { church: Church }) {
               </button>
             </div>
             {songs.isPending && <p role="status">Cargando canciones…</p>}
-            {songs.isError && (
+            {songs.isError && !songs.data && (
               <>
                 <Notice tone="warn" icon="alert" role="alert" title="No se pudo cargar la biblioteca">Revisa tu conexión e inténtalo de nuevo.</Notice>
                 <Button variant="secondary" onClick={() => void songs.refetch()}>Reintentar</Button>

@@ -5,6 +5,7 @@ import { useAuth } from '@clerk/react'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Church, ChurchSettings, ClosedDate, Person, PersonDetail, Service, Status, Slot } from './model'
 import { apiUrl } from '../api-url'
+import { blockSwitch } from '../pwa'
 
 export class ApiError extends Error {
   constructor(readonly status: number, readonly code = '', readonly issues: string[] = [], readonly existing?: { id: string; name: string }, readonly services?: number, readonly affected: Array<{ position: number; kind: string; label: string | null }> = []) {
@@ -22,12 +23,13 @@ function affectedSections(value: unknown) {
 /** Petición con el Bearer de Clerk; sin cookies ni caché. La API decide siempre los permisos. */
 export function useApiFetch() {
   const { getToken } = useAuth()
-  return useCallback(async <T,>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> => {
+  return useCallback(async <T,>(path: string, init: { method?: string; body?: unknown; church?: string } = {}): Promise<T> => {
     const token = await getToken()
     if (!token) throw new ApiError(401)
+    const church = init.church ?? getActiveChurch()
     const response = await fetch(apiUrl(path), {
       method: init.method ?? 'GET',
-      headers: { Authorization: `Bearer ${token}`, ...(getActiveChurch() ? { 'X-Church-Id': getActiveChurch() as string } : {}), ...(init.body ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { Authorization: `Bearer ${token}`, ...(church ? { 'X-Church-Id': church } : {}), ...(init.body ? { 'Content-Type': 'application/json' } : {}) },
       body: init.body ? JSON.stringify(init.body) : undefined,
       cache: 'no-store',
       credentials: 'omit',
@@ -79,14 +81,24 @@ export function useMyChurches() {
   return useQuery({ queryKey: ['my-churches'], queryFn: () => api<MyChurch[]>('/api/me/churches'), retry: false, staleTime: 60_000 })
 }
 
+/** Lo que no depende de la iglesia activa: la cuenta (iglesias, agenda) y lo que va por id de servicio o de canción. */
+const ACCOUNT_WIDE = ['my-churches', 'agenda']
+const byId = ({ queryKey }: { queryKey: readonly unknown[] }) =>
+  ['setlist', 'lyrics', 'assignments'].includes(queryKey[0] as string) || (queryKey[0] === 'preaching' && queryKey[1] !== 'plan')
+
 /** Cambia la iglesia activa de este dispositivo y vuelve a pedir todo lo demás con ella. */
 export function useSwitchChurch() {
   const client = useQueryClient()
   return useCallback((id: string) => {
+    // Sin red, cambiar de iglesia borraría lo guardado sin poder pedir lo nuevo.
+    if (!navigator.onLine) { blockSwitch(); return false }
     setActiveChurch(id)
     // Elegir una iglesia (desde el menú o el filtro del inicio) deja de ser la vista «Todas».
     homeAll.set(false)
-    void client.resetQueries({ predicate: (query) => query.queryKey[0] !== 'my-churches' })
+    // Se conserva para leerlo sin conexión; lo que va por id se vuelve a pedir.
+    void client.resetQueries({ predicate: (query) => !ACCOUNT_WIDE.includes(query.queryKey[0] as string) && !byId(query) })
+    void client.invalidateQueries({ predicate: byId })
+    return true
   }, [client])
 }
 
@@ -152,7 +164,8 @@ export function useServices(months: string[]) {
   return {
     services: results.flatMap((result) => result.data ?? []),
     loading: results.some((result) => result.isPending),
-    error: results.find((result) => result.error)?.error ?? null,
+    // Con datos guardados, un reintento fallido no los tapa con un error.
+    error: results.find((result) => result.error && !result.data)?.error ?? null,
   }
 }
 
@@ -215,7 +228,7 @@ export function useClosedDates(months: string[]) {
   return {
     closed: results.flatMap((result) => result.data ?? []),
     loading: results.some((result) => result.isPending),
-    error: results.find((result) => result.error)?.error ?? null,
+    error: results.find((result) => result.error && !result.data)?.error ?? null,
   }
 }
 

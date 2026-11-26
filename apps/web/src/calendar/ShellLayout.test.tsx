@@ -41,6 +41,16 @@ test('the sidebar frames every screen, secondary ones included, and marks where 
   expect(within(await screen.findByRole('navigation', { name: 'Secciones' })).getByRole('link', { name: 'Inicio' }).getAttribute('aria-current')).toBe('page')
 })
 
+test('on desktop the appearance (mode and color) is changed from the sidebar', async () => {
+  stubApi({})
+  app('/')
+  await screen.findByRole('navigation', { name: 'Secciones' })
+  fireEvent.click(within(screen.getByRole('complementary')).getByRole('button', { name: 'Apariencia' }))
+  const sheet = screen.getByRole('dialog', { name: 'Apariencia' })
+  expect(within(sheet).getByText('Oscuro')).toBeTruthy()
+  expect(within(sheet).getByRole('button', { name: 'Granate' })).toBeTruthy()
+})
+
 test('«Nuevo servicio» opens the creation choices for whoever edits', async () => {
   stubApi({})
   app('/ajustes')

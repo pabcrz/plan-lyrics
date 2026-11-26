@@ -1,7 +1,7 @@
 import { esMX } from '@clerk/localizations'
 import {
   ClerkFailed, ClerkLoaded, ClerkLoading, ClerkProvider,
-  Show, SignInButton, useUser,
+  Show, SignInButton, useAuth, useUser,
 } from '@clerk/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
@@ -22,6 +22,8 @@ function CacheOwner() {
   const client = useQueryClient()
   const { user } = useUser()
   useEffect(() => { if (user) claimCache(client, user.id) }, [client, user])
+  // Lo que falló mientras Clerk cargaba (la aplicación ya estaba abierta con lo guardado) se vuelve a pedir.
+  useEffect(() => { void client.refetchQueries({ predicate: (query) => query.state.status === 'error' }) }, [client])
   return null
 }
 function ForgetCache() {
@@ -30,18 +32,42 @@ function ForgetCache() {
   return null
 }
 
-export function ClerkApp({ publishableKey }: { publishableKey?: string }) {
-  const key = publishableKey?.trim()
-  if (!key) return <Unconfigured reason="Clerk pendiente: configura VITE_CLERK_PUBLISHABLE_KEY." />
-  // Only public identifiers belong in Vite. This checks configuration, not identity.
-  if (!/^pk_(test|live)_[A-Za-z0-9+/=_-]+$/.test(key)) return <Unconfigured reason="Configuración de Clerk inválida: usa únicamente una clave publicable." />
-
+/** Abierta con lo guardado y sin sesión: solo recargar la recupera, y se hace sola cuando vuelve la red. */
+function Reconnect() {
+  useEffect(() => {
+    const reload = () => window.location.reload()
+    window.addEventListener('online', reload)
+    return () => window.removeEventListener('online', reload)
+  }, [])
   return (
-    <ClerkProvider publishableKey={key} afterSignOutUrl="/" localization={esMX}>
-      <Show when="signed-in"><CacheOwner /><ProductRoutes /></Show>
-      <ClerkLoading><App authentication={<p role="status">Cargando autenticación…</p>} /></ClerkLoading>
-      {/* Sin Clerk (por ejemplo, sin red) pero con datos guardados: se abre en solo lectura con lo último visto. */}
-      <ClerkFailed>{hasOfflineData() ? <ProductRoutes /> : <App authentication={<p role="alert">No se pudo cargar Clerk. Recargá la página para reintentar.</p>} />}</ClerkFailed>
+    <div role="status" className="flex items-center gap-3 border-b border-line bg-surface-2 px-4 py-2 text-sm text-text-2">
+      <span className="min-w-0 flex-1">Solo lectura: no se pudo conectar tu sesión.</span>
+      <button type="button" className="min-h-11 cursor-pointer border-0 bg-transparent font-semibold text-accent underline" onClick={() => window.location.reload()}>Recargar</button>
+    </div>
+  )
+}
+
+/**
+ * Una sola posición para el producto: con datos guardados se abre sin esperar a Clerk y no se vuelve a montar cuando este responde.
+ */
+function Entry() {
+  const { isLoaded, isSignedIn } = useAuth()
+  const saved = hasOfflineData()
+  return (
+    <>
+      {saved && <ClerkFailed><Reconnect /></ClerkFailed>}
+      {(isSignedIn || (!isLoaded && saved)) && <ProductRoutes />}
+      <Show when="signed-in"><CacheOwner /></Show>
+      {!saved && <>
+        <ClerkLoading><App authentication={<>
+          <button type="button" disabled aria-busy="true" className={signInClass}>Iniciar sesión</button>
+          <p role="status" className="m-0 text-sm text-text-3">Preparando el inicio de sesión…</p>
+        </>} /></ClerkLoading>
+        <ClerkFailed><App authentication={<>
+          <button type="button" className={signInClass} onClick={() => window.location.reload()}>Reintentar</button>
+          <p role="alert" className="m-0 text-sm text-text-2">No se pudo preparar el inicio de sesión. Revisa tu conexión.</p>
+        </>} /></ClerkFailed>
+      </>}
       <ClerkLoaded>
         <Show when="signed-out">
           <ForgetCache />
@@ -52,6 +78,19 @@ export function ClerkApp({ publishableKey }: { publishableKey?: string }) {
           } />
         </Show>
       </ClerkLoaded>
+    </>
+  )
+}
+
+export function ClerkApp({ publishableKey }: { publishableKey?: string }) {
+  const key = publishableKey?.trim()
+  if (!key) return <Unconfigured reason="Clerk pendiente: configura VITE_CLERK_PUBLISHABLE_KEY." />
+  // Only public identifiers belong in Vite. This checks configuration, not identity.
+  if (!/^pk_(test|live)_[A-Za-z0-9+/=_-]+$/.test(key)) return <Unconfigured reason="Configuración de Clerk inválida: usa únicamente una clave publicable." />
+
+  return (
+    <ClerkProvider publishableKey={key} afterSignOutUrl="/" localization={esMX}>
+      <Entry />
     </ClerkProvider>
   )
 }

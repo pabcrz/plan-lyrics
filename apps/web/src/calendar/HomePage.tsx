@@ -61,11 +61,6 @@ function Home({ church }: { church: Church }) {
   // Mes en curso: lo que queda del mes (y la semana siguiente desde la última semana del mes); a petición, lo que ya pasó de este mes. Otro mes: el mes completo.
   const windowEnd = churchWindowEnd(today)
   const upcoming = all.filter((item) => (current ? item.date >= today && item.date <= windowEnd : inMonth(item.date)))
-  // Con conexión, deja leíbles sin red el setlist y las letras de lo que viene.
-  const api = useApiFetch()
-  const queryClient = useQueryClient()
-  const offlineIds = upcoming.flatMap((item) => (item.kind === 'service' && item.service.status !== 'CANCELLED' ? [item.service.id] : [])).join(',')
-  useEffect(() => { if (offlineIds && navigator.onLine) void saveUpcoming(queryClient, api, offlineIds.split(',')) }, [offlineIds, api, queryClient])
   const past = current ? all.filter((item) => inMonth(item.date) && item.date < today) : []
   const items = showPast ? [...past, ...upcoming] : upcoming
   const count = gridServices.length
@@ -74,17 +69,27 @@ function Home({ church }: { church: Church }) {
   const several = churches.length >= 2
   const stored = homeAll.use()
   const united = several && (stored ?? true)
-  const agenda = useAgenda(united)
+  const agenda = useAgenda(several)
   const switchTo = useSwitchChurch()
   const colors = useChurchColors(churches.map((item) => item.id))
   const notice = useSwitchNotice()
   const pickChurch = (id: string) => {
-    notice.announce()
     if (id === church.id) homeAll.set(false)
-    else switchTo(id)
+    else if (!switchTo(id)) return
+    notice.announce()
   }
   const weekEnd = allWindowEnd(today)
   const agendaShown = (agenda.data ?? []).filter((item) => item.date <= weekEnd)
+  // Con conexión, deja leíbles sin red el setlist y las letras de lo que viene, de todas las iglesias.
+  const api = useApiFetch()
+  const queryClient = useQueryClient()
+  const offline = new Map<string, string>()
+  for (const item of several ? agendaShown : []) if (item.status !== 'CANCELLED') offline.set(item.id, item.churchId)
+  for (const item of upcoming) if (item.kind === 'service' && item.service.status !== 'CANCELLED' && !offline.has(item.service.id)) offline.set(item.service.id, church.id)
+  const offlineList = [...offline].map(([id, owner]) => `${id} ${owner}`).join(',')
+  useEffect(() => {
+    if (offlineList && navigator.onLine) void saveUpcoming(queryClient, api, offlineList.split(',').map((pair) => { const [id = '', owner] = pair.split(' '); return { id, church: owner } }))
+  }, [offlineList, api, queryClient])
 
   const calendar = (
     <section aria-label="Calendario" className="rounded-lg border border-line bg-surface lg:sticky lg:top-4">
@@ -134,10 +139,10 @@ function Home({ church }: { church: Church }) {
         </div>
         <div className="lg:col-start-1">
           {united ? (
-            agenda.isError ? <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
+            agenda.isError && !agenda.data ? <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
               : !agenda.data ? <p role="status" className="m-0 text-text-2">Cargando servicios…</p>
                 : agendaShown.length === 0 ? <p className="m-0 py-6 text-center text-text-2">No hay servicios esta semana ni la siguiente en tus iglesias.</p>
-                  : <ul className="m-0 grid list-none gap-3 p-0">{agendaShown.map((item: AgendaService) => <li key={item.id}><ServiceCard service={item} profile="full" church={{ id: item.churchId, name: item.churchName, tone: colors.style(item.churchId), open: () => switchTo(item.churchId) }} /></li>)}</ul>
+                  : <ul className="m-0 grid list-none gap-3 p-0">{agendaShown.map((item: AgendaService) => <li key={item.id}><ServiceCard service={item} profile="full" church={{ id: item.churchId, name: item.churchName, tone: colors.style(item.churchId), open: () => { if (navigator.onLine) switchTo(item.churchId) } }} /></li>)}</ul>
           ) : error ? (
             <Notice tone="warn" icon="alert" role="alert" title="No se pudieron cargar los servicios">Revisa tu conexión e inténtalo de nuevo.</Notice>
           ) : loading ? (

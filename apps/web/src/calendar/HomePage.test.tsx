@@ -366,3 +366,14 @@ test('a member who only preaches sees the topic, who preaches and when, without 
   expect(within(card).getByText('Predica Fernando Maya')).toBeTruthy()
   expect(within(card).queryByText(/canciones|Ana Ramírez/)).toBeNull()
 })
+
+test('without network, picking another church changes nothing and does not claim it did', async () => {
+  stubApi({ services: [], myChurches: two, agenda })
+  mount(<HomePage />)
+  await screen.findByRole('link', { name: /Culto norte/ })
+  vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+  fireEvent.click(screen.getByRole('button', { name: 'Iglesia de Cristo' }))
+  expect(localStorage.getItem('plan-lyrics.activeChurch')).toBeNull()
+  expect(screen.queryByText(/Ahora trabajas en/)).toBeNull()
+  vi.restoreAllMocks()
+})

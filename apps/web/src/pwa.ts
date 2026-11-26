@@ -36,3 +36,13 @@ export function useOnline() {
     () => navigator.onLine,
   )
 }
+
+let switchBlocked = false
+const blockedListeners = new Set<() => void>()
+const setSwitchBlocked = (value: boolean) => { switchBlocked = value; blockedListeners.forEach((listener) => listener()) }
+if (typeof window !== 'undefined') window.addEventListener('online', () => setSwitchBlocked(false))
+/** Alguien intentó cambiar de iglesia sin conexión: la barra de aviso explica por qué no cambió. */
+export const blockSwitch = () => setSwitchBlocked(true)
+export function useSwitchBlocked() {
+  return useSyncExternalStore((listener) => { blockedListeners.add(listener); return () => { blockedListeners.delete(listener) } }, () => switchBlocked)
+}

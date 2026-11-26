@@ -37,7 +37,7 @@ function Plan({ church }: { church: Church }) {
         <div className="grid gap-3 px-4">
           {!church.usesPreaching && <Notice title="Tu iglesia no usa predicación">{church.canConfigure ? 'Actívala en Ajustes para planear predicadores y temas.' : 'Quien administra la iglesia puede activarla en Ajustes.'}</Notice>}
           {church.usesPreaching && plan.isPending && <p role="status" className="m-0 text-text-2">Cargando predicaciones…</p>}
-          {plan.isError && (
+          {plan.isError && !plan.data && (
             <>
               <Notice tone="warn" icon="alert" role="alert" title="No se pudo cargar el mes">Revisa tu conexión e inténtalo de nuevo.</Notice>
               <Button variant="secondary" onClick={() => void plan.refetch()}>Reintentar</Button>
