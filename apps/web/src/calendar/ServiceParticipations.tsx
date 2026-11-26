@@ -43,7 +43,7 @@ export function ServiceParticipations({ service, canEdit }: { service: Service; 
     <section aria-labelledby="participations" className="grid gap-2">
       <h3 id="participations" className="m-0 text-sm font-semibold text-text-2">Participaciones</h3>
       {assignments.isPending && <p role="status" className="m-0 text-[0.8125rem] text-text-3">Cargando participaciones…</p>}
-      {assignments.error && <Notice tone="warn" icon="alert" role="alert">No se pudieron cargar las participaciones.</Notice>}
+      {assignments.error && !assignments.data && <Notice tone="warn" icon="alert" role="alert">No se pudieron cargar las participaciones.</Notice>}
       {assignments.data && (
         <>
           {assignments.data.assignments.length === 0 && <p className="m-0 text-[0.8125rem] text-text-3">Este servicio no tiene participaciones cargadas.</p>}

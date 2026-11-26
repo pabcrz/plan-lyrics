@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Avatar, Button, Icon, Notice, StatusChip, Toast, format12h, from24h } from '../ui'
 import { AppShell } from '../calendar/AppShell'
 import { ChurchGate } from '../calendar/ChurchGate'
-import { ApiError, useServices } from '../calendar/api'
+import { ApiError, useServices, type AgendaService } from '../calendar/api'
 import { formatLongDay, monthOf, todayIn } from '../calendar/dates'
 import type { Church } from '../calendar/model'
 import { PreachingSection } from '../calendar/PreachingSection'
@@ -40,7 +41,11 @@ function Screen({ church }: { church: Church }) {
   const query = useSetlist(serviceId)
   const month = query.data ? monthOf(query.data.service.date) : ''
   // La dirección y lo demás del servicio vienen de la lista del mes (no hay lectura de un servicio suelto).
-  const service = useServices(month ? [month] : []).services.find((item) => item.id === serviceId)
+  // Sin red, un servicio de otra iglesia no está en esa lista: se toma de la agenda guardada.
+  const listed = useServices(month ? [month] : []).services.find((item) => item.id === serviceId)
+  const agendaItem = useQueryClient().getQueryData<AgendaService[]>(['agenda'])?.find((item) => item.id === serviceId)
+  const service = listed ?? agendaItem
+  const other = agendaItem && agendaItem.churchId !== church.id ? agendaItem : undefined
   const missing = query.error instanceof ApiError && query.error.status === 404
   // Si la iglesia activa ya no tiene el servicio, no se muestra lo guardado de antes.
   const setlist = missing ? undefined : query.data
@@ -67,6 +72,7 @@ function Screen({ church }: { church: Church }) {
                 {setlist.service.status === 'CANCELLED' && <StatusChip status="cancelled" />}
                 {setlist.canEdit && <Button variant="secondary" onClick={() => setEditing(true)}><Icon name="edit" width={16} height={16} />Editar servicio</Button>}
               </div>
+              {other && <p className="m-0 text-sm font-semibold text-accent">Servicio de {other.churchName}</p>}
               {saved && <p role="status" className="m-0 text-[0.8125rem] font-medium text-pub-fg">Servicio actualizado</p>}
               <h1 className="m-0 font-display text-[1.75rem] leading-[1.1] font-bold tracking-tight">{setlist.service.title}</h1>
               <p className="m-0 flex flex-wrap gap-x-3 text-[0.9375rem] text-text-2">
@@ -91,7 +97,7 @@ function Screen({ church }: { church: Church }) {
               {service && (
                 <div className="grid gap-4">
                   <div className="rounded-lg border border-line bg-surface p-4"><ServiceParticipations service={service} canEdit={setlist.canEdit} /></div>
-                  {church.usesPreaching && <div className="rounded-lg border border-line bg-surface p-4"><PreachingSection service={service} canEdit={setlist.canEdit} /></div>}
+                  {(other ? Boolean(other.preaching) : church.usesPreaching) && <div className="rounded-lg border border-line bg-surface p-4"><PreachingSection service={service} canEdit={setlist.canEdit} /></div>}
                 </div>
               )}
             </div>

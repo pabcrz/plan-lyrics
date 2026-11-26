@@ -25,10 +25,13 @@ export type LyricsBody = { version: number; published: boolean; key?: string | n
 /** Cómo se pide la letra movida de tono: a una tonalidad (del mismo modo que la guardada) o por medios tonos. Solo se calcula, no se guarda. */
 export type Transposition = { toKey: string } | { semitones: number }
 
+export const transpositionQuery = (transposition: Transposition) =>
+  'toKey' in transposition ? `toKey=${encodeURIComponent(transposition.toKey)}` : `semitones=${transposition.semitones}`
+
 /** La letra con los acordes transpuestos solo para esta lectura; sin `transposition` no pide nada. */
 export function useTransposedLyrics(songId: string, transposition: Transposition | null) {
   const api = useApiFetch()
-  const query = transposition === null ? '' : 'toKey' in transposition ? `toKey=${encodeURIComponent(transposition.toKey)}` : `semitones=${transposition.semitones}`
+  const query = transposition === null ? '' : transpositionQuery(transposition)
   return useQuery({
     queryKey: [...key(songId), 'view', query], queryFn: () => api<Lyrics>(`${path(songId)}?${query}`),
     enabled: transposition !== null, retry: false, placeholderData: keepPreviousData,

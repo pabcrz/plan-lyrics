@@ -510,3 +510,12 @@ test('a service the active church no longer has shows only the notice, not the s
   expect(screen.queryByRole('list', { name: 'Setlist' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Editar servicio' })).toBeNull()
 })
+
+test('a saved service of another church shows its director and says whose it is', async () => {
+  stubSetlist()
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  client.setQueryData(['agenda'], [{ id: 's1', title: 'Servicio dominical', date: '2026-11-15', slot: 'SINGLE', time: '10:00', status: 'DRAFT', director: { id: 'p9', name: 'Marta Soto' }, songCount: 2, churchId: 'otra', churchName: 'Iglesia de Cristo' }])
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/servicios/s1']}><Routes><Route path="/servicios/:serviceId" element={<ServicePage />} /></Routes></MemoryRouter></QueryClientProvider>)
+  expect(await screen.findByText('Marta Soto')).toBeTruthy()
+  expect(screen.getByText('Servicio de Iglesia de Cristo')).toBeTruthy()
+})

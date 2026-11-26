@@ -56,7 +56,7 @@ export function PreachingSection({ service, canEdit }: { service: Service; canEd
     <section aria-labelledby="preaching" className="grid gap-2">
       <h3 id="preaching" className="m-0 text-sm font-semibold text-text-2">Predicación</h3>
       {preaching.isPending && <p role="status" className="m-0 text-[0.8125rem] text-text-3">Cargando predicación…</p>}
-      {preaching.error && <Notice tone="warn" icon="alert" role="alert">No se pudo cargar la predicación.</Notice>}
+      {preaching.error && !data && <Notice tone="warn" icon="alert" role="alert">No se pudo cargar la predicación.</Notice>}
       {data && (
         <>
           {empty && <p className="m-0 text-[0.8125rem] text-text-3">Este servicio no tiene predicación cargada.</p>}

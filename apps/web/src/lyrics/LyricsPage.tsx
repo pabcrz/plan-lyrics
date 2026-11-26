@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { Button, Icon, Notice, Toast } from '../ui'
 import { PageHeader } from '../calendar/ChurchGate'
+import { useOnline } from '../pwa'
 import { ApiError } from '../calendar/api'
 import { ChordLine, linesOf } from './ChordParts'
 import { semitonesBetween } from './chords'
@@ -92,10 +93,13 @@ export function LyricsPage() {
   const { request, service } = requestFor(stored, serviceKey, offset)
   const moved = useTransposedLyrics(songId, request)
   const hasChords = Boolean(stored?.sections.some((section) => section.chordPro))
-  const failed = request !== null && moved.isError
-  const waiting = request !== null && moved.isPending
+  const online = useOnline()
+  // Sin red solo hay lo que se guardó antes (el tono del servicio); lo demás no se puede calcular.
+  const unavailable = request !== null && !online && (!moved.data || moved.isPlaceholderData)
+  const failed = request !== null && !unavailable && moved.isError && !moved.data
+  const waiting = request !== null && !unavailable && moved.isPending
   // Si no se pudo mover, se ven los acordes guardados y se dice cuál es la tonalidad.
-  const lyrics = request !== null && moved.data && !failed ? moved.data : stored
+  const lyrics = request !== null && moved.data && !failed && !unavailable ? moved.data : stored
   const unusable = hasChords && serviceKey && stored && (stored.key === null ? 'La canción no tiene tonalidad guardada, así que los acordes se ven como están guardados.' : semitonesBetween(stored.key, serviceKey) === null ? `El tono de este servicio (${serviceKey}) no es del mismo modo que el de la canción; se muestra el tono base.` : undefined)
   const editState = { title, back, key: serviceKey }
   const go = (suffix: string) => void navigate(`/canciones/${encodeURIComponent(songId)}/letra/${suffix}`, { state: editState })
@@ -111,6 +115,7 @@ export function LyricsPage() {
             <LyricsHeader title={title ?? lyrics.title} lyrics={lyrics} />
             {hasChords && <KeyBar base={stored.key} now={lyrics.key} serviceKey={service ? serviceKey : undefined} offset={offset} onOffset={setOffset} note={unusable || undefined} />}
             {failed && <div className="px-4 pb-3"><Notice tone="warn" icon="alert" role="alert" title="No se pudo transponer">Se muestran los acordes como están guardados. Inténtalo de nuevo.</Notice></div>}
+            {unavailable && <div className="px-4 pb-3"><Notice icon="info">Sin conexión no se pueden mover los acordes; se muestran como están guardados.</Notice></div>}
             {waiting && <p role="status" className="m-0 px-4 pb-3 text-sm text-text-2">Calculando los acordes…</p>}
             {lyrics.sections.length === 0 ? (
               <div className="mx-4 mb-4 grid justify-items-center gap-2 rounded-lg border border-line bg-surface px-4 py-8 text-center">

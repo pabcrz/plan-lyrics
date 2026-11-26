@@ -129,3 +129,15 @@ test('offers editing the chords only to whoever can edit the library, and keeps 
   await screen.findAllByRole('listitem')
   expect(screen.queryByRole('button', { name: 'Editar acordes' })).not.toBeInTheDocument()
 })
+
+test('without network, moving the chords explains it and keeps the saved ones', async () => {
+  stubLyrics({ sections: chorded, key: 'G' })
+  page()
+  await screen.findAllByRole('listitem')
+  vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+  fireEvent(window, new Event('offline'))
+  fireEvent.click(screen.getByRole('button', { name: 'Medio tono arriba' }))
+  expect(await screen.findByText(/Sin conexión no se pueden mover los acordes/)).toBeInTheDocument()
+  expect(screen.queryByText('Calculando los acordes…')).not.toBeInTheDocument()
+  expect(chordOf('Em')).toBeInTheDocument()
+})
