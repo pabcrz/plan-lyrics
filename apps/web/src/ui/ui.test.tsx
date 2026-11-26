@@ -189,10 +189,29 @@ describe('Sheet', () => {
   test('touching outside closes (a touch, not only a mouse), touching inside does not', () => {
     const onClose = vi.fn()
     render(<Sheet open onClose={onClose} title="Hoja"><button>Dentro</button></Sheet>)
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Dentro' }))
+    const inside = screen.getByRole('button', { name: 'Dentro' })
+    const backdrop = screen.getByRole('dialog').parentElement!
+    fireEvent.pointerDown(inside)
+    fireEvent.click(inside)
+    // Un arrastre que empieza dentro y termina fuera no cierra.
+    fireEvent.pointerDown(inside)
+    fireEvent.click(backdrop)
     expect(onClose).not.toHaveBeenCalled()
-    fireEvent.pointerDown(screen.getByRole('dialog').parentElement!)
+    // Mientras el dedo sigue abajo el fondo permanece: si se quitara ya, el clic caería en lo que está detrás.
+    fireEvent.pointerDown(backdrop)
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(backdrop)
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  test('the closing click does not reach whatever contains the sheet', () => {
+    const behind = vi.fn()
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- contenedor de prueba
+    render(<div onClick={behind}><Sheet open onClose={() => {}} title="Hoja">x</Sheet></div>)
+    const backdrop = screen.getByRole('dialog').parentElement!
+    fireEvent.pointerDown(backdrop)
+    fireEvent.click(backdrop)
+    expect(behind).not.toHaveBeenCalled()
   })
 
   test('the little bar on top is a control: tapping it closes the sheet', () => {

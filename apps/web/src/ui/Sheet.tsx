@@ -23,6 +23,7 @@ export function Sheet({
   const [drag, setDrag] = useState(0)
   const gesture = useRef<{ from: number; moved: boolean } | null>(null)
   const panel = useRef<HTMLDivElement>(null)
+  const downOutside = useRef(false)
   const onCloseRef = useRef(onClose)
   useEffect(() => {
     onCloseRef.current = onClose
@@ -70,9 +71,13 @@ export function Sheet({
     <div
       role="presentation"
       className="fixed inset-0 z-50 flex items-end justify-center overscroll-none md:items-center bg-[oklch(0_0_0/0.42)]"
-      // `pointerdown` y no `mousedown`: en pantallas táctiles el segundo no llega a un fondo que no es un botón.
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
+      // Se cierra con el clic completo: si el fondo se quitara al tocar, el clic caería en lo que está detrás.
+      onPointerDown={(event) => { downOutside.current = event.target === event.currentTarget }}
+      onClick={(event) => {
+        if (event.target !== event.currentTarget) return
+        // El portal propaga el clic a quien contiene la hoja en React.
+        event.stopPropagation()
+        if (downOutside.current) onClose()
       }}
     >
       <div
